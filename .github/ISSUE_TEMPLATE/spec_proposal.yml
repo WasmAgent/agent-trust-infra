@@ -1,0 +1,36 @@
+---
+name: Spec proposal
+about: Propose a change or addition to AgentBOM, MCP Posture, or Trust Passport specifications
+title: "spec: "
+labels: spec
+body:
+  - type: dropdown
+    id: artifact
+    attributes:
+      label: Artifact
+      options:
+        - AgentBOM
+        - MCP Posture
+        - Trust Passport
+        - Cross-cutting
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What do you want to change or add?
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why is this change needed?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How do we know this is done?
