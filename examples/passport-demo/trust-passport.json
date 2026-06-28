@@ -1,0 +1,63 @@
+{
+  "passport_version": "0.1",
+  "identity": {
+    "passport_id": "passport-bscode-demo-001",
+    "agent_id": "bscode-agent-demo-001",
+    "agent_name": "bscode agent",
+    "issuer": "agent-trust-infra/examples",
+    "issuance_context": "self-issued"
+  },
+  "agentbom_ref": {
+    "agentbom_id": "bscode-agent-demo-001",
+    "agentbom_hash": "sha256:placeholder",
+    "captured_at": "2026-06-28T00:00:00Z"
+  },
+  "audit_ref": {
+    "report_id": "placeholder",
+    "report_hash": "sha256:placeholder",
+    "generated_at": "2026-06-28T00:00:00Z"
+  },
+  "posture_ref": {
+    "snapshot_id": "posture-bscode-demo-001",
+    "snapshot_hash": "sha256:placeholder",
+    "captured_at": "2026-06-28T00:00:00Z"
+  },
+  "evidence_summary": {
+    "evidence_quality": "low",
+    "framework_mappings": [
+      {
+        "framework": "OWASP-MCP-Top10",
+        "coverage": "partial",
+        "note": "Demo fixture only. Not a real audit."
+      }
+    ]
+  },
+  "risk_summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 1,
+    "open_findings": 1
+  },
+  "validity": {
+    "issued_at": "2026-06-28T00:00:00Z",
+    "expires_at": "2026-09-26T00:00:00Z",
+    "renewal_triggers": [
+      "agentbom_changes",
+      "new_high_risk_finding",
+      "mcp_posture_drift",
+      "audit_report_updated"
+    ]
+  },
+  "revocation": {
+    "revoked": false,
+    "revocation_triggers": [
+      "critical_security_finding",
+      "evidence_falsified",
+      "agent_decommissioned"
+    ]
+  },
+  "attestation": {
+    "issuer": "agent-trust-infra/examples"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@wasmagent/trust-passport-core",
+  "version": "0.0.0-research",
+  "description": "Trust Passport reference implementation — experimental",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

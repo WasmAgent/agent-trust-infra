@@ -1,0 +1,45 @@
+{
+  "posture_version": "0.1",
+  "identity": {
+    "snapshot_id": "posture-bscode-demo-001",
+    "agent_id": "bscode-agent-demo-001",
+    "captured_at": "2026-06-28T00:00:00Z"
+  },
+  "servers": [
+    {
+      "server_id": "cloudflare-docs",
+      "server_name": "Cloudflare Docs MCP",
+      "version": "1.0.0",
+      "provenance": "verified",
+      "tools": [
+        {
+          "tool_id": "search-cf-docs",
+          "tool_name": "search_cloudflare_documentation",
+          "permissions": ["network:outbound"],
+          "risk_categories": ["ssrf"],
+          "risk_severity": "low"
+        }
+      ]
+    }
+  ],
+  "permission_graph": {
+    "total_tools": 1,
+    "total_permissions": 1,
+    "high_risk_tools": 0,
+    "permission_scopes": ["network:outbound"]
+  },
+  "risk_summary": [
+    {
+      "finding_id": "finding-001",
+      "severity": "low",
+      "category": "ssrf",
+      "description": "search_cloudflare_documentation makes outbound HTTP requests. Scope is limited to docs.cloudflare.com.",
+      "tool_id": "search-cf-docs",
+      "owasp_mcp_ref": "MCP-02"
+    }
+  ],
+  "drift": {},
+  "attestation": {
+    "generator": "agent-trust-infra/examples"
+  }
+}

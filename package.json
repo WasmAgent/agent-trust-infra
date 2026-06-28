@@ -1,0 +1,23 @@
+{
+  "name": "@wasmagent/agent-trust-infra",
+  "private": true,
+  "version": "0.0.0-research",
+  "description": "Public research preview for Agent Trust Infrastructure.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "cli/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "biome check packages/ cli/",
+    "lint:fix": "biome check --write packages/ cli/",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  }
+}
