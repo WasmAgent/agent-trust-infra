@@ -4,6 +4,7 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { validatePassportCommand } from "./passport-validate.js";
+import { inspectPassportCommand } from "./passport-inspect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -112,5 +113,71 @@ describe("validatePassportCommand", () => {
     const exitCode = validatePassportCommand(examplePath);
     // Example may or may not be expired depending on date, but should be structurally valid
     expect([0, 1]).toContain(exitCode);
+  });
+});
+
+describe("inspectPassportCommand", () => {
+  it("returns 0 and displays passport details for a valid passport", () => {
+    const path = writeTmpFile("inspect-valid.json", JSON.stringify(VALID_PASSPORT));
+    const spy = spyOn(console, "log");
+
+    const result = inspectPassportCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("passport-test-001");
+    expect(output).toContain("Test Agent");
+    expect(output).toContain("test-issuer");
+    expect(output).toContain("2026-06-28T00:00:00Z");
+    expect(output).toContain("2099-12-31T00:00:00Z");
+    expect(output).toContain("Active");
+  });
+
+  it("shows EXPIRED status for an expired passport", () => {
+    const expired = {
+      ...VALID_PASSPORT,
+      validity: {
+        issued_at: "2020-01-01T00:00:00Z",
+        expires_at: "2020-06-01T00:00:00Z",
+      },
+    };
+    const path = writeTmpFile("inspect-expired.json", JSON.stringify(expired));
+    const spy = spyOn(console, "log");
+
+    const result = inspectPassportCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("EXPIRED");
+  });
+
+  it("shows risk counts", () => {
+    const withRisks = {
+      ...VALID_PASSPORT,
+      risk_summary: { critical: 2, high: 5, medium: 3, low: 1 },
+    };
+    const path = writeTmpFile("inspect-risks.json", JSON.stringify(withRisks));
+    const spy = spyOn(console, "log");
+
+    const result = inspectPassportCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("critical=2");
+    expect(output).toContain("high=5");
+  });
+
+  it("returns 1 for a non-existent file", () => {
+    expect(inspectPassportCommand("/nonexistent/path/passport.json")).toBe(1);
+  });
+
+  it("returns 1 for invalid JSON", () => {
+    const path = writeTmpFile("inspect-bad.json", "{ not valid json");
+    expect(inspectPassportCommand(path)).toBe(1);
+  });
+
+  it("returns 1 for a non-object root", () => {
+    const path = writeTmpFile("inspect-array.json", JSON.stringify([1, 2, 3]));
+    expect(inspectPassportCommand(path)).toBe(1);
   });
 });
