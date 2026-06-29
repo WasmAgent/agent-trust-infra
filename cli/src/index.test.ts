@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
+import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -254,5 +255,150 @@ describe("inspectAgentBOMCommand", () => {
     expect(output).toContain("development");
     expect(output).toContain("Tools:");
     expect(output).toContain("Risks:");
+  });
+});
+
+const VALID_POSTURE = {
+  posture_version: "0.1",
+  identity: {
+    snapshot_id: "posture-test-001",
+    agent_id: "test-agent-001",
+    captured_at: "2026-06-28T00:00:00Z",
+  },
+  servers: [
+    {
+      server_id: "srv-1",
+      server_name: "Server One",
+      tools: [
+        {
+          tool_id: "tool-safe",
+          tool_name: "safe_tool",
+          risk_severity: "low",
+        },
+        {
+          tool_id: "tool-dangerous",
+          tool_name: "dangerous_tool",
+          risk_severity: "critical",
+        },
+      ],
+    },
+  ],
+  risk_summary: [
+    {
+      finding_id: "finding-001",
+      severity: "critical",
+      category: "command_execution",
+      description: "Allows arbitrary command execution on the host",
+      tool_id: "tool-dangerous",
+    },
+    {
+      finding_id: "finding-002",
+      severity: "high",
+      category: "exfiltration",
+      description: "Can exfiltrate data via DNS",
+      tool_id: "tool-dangerous",
+    },
+    {
+      finding_id: "finding-003",
+      severity: "medium",
+      category: "ssrf",
+      description: "Makes outbound HTTP requests to user-specified URLs",
+      tool_id: "tool-safe",
+    },
+  ],
+  attestation: { generator: "test" },
+};
+
+describe("inspectMCPPostureCommand", () => {
+  it("returns 0 and displays posture details for a valid posture file", () => {
+    const path = writeTmpFile("posture-valid.json", JSON.stringify(VALID_POSTURE));
+    const spy = spyOn(console, "log");
+
+    const result = inspectMCPPostureCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("MCP Posture v0.1");
+    expect(output).toContain("posture-test-001");
+    expect(output).toContain("test-agent-001");
+    expect(output).toContain("Servers:");
+    expect(output).toContain("Tools:");
+    expect(output).toContain("High-risk tools:");
+    expect(output).toContain("Risks:");
+  });
+
+  it("shows tool count and high-risk tool count", () => {
+    const path = writeTmpFile("posture-tools.json", JSON.stringify(VALID_POSTURE));
+    const spy = spyOn(console, "log");
+
+    const result = inspectMCPPostureCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Tools:           2");
+    expect(output).toContain("High-risk tools: 1");
+  });
+
+  it("highlights critical and high severity findings", () => {
+    const path = writeTmpFile("posture-critical.json", JSON.stringify(VALID_POSTURE));
+    const spy = spyOn(console, "log");
+
+    const result = inspectMCPPostureCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("critical/high finding(s)");
+    expect(output).toContain("[CRITICAL]");
+    expect(output).toContain("[HIGH]");
+    expect(output).toContain("finding-001");
+    expect(output).toContain("finding-002");
+  });
+
+  it("shows medium/low findings separately", () => {
+    const path = writeTmpFile("posture-other.json", JSON.stringify(VALID_POSTURE));
+    const spy = spyOn(console, "log");
+
+    const result = inspectMCPPostureCommand(path);
+    expect(result).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Other findings");
+    expect(output).toContain("[MEDIUM]");
+    expect(output).toContain("finding-003");
+  });
+
+  it("returns 1 for a non-existent file", () => {
+    expect(inspectMCPPostureCommand("/nonexistent/path/posture.json")).toBe(1);
+  });
+
+  it("returns 1 for invalid JSON", () => {
+    const path = writeTmpFile("posture-bad.json", "{ not valid json");
+    expect(inspectMCPPostureCommand(path)).toBe(1);
+  });
+
+  it("returns 1 for missing required fields", () => {
+    const path = writeTmpFile("posture-incomplete.json", JSON.stringify({ posture_version: "0.1" }));
+    expect(inspectMCPPostureCommand(path)).toBe(1);
+  });
+
+  it("returns 1 for wrong posture_version", () => {
+    const badVersion = { ...VALID_POSTURE, posture_version: "99.0" };
+    const path = writeTmpFile("posture-bad-version.json", JSON.stringify(badVersion));
+    expect(inspectMCPPostureCommand(path)).toBe(1);
+  });
+
+  it("handles the example mcp-risk-demo posture file", () => {
+    const examplePath = resolve(__dirname, "../../../examples/mcp-risk-demo/posture.json");
+    if (!existsSync(examplePath)) {
+      console.warn(`Skipping: example file not found at ${examplePath}`);
+      return;
+    }
+    const spy = spyOn(console, "log");
+    const exitCode = inspectMCPPostureCommand(examplePath);
+    expect(exitCode).toBe(0);
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("MCP Posture v0.1");
+    expect(output).toContain("posture-bscode-demo-001");
+    expect(output).toContain("bscode-agent-demo-001");
   });
 });

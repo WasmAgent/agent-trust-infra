@@ -2,6 +2,7 @@
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
+import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
@@ -10,6 +11,7 @@ const USAGE = [
   "  passport validate <path>  Validate a trust passport file",
   "  passport inspect <path>    Inspect a trust passport file",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
+  "  mcp-posture inspect <path> Inspect an MCP posture file",
 ].join("\n");
 
 function main(): void {
@@ -51,6 +53,19 @@ function main(): void {
       process.exit(exitCode);
     }
     console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
+    process.exit(1);
+  }
+
+  if (args[0] === "mcp-posture") {
+    if (args[1] === "inspect") {
+      if (args.length < 3) {
+        console.error("Error: mcp-posture inspect requires a <path> argument");
+        process.exit(1);
+      }
+      const exitCode = inspectMCPPostureCommand(args[2]);
+      process.exit(exitCode);
+    }
+    console.error(`Error: unknown mcp-posture subcommand "${args[1]}"`);
     process.exit(1);
   }
 
