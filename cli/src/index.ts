@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
+import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
@@ -8,6 +9,7 @@ const USAGE = [
   "Commands:",
   "  passport validate <path>  Validate a trust passport file",
   "  passport inspect <path>    Inspect a trust passport file",
+  "  agentbom inspect <path>    Inspect an AgentBOM file",
 ].join("\n");
 
 function main(): void {
@@ -36,6 +38,19 @@ function main(): void {
       process.exit(exitCode);
     }
     console.error(`Error: unknown passport subcommand "${args[1]}"`);
+    process.exit(1);
+  }
+
+  if (args[0] === "agentbom") {
+    if (args[1] === "inspect") {
+      if (args.length < 3) {
+        console.error("Error: agentbom inspect requires a <path> argument");
+        process.exit(1);
+      }
+      const exitCode = inspectAgentBOMCommand(args[2]);
+      process.exit(exitCode);
+    }
+    console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
     process.exit(1);
   }
 
