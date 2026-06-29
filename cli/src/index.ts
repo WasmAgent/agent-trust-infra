@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 import { validatePassportCommand } from "./passport-validate.js";
+import { inspectPassportCommand } from "./passport-inspect.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
   "",
   "Commands:",
   "  passport validate <path>  Validate a trust passport file",
+  "  passport inspect <path>    Inspect a trust passport file",
 ].join("\n");
 
 function main(): void {
@@ -23,6 +25,14 @@ function main(): void {
         process.exit(1);
       }
       const exitCode = validatePassportCommand(args[2]);
+      process.exit(exitCode);
+    }
+    if (args[1] === "inspect") {
+      if (args.length < 3) {
+        console.error("Error: passport inspect requires a <path> argument");
+        process.exit(1);
+      }
+      const exitCode = inspectPassportCommand(args[2]);
       process.exit(exitCode);
     }
     console.error(`Error: unknown passport subcommand "${args[1]}"`);
