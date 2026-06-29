@@ -12,11 +12,52 @@ AgentBOM is not an audit report. It is an input artifact for audit, posture anal
 
 ## Relationship to existing standards
 
-| Standard | Focus | AgentBOM relationship |
-|---|---|---|
-| SBOM (CycloneDX, SPDX) | Software components | AgentBOM adds agent-specific runtime authority |
-| AIBOM | Model and dataset lineage | AgentBOM extends with tools, permissions, runtime evidence |
-| OWASP LLM Top 10 | Model-level risks | AgentBOM captures tool and permission attack surface |
+### SBOM (CycloneDX, SPDX)
+
+Software Bill of Materials standards such as CycloneDX and SPDX catalog the libraries, frameworks, and dependencies that make up a software artifact. They answer the question "what components were shipped?" and are essential for vulnerability tracking and supply-chain integrity.
+
+AgentBOM does not replace an SBOM. Instead, it extends the bill-of-materials concept into the operational layer of an AI agent. Where an SBOM lists static software components, AgentBOM captures **runtime authority surfaces**: which tools the agent can invoke, what permission scopes it holds, which data sources it may access, and what prompts govern its behavior. These dimensions are outside the scope of traditional SBOM formats, which have no fields for tool registrations, permission boundaries, or prompt provenance.
+
+### AIBOM
+
+AIBOM (AI Bill of Materials) initiatives focus on model lineage and dataset provenance — tracking which model weights, training data, and fine-tuning steps produced a given AI capability. This is critical for understanding model-level risks such as data poisoning, bias, and license compliance.
+
+AgentBOM builds on the same bill-of-materials philosophy but shifts focus from the model itself to the **agent wrapper around the model**. An agent that calls a well-documented model can still introduce risk through overly broad tool permissions, unbounded data access, or insufficient prompt guardrails. AgentBOM captures these agent-level concerns — tool registries, permission scopes, prompt hashes, and runtime evidence — that AIBOM alone does not address.
+
+### OWASP LLM Top 10
+
+The OWASP LLM Top 10 catalogs the most critical security risks specific to large language model applications, including prompt injection, excessive agency, and data leakage. It serves as a risk awareness and mitigation guide.
+
+AgentBOM does not duplicate the OWASP LLM Top 10 taxonomy. Rather, it provides a **structured, machine-readable artifact** that records whether a given agent deployment has mitigations and findings relevant to those risk categories. The `risk_layer` and `tool_layer.risk_signals` fields can reference OWASP LLM Top 10 categories (e.g., `prompt_injection`, `excessive_agency`), enabling automated tooling to check whether a deployment has acknowledged and addressed the applicable risks.
+
+### What AgentBOM adds
+
+The following capabilities are not captured by SBOM, AIBOM, or OWASP LLM Top 10 alone:
+
+- **Tool registry and permissions**: A complete inventory of tools (MCP servers, built-in functions, plugins) alongside the permission scopes each tool requires.
+- **Prompt provenance**: Cryptographic hashes of system prompts and template references, enabling integrity verification of the instructions governing agent behavior.
+- **Permission boundaries**: Declared data access scopes, credential type references, and granted authority — the "blast radius" if the agent behaves unexpectedly.
+- **Runtime evidence links**: References to AEP (Agent Event Protocol) events and evidence hashes that ground the AgentBOM in observed runtime behavior rather than declared intent alone.
+- **Composability**: AgentBOM is designed to be diffed between versions, making it suitable for change-review workflows and continuous compliance monitoring.
+
+### AgentBOM as input to audit
+
+AgentBOM is an input artifact, not an audit report itself. In a typical audit workflow:
+
+1. **Generation**: An AgentBOM is produced for each agent deployment, capturing the full composition at a point in time.
+2. **Posture analysis**: Tools such as MCP Posture analyze the AgentBOM against policy rules and risk frameworks, producing findings.
+3. **Evidence collection**: Runtime evidence (AEP events, invocation logs) is linked into the `evidence_layer`, grounding the static declaration in observed behavior.
+4. **Audit review**: Auditors use the AgentBOM alongside posture findings and evidence to assess compliance, identify gaps, and verify mitigations.
+
+### AgentBOM and the Trust Passport
+
+The Trust Passport is a downstream artifact that summarizes the trust status of an agent for consumers such as procurement teams and platform operators. AgentBOM feeds into Trust Passport issuance by providing:
+
+- **Identity and scope**: The agent's declared identity, version, and deployment context from `identity`.
+- **Risk posture**: Aggregated risk signals from `risk_layer` and `tool_layer.risk_signals` that determine the passport's risk rating.
+- **Evidence integrity**: Cryptographic hashes and AEP references from `evidence_layer` that allow the passport to make attested claims about runtime behavior.
+
+Together, AgentBOM provides the detailed technical input while the Trust Passport provides the concise, consumer-facing trust summary.
 
 ## Schema structure
 
