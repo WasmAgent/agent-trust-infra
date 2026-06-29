@@ -4,7 +4,7 @@
   "title": "TrustPassport",
   "description": "Agent Trust Passport v0.1 — experimental draft",
   "type": "object",
-  "required": ["passport_version", "identity", "validity", "attestation"],
+  "required": ["passport_version", "identity", "validity", "revocation", "attestation"],
   "properties": {
     "passport_version": { "type": "string", "enum": ["0.1"] },
     "identity": {

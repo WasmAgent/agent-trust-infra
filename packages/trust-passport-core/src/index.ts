@@ -3,7 +3,9 @@ export interface ValidationResult {
   errors: string[];
 }
 
-const PASSPORT_REQUIRED = ["passport_version", "identity", "validity", "attestation"] as const;
+const PASSPORT_REQUIRED = ["passport_version", "identity", "validity", "revocation", "attestation"] as const;
+
+const VALID_COVERAGE_VALUES = ["selected_technical_evidence", "partial", "none"] as const;
 
 export function validateTrustPassport(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
@@ -23,6 +25,24 @@ export function validateTrustPassport(data: unknown): ValidationResult {
     ["issued_at", "expires_at"].forEach((k) => {
       if (!(k in v)) errors.push(`validity: missing ${k}`);
     });
+  }
+
+  if (d.evidence_summary && typeof d.evidence_summary === "object") {
+    const es = d.evidence_summary as Record<string, unknown>;
+    if (Array.isArray(es.framework_mappings)) {
+      for (const mapping of es.framework_mappings) {
+        if (typeof mapping === "object" && mapping !== null && !Array.isArray(mapping)) {
+          const m = mapping as Record<string, unknown>;
+          if ("coverage" in m && typeof m.coverage === "string") {
+            if (!VALID_COVERAGE_VALUES.includes(m.coverage as (typeof VALID_COVERAGE_VALUES)[number])) {
+              errors.push(
+                `evidence_summary.framework_mappings.coverage: invalid value "${m.coverage}", must be one of: ${VALID_COVERAGE_VALUES.join(", ")}`,
+              );
+            }
+          }
+        }
+      }
+    }
   }
 
   return { valid: errors.length === 0, errors };
