@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
+import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -400,5 +401,162 @@ describe("inspectMCPPostureCommand", () => {
     expect(output).toContain("MCP Posture v0.1");
     expect(output).toContain("posture-bscode-demo-001");
     expect(output).toContain("bscode-agent-demo-001");
+  });
+});
+
+const DIFF_BASE_BOM = {
+  agentbom_version: "0.1",
+  identity: {
+    agent_id: "diff-test-001",
+    agent_name: "Diff Test Agent",
+    deployment_context: "development",
+    generated_at: "2026-06-28T00:00:00Z",
+  },
+  tool_layer: [
+    { tool_id: "fs-read", tool_name: "read_file", source: "builtin", permissions: ["fs:read"], risk_signals: [] },
+    { tool_id: "bash-exec", tool_name: "bash", source: "builtin", permissions: ["process:exec"], risk_signals: ["command_execution"] },
+  ],
+  permission_layer: {
+    granted_scopes: ["fs:read", "process:exec"],
+    data_access: ["local_workspace"],
+    credential_references: [],
+  },
+  risk_layer: [
+    { risk_id: "risk-001", severity: "medium", category: "command_execution", description: "bash allows arbitrary execution", status: "accepted" },
+  ],
+  attestation: { generator: "test" },
+};
+
+describe("diffAgentBOMCommand", () => {
+  it("returns 0 with clean message for identical AgentBOMs", () => {
+    const oldPath = writeTmpFile("diff-old.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new.json", JSON.stringify(DIFF_BASE_BOM));
+    const spy = spyOn(console, "log");
+
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(0);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("No differences found");
+  });
+
+  it("returns 1 and shows added tools", () => {
+    const newBom = {
+      ...DIFF_BASE_BOM,
+      tool_layer: [
+        ...DIFF_BASE_BOM.tool_layer,
+        { tool_id: "fs-write", tool_name: "write_file", source: "builtin", permissions: ["fs:write"], risk_signals: [] },
+      ],
+    };
+    const oldPath = writeTmpFile("diff-old-add.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-add.json", JSON.stringify(newBom));
+    const spy = spyOn(console, "log");
+
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Tools added (1)");
+    expect(output).toContain("write_file (fs-write) [builtin]");
+  });
+
+  it("returns 1 and shows removed tools", () => {
+    const newBom = { ...DIFF_BASE_BOM, tool_layer: [DIFF_BASE_BOM.tool_layer[0]] };
+    const oldPath = writeTmpFile("diff-old-rem.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-rem.json", JSON.stringify(newBom));
+    const spy = spyOn(console, "log");
+
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Tools removed (1)");
+    expect(output).toContain("bash (bash-exec) [builtin]");
+  });
+
+  it("returns 1 and shows permission scope changes", () => {
+    const newBom = {
+      ...DIFF_BASE_BOM,
+      permission_layer: { granted_scopes: ["fs:read", "process:exec", "network:outbound"], data_access: ["local_workspace"], credential_references: [] },
+    };
+    const oldPath = writeTmpFile("diff-old-perm.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-perm.json", JSON.stringify(newBom));
+    const spy = spyOn(console, "log");
+
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Permission scopes added (1)");
+    expect(output).toContain("+ network:outbound");
+  });
+
+  it("returns 1 and shows new risk entries", () => {
+    const newBom = {
+      ...DIFF_BASE_BOM,
+      risk_layer: [
+        ...DIFF_BASE_BOM.risk_layer,
+        { risk_id: "risk-002", severity: "high", category: "exfiltration", description: "data exfiltration risk", status: "open" },
+      ],
+    };
+    const oldPath = writeTmpFile("diff-old-risk.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-risk.json", JSON.stringify(newBom));
+    const spy = spyOn(console, "log");
+
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("Risk entries added (1)");
+    expect(output).toContain("[high]");
+    expect(output).toContain("risk-002");
+    expect(output).toContain("data exfiltration risk");
+  });
+
+  it("returns 1 and shows tool permission changes", () => {
+    const newBom = {
+      ...DIFF_BASE_BOM,
+      tool_layer: [
+        { tool_id: "fs-read", tool_name: "read_file", source: "builtin", permissions: ["fs:read", "fs:write"], risk_signals: [] },
+        { tool_id: "bash-exec", tool_name: "bash", source: "builtin", permissions: ["process:exec"], risk_signals: ["command_execution"] },
+      ],
+    };
+    const oldPath = writeTmpFile("diff-old-tperm.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-tperm.json", JSON.stringify(newBom));
+    const spy = spyOn(console, "log");
+
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("permission added: fs:write");
+  });
+
+  it("returns 1 for non-existent old file", () => {
+    const newPath = writeTmpFile("diff-new-nofile.json", JSON.stringify(DIFF_BASE_BOM));
+    expect(diffAgentBOMCommand("/nonexistent/old.json", newPath)).toBe(1);
+  });
+
+  it("returns 1 for non-existent new file", () => {
+    const oldPath = writeTmpFile("diff-old-nofile.json", JSON.stringify(DIFF_BASE_BOM));
+    expect(diffAgentBOMCommand(oldPath, "/nonexistent/new.json")).toBe(1);
+  });
+
+  it("returns 1 for invalid JSON old file", () => {
+    const oldPath = writeTmpFile("diff-old-bad.json", "{ not valid json");
+    const newPath = writeTmpFile("diff-new-bad.json", JSON.stringify(DIFF_BASE_BOM));
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+  });
+
+  it("returns 1 for invalid JSON new file", () => {
+    const oldPath = writeTmpFile("diff-old-bad2.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-bad2.json", "{ not valid json");
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+  });
+
+  it("returns 1 for invalid old AgentBOM", () => {
+    const oldPath = writeTmpFile("diff-old-invalid.json", JSON.stringify({ agentbom_version: "0.1", attestation: { generator: "test" } }));
+    const newPath = writeTmpFile("diff-new-invalid.json", JSON.stringify(DIFF_BASE_BOM));
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
+  });
+
+  it("returns 1 for invalid new AgentBOM", () => {
+    const oldPath = writeTmpFile("diff-old-inv2.json", JSON.stringify(DIFF_BASE_BOM));
+    const newPath = writeTmpFile("diff-new-inv2.json", JSON.stringify({ agentbom_version: "0.1", attestation: { generator: "test" } }));
+    expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
   });
 });

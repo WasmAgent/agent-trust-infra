@@ -2,6 +2,7 @@
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
+import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 
 const USAGE = [
@@ -11,6 +12,7 @@ const USAGE = [
   "  passport validate <path>  Validate a trust passport file",
   "  passport inspect <path>    Inspect a trust passport file",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
+  "  agentbom diff <old> <new>  Diff two AgentBOM files",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
 ].join("\n");
 
@@ -50,6 +52,14 @@ function main(): void {
         process.exit(1);
       }
       const exitCode = inspectAgentBOMCommand(args[2]);
+      process.exit(exitCode);
+    }
+    if (args[1] === "diff") {
+      if (args.length < 4) {
+        console.error("Error: agentbom diff requires <old> and <new> path arguments");
+        process.exit(1);
+      }
+      const exitCode = diffAgentBOMCommand(args[2], args[3]);
       process.exit(exitCode);
     }
     console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
