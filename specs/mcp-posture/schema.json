@@ -67,7 +67,10 @@
         "properties": {
           "finding_id": { "type": "string" },
           "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info"] },
-          "category": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["ssrf", "exfiltration", "command_execution", "privilege_escalation", "prompt_injection", "credential_access", "supply_chain"]
+          },
           "description": { "type": "string" },
           "tool_id": { "type": "string" },
           "owasp_mcp_ref": { "type": "string" }
