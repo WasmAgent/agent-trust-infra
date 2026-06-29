@@ -1,31 +1,90 @@
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import Ajv from "ajv";
+import type { ErrorObject, ValidateFunction } from "ajv";
+
+export interface ValidationError {
+  /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
+  field: string;
+  /** Human-readable description of the failure. */
+  message: string;
+  /** AJV keyword that failed, e.g. "required", "enum", "type". */
+  keyword: string;
 }
 
-const AGENTBOM_REQUIRED = ["agentbom_version", "identity", "attestation"] as const;
-const IDENTITY_REQUIRED = ["agent_id", "agent_name", "generated_at"] as const;
-const VALID_VERSIONS = ["0.1"];
+export interface ValidationResult {
+  valid: boolean;
+  /** Human-readable error strings, each prefixed with the field path. */
+  errors: string[];
+  /** Structured errors with field paths. */
+  errorDetails: ValidationError[];
+}
+
+// Schema lives at the repository root: <root>/specs/agentbom/schema.json
+// This file is <root>/packages/agentbom-core/src/index.ts.
+const SCHEMA_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../specs/agentbom/schema.json",
+);
+
+let validateSchema: ValidateFunction | null = null;
+
+function getValidator(): ValidateFunction {
+  if (validateSchema) return validateSchema;
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  const schema = JSON.parse(readFileSync(SCHEMA_PATH, "utf-8"));
+  validateSchema = ajv.compile(schema);
+  return validateSchema;
+}
+
+/** Convert an AJV instancePath (JSON pointer) into a dot-notation field path. */
+function toFieldPath(instancePath: string, extra?: string): string {
+  let path = instancePath.startsWith("/") ? instancePath.slice(1) : instancePath;
+  path = path.replace(/\//g, ".");
+  if (extra) path = path ? `${path}.${extra}` : extra;
+  return path || "(root)";
+}
+
+/** For errors that name a specific property, return it so it can be folded into the field path. */
+function namedProperty(err: ErrorObject): string | undefined {
+  if (err.keyword === "required") {
+    return (err.params as { missingProperty?: string } | undefined)?.missingProperty;
+  }
+  if (err.keyword === "additionalProperties") {
+    return (err.params as { additionalProperty?: string } | undefined)?.additionalProperty;
+  }
+  return undefined;
+}
 
 export function validateAgentBOM(data: unknown): ValidationResult {
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    return { valid: false, errors: ["root must be an object"] };
+  const validate = getValidator();
+
+  let valid = false;
+  try {
+    valid = validate(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      valid: false,
+      errors: [`(root): schema validation crashed: ${message}`],
+      errorDetails: [
+        { field: "(root)", message: `schema validation crashed: ${message}`, keyword: "exception" },
+      ],
+    };
   }
-  const d = data as Record<string, unknown>;
-  const errors: string[] = [];
 
-  errors.push(...AGENTBOM_REQUIRED.filter((k) => !(k in d)).map((k) => `missing required: ${k}`));
+  const errorDetails: ValidationError[] = (validate.errors ?? []).map((err) => {
+    const field = toFieldPath(err.instancePath, namedProperty(err));
+    return {
+      field,
+      message: err.message ?? `failed constraint "${err.keyword}"`,
+      keyword: err.keyword,
+    };
+  });
+  const errors = errorDetails.map((e) => `${e.field}: ${e.message}`);
 
-  if ("agentbom_version" in d && !VALID_VERSIONS.includes(d.agentbom_version as string)) {
-    errors.push(`agentbom_version must be one of: ${VALID_VERSIONS.join(", ")}`);
-  }
-
-  if (d.identity && typeof d.identity === "object") {
-    const id = d.identity as Record<string, unknown>;
-    errors.push(...IDENTITY_REQUIRED.filter((k) => !(k in id)).map((k) => `identity: missing ${k}`));
-  }
-
-  return { valid: errors.length === 0, errors };
+  return { valid, errors, errorDetails };
 }
 
 export function inspectAgentBOM(data: Record<string, unknown>): string {

@@ -17,16 +17,43 @@ describe("validateAgentBOM", () => {
     const result = validateAgentBOM(VALID_AGENTBOM);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
+    expect(result.errorDetails).toHaveLength(0);
   });
 
-  it("rejects missing identity", () => {
+  it("rejects missing identity with a structured field-path error", () => {
     const result = validateAgentBOM({ agentbom_version: "0.1", attestation: { generator: "test" } });
     expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(0);
+    const identityErr = result.errorDetails.find((e) => e.field === "identity");
+    expect(identityErr).toBeDefined();
+    expect(identityErr?.keyword).toBe("required");
   });
 
-  it("rejects unknown version", () => {
+  it("rejects unknown version with the field path pointing at agentbom_version", () => {
     const result = validateAgentBOM({ ...VALID_AGENTBOM, agentbom_version: "99.0" });
     expect(result.valid).toBe(false);
+    const versionErr = result.errorDetails.find((e) => e.field === "agentbom_version");
+    expect(versionErr).toBeDefined();
+    expect(versionErr?.keyword).toBe("enum");
+  });
+
+  it("reports nested field paths for missing identity sub-fields", () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      identity: { agent_name: "Test Agent" },
+    });
+    expect(result.valid).toBe(false);
+    const fields = result.errorDetails.map((e) => e.field);
+    expect(fields).toContain("identity.agent_id");
+    expect(fields).toContain("identity.generated_at");
+    expect(result.errorDetails.every((e) => e.keyword === "required")).toBe(true);
+  });
+
+  it("rejects non-object root with a root field path", () => {
+    const result = validateAgentBOM("not-a-bom");
+    expect(result.valid).toBe(false);
+    expect(result.errorDetails.length).toBeGreaterThan(0);
+    expect(result.errorDetails[0].field).toBe("(root)");
   });
 });
 
