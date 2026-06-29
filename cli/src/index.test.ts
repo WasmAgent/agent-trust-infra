@@ -199,7 +199,13 @@ const VALID_AGENTBOM = {
     { tool_id: "fs-write", tool_name: "write_file", source: "builtin" },
   ],
   risk_layer: [
-    { risk_id: "risk-001", severity: "medium", category: "command_execution" },
+    {
+      risk_id: "risk-001",
+      severity: "medium",
+      category: "command_execution",
+      description: "command execution surface",
+      status: "accepted",
+    },
   ],
 };
 
