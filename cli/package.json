@@ -1,0 +1,17 @@
+{
+  "name": "@wasmagent/agent-trust-cli",
+  "version": "0.0.0-research",
+  "description": "CLI for Agent Trust Infrastructure — experimental",
+  "type": "module",
+  "bin": {
+    "agent-trust": "./src/index.ts"
+  },
+  "dependencies": {
+    "@wasmagent/trust-passport-core": "workspace:*"
+  },
+  "scripts": {
+    "build": "echo 'build: stub'",
+    "test": "bun test src/",
+    "typecheck": "echo 'typecheck: stub'"
+  }
+}
