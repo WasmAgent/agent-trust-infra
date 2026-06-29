@@ -177,13 +177,43 @@ describe("schema covers all fields from posture-model-v0.1.md", () => {
 });
 
 describe("example file validation", () => {
-  it("validates examples/mcp-risk-demo/posture.json", () => {
-    const examplePath = join(__dirname, "../../../examples/mcp-risk-demo/posture.json");
+  const examplePath = join(__dirname, "../../../examples/mcp-risk-demo/posture.json");
+  let exampleData: any;
+
+  function loadExample() {
     const raw = readFileSync(examplePath, "utf-8");
-    const data = JSON.parse(raw);
-    const result = validateMCPPosture(data);
+    exampleData = JSON.parse(raw);
+  }
+
+  it("validates examples/mcp-risk-demo/posture.json", () => {
+    loadExample();
+    const result = validateMCPPosture(exampleData);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
+  });
+
+  it("has at least 2 MCP servers", () => {
+    loadExample();
+    expect(exampleData.servers.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("has at least one tool with high risk severity", () => {
+    loadExample();
+    const highRiskTools = exampleData.servers.flatMap(
+      (s: any) => s.tools?.filter((t: any) => t.risk_severity === "high") ?? []
+    );
+    expect(highRiskTools.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("includes a non-empty permission_graph", () => {
+    loadExample();
+    expect(exampleData.permission_graph).toBeDefined();
+    expect(exampleData.permission_graph).not.toEqual({});
+  });
+
+  it("includes at least 2 risk_summary entries", () => {
+    loadExample();
+    expect(exampleData.risk_summary.length).toBeGreaterThanOrEqual(2);
   });
 });
 
