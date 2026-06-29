@@ -47,6 +47,47 @@ A passport is revoked when:
 - Agent is decommissioned
 - Issuer determines the trust state is no longer valid
 
+### Expiry vs. revocation
+
+Expiry and revocation are distinct states with different semantics and consequences:
+
+| Aspect | Expiry | Revocation |
+|--------|---------|------------|
+| **Cause** | Natural passage of time beyond `expires_at` | Explicit action due to a trigger event |
+| **Reversibility** | Can be resolved by renewing the passport | Irreversible — a new passport must be issued from scratch |
+| **Trust signal** | Passport is stale but was never invalid | Passport was valid at issuance but is now untrusted |
+| **Recommended action** | Re-evaluate agent state and renew | Investigate the revocation trigger before any new issuance |
+
+A passport that has both expired **and** been revoked should be treated as revoked — revocation takes precedence as the stronger trust signal.
+
+### `isExpired()` implementation
+
+The `isExpired()` function determines whether a passport's validity window has passed. It operates solely on the `validity.expires_at` timestamp and the current system time — it does not check revocation status.
+
+```typescript
+function isExpired(passport: { validity?: { expires_at?: string } }): boolean {
+  const expiresAt = passport.validity?.expires_at;
+  if (!expiresAt) return false;
+  return new Date(expiresAt) < new Date();
+}
+```
+
+Key behaviors:
+
+- Returns `false` if `validity` or `expires_at` is missing (defensive — a malformed passport is not expired, merely invalid).
+- Compares `expires_at` as an ISO 8601 date-time string against the current wall-clock time.
+- Does **not** account for revocation — use a separate `isRevoked()` check (see revocation triggers above) and always check both independently when evaluating overall passport trustworthiness.
+
+### Trustavo integration (future)
+
+The Trustavo product (`trustavo.com/passport`) will automate lifecycle management of Trust Passports, including:
+
+- Automated renewal workflows triggered by AgentBOM or posture drift detection
+- Revocation propagation through a distributed status channel
+- Configurable validity periods per issuer policy (overriding the 90-day default)
+
+See [Future product home](#future-product-home) for the planned CLI surface.
+
 ## Schema structure
 
 ```
