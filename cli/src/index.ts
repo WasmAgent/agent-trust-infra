@@ -16,71 +16,69 @@ const USAGE = [
   "  mcp-posture inspect <path> Inspect an MCP posture file",
 ].join("\n");
 
-function main(): void {
-  const args = process.argv.slice(2);
-
+export function runCommand(args: string[]): number {
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     console.log(USAGE);
-    process.exit(0);
+    return 0;
   }
 
   if (args[0] === "passport") {
     if (args[1] === "validate") {
       if (args.length < 3) {
         console.error("Error: passport validate requires a <path> argument");
-        process.exit(1);
+        return 1;
       }
-      const exitCode = validatePassportCommand(args[2]);
-      process.exit(exitCode);
+      return validatePassportCommand(args[2]);
     }
     if (args[1] === "inspect") {
       if (args.length < 3) {
         console.error("Error: passport inspect requires a <path> argument");
-        process.exit(1);
+        return 1;
       }
-      const exitCode = inspectPassportCommand(args[2]);
-      process.exit(exitCode);
+      return inspectPassportCommand(args[2]);
     }
     console.error(`Error: unknown passport subcommand "${args[1]}"`);
-    process.exit(1);
+    return 1;
   }
 
   if (args[0] === "agentbom") {
     if (args[1] === "inspect") {
       if (args.length < 3) {
         console.error("Error: agentbom inspect requires a <path> argument");
-        process.exit(1);
+        return 1;
       }
-      const exitCode = inspectAgentBOMCommand(args[2]);
-      process.exit(exitCode);
+      return inspectAgentBOMCommand(args[2]);
     }
     if (args[1] === "diff") {
       if (args.length < 4) {
         console.error("Error: agentbom diff requires <old> and <new> path arguments");
-        process.exit(1);
+        return 1;
       }
-      const exitCode = diffAgentBOMCommand(args[2], args[3]);
-      process.exit(exitCode);
+      return diffAgentBOMCommand(args[2], args[3]);
     }
     console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
-    process.exit(1);
+    return 1;
   }
 
   if (args[0] === "mcp-posture") {
     if (args[1] === "inspect") {
       if (args.length < 3) {
         console.error("Error: mcp-posture inspect requires a <path> argument");
-        process.exit(1);
+        return 1;
       }
-      const exitCode = inspectMCPPostureCommand(args[2]);
-      process.exit(exitCode);
+      return inspectMCPPostureCommand(args[2]);
     }
     console.error(`Error: unknown mcp-posture subcommand "${args[1]}"`);
-    process.exit(1);
+    return 1;
   }
 
   console.error(`Error: unknown command "${args[0]}"`);
-  process.exit(1);
+  return 1;
 }
 
-main();
+// Only auto-run main when executed directly (not when imported for testing)
+const isDirectRun = process.argv[1]?.endsWith("index.ts") || process.argv[1]?.endsWith("index.js");
+if (isDirectRun) {
+  const args = process.argv.slice(2);
+  process.exit(runCommand(args));
+}
