@@ -42,13 +42,35 @@
           "risk_severity": "medium"
         }
       ]
+    },
+    {
+      "server_id": "local-filesystem",
+      "server_name": "Local Filesystem MCP",
+      "version": "0.4.2",
+      "provenance": "verified",
+      "tools": [
+        {
+          "tool_id": "read-file",
+          "tool_name": "read_file",
+          "permissions": ["fs:read"],
+          "risk_categories": ["credential_access"],
+          "risk_severity": "medium"
+        },
+        {
+          "tool_id": "write-file",
+          "tool_name": "write_file",
+          "permissions": ["fs:write"],
+          "risk_categories": ["command_execution"],
+          "risk_severity": "high"
+        }
+      ]
     }
   ],
   "permission_graph": {
-    "total_tools": 3,
-    "total_permissions": 4,
-    "high_risk_tools": 1,
-    "permission_scopes": ["network:outbound", "workflow:trigger"]
+    "total_tools": 5,
+    "total_permissions": 5,
+    "high_risk_tools": 2,
+    "permission_scopes": ["network:outbound", "workflow:trigger", "fs:read", "fs:write"]
   },
   "risk_summary": [
     {
@@ -74,6 +96,22 @@
       "description": "create_repository_issue can write arbitrary content to public repositories, potentially leaking sensitive data.",
       "tool_id": "create-issue",
       "owasp_mcp_ref": "MCP-01"
+    },
+    {
+      "finding_id": "finding-004",
+      "severity": "high",
+      "category": "command_execution",
+      "description": "write_file allows arbitrary file creation on the local filesystem, which could be used to overwrite critical configuration files or inject scripts.",
+      "tool_id": "write-file",
+      "owasp_mcp_ref": "MCP-04"
+    },
+    {
+      "finding_id": "finding-005",
+      "severity": "medium",
+      "category": "credential_access",
+      "description": "read_file can access any file on the local filesystem, including credential files, SSH keys, and environment configuration.",
+      "tool_id": "read-file",
+      "owasp_mcp_ref": "MCP-03"
     }
   ],
   "drift": {},
