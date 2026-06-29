@@ -4,6 +4,12 @@
 
 This document defines the risk categories used in the MCP Posture Model. Each category corresponds to an enum value in the posture schema and maps to an OWASP MCP Top 10 reference.
 
+### OWASP reference
+
+The mapping below references the **OWASP Agentic Skills Top 10**, available at:
+
+> <https://owasp.org/www-project-agentic-skills-top-10/>
+
 ---
 
 ## 1. SSRF (`ssrf`)
@@ -284,14 +290,17 @@ An attacker could publish a malicious MCP server package that appears legitimate
 
 ---
 
-## Summary Table
+## OWASP MCP Top 10 Mapping
 
-| Category | Enum Value | OWASP MCP Ref | Default Max Severity |
-|---|---|---|---|
-| Server-Side Request Forgery | `ssrf` | MCP-02 | Critical |
-| Data Exfiltration | `exfiltration` | MCP-04 | Critical |
-| Command Execution | `command_execution` | MCP-01 | Critical |
-| Privilege Escalation | `privilege_escalation` | MCP-03 | Critical |
-| Prompt Injection | `prompt_injection` | MCP-05 | Critical |
-| Credential Access | `credential_access` | MCP-06 | Critical |
-| Supply Chain | `supply_chain` | MCP-07 | Critical |
+> Each risk category in this taxonomy maps to at least one entry from the
+> [OWASP Agentic Skills Top 10](https://owasp.org/www-project-agentic-skills-top-10/).
+
+| Risk Category | Enum Value | OWASP MCP Top 10 | OWASP Description | Default Max Severity |
+|---|---|---|---|---|
+| Command Execution | `command_execution` | MCP-01 | Tool allows arbitrary command or code execution on the server host | Critical |
+| Server-Side Request Forgery | `ssrf` | MCP-02 | Tool allows server-side network requests without restriction or validation | Critical |
+| Privilege Escalation | `privilege_escalation` | MCP-03 | Tool can expand its own permission scope or the agent's access level | Critical |
+| Data Exfiltration | `exfiltration` | MCP-04 | Tool can transmit data to external systems without adequate destination controls | Critical |
+| Prompt Injection | `prompt_injection` | MCP-05 | Tool output contains content that can manipulate agent reasoning or behavior | Critical |
+| Credential Access | `credential_access` | MCP-06 | Tool provides access to secrets, credentials, or authentication material | Critical |
+| Supply Chain | `supply_chain` | MCP-07 | MCP server or plugin from unverified or untrusted provenance | Critical |
