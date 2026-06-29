@@ -1,33 +1,125 @@
 # bscode Agent Trust Demo
 
-This example shows how AgentBOM, MCP Posture, and Trust Passport fit together for a bscode agent workload.
+End-to-end trust artifact chain demo using **bscode** as the reference workload.
+
+This example demonstrates how the three trust artifacts — AgentBOM, MCP Posture, and Trust Passport — connect to form a verifiable trust chain for an AI coding agent.
+
+> **These are demo fixtures only.** Hashes are placeholders. This is not a real audit or real trust assessment.
+
+## Trust artifact chain
+
+The chain follows the architecture defined in [`docs/architecture.md`](../../docs/architecture.md):
+
+```
+Runtime facts (wasmagent-js)
+  CapabilityManifest
+  MCP firewall events
+  AEP evidence
+        ↓ generate
+AgentBOM (agentbom.json)
+  Composition snapshot: model, tools, prompts, permissions, risks
+        ↓
+MCP Posture (posture.json)
+  Permission attack surface: servers, tools, risk findings
+        ↓ validate
+agent-trust CLI
+  Schema validation for each artifact
+        ↓ reference
+Audit report (open-agent-audit)
+  Evidence validation, framework mapping
+  [placeholder in this demo]
+        ↓ summarize
+Trust Passport (trust-passport.json)
+  Signed trust-state summary
+  Validity period + renewal triggers
+  Evidence hash references
+        ↓ issue / verify
+Trustavo (future)
+  Issuance, verification, renewal, revocation
+```
 
 ## Files
 
-- `../agentbom-demo/agentbom.json` — AgentBOM describing the bscode agent composition
-- `../mcp-risk-demo/posture.json` — MCP posture snapshot for the bscode agent's MCP servers
-- `../passport-demo/trust-passport.json` — Trust Passport referencing the AgentBOM and posture
+| File | Artifact | Purpose |
+|------|----------|---------|
+| `agentbom.json` | AgentBOM v0.1 | Bill of materials for the bscode agent |
+| `posture.json` | MCP Posture v0.1 | Permission attack surface snapshot |
+| `trust-passport.json` | Trust Passport v0.1 | Signed trust-state summary |
 
-## Trust chain
+## Artifact relationships
+
+All three artifacts share a common `agent_id`: `bscode-agent-demo-001`.
 
 ```
-bscode agent runtime
-        ↓ composition facts
-AgentBOM (agentbom-demo/agentbom.json)
-        ↓ permission and tool surface
-MCP Posture (mcp-risk-demo/posture.json)
-        ↓ [future] open-agent-audit report reference
-Trust Passport (passport-demo/trust-passport.json)
+agentbom.json
+  identity.agent_id = "bscode-agent-demo-001"
+        ↓ referenced by
+trust-passport.json
+  identity.agent_id = "bscode-agent-demo-001"
+  agentbom_ref.agentbom_id = "bscode-agent-demo-001"
+  posture_ref.snapshot_id = "posture-bscode-demo-001"
+        ↑ referenced from
+posture.json
+  identity.agent_id = "bscode-agent-demo-001"
+  identity.snapshot_id = "posture-bscode-demo-001"
 ```
+
+## AgentBOM (`agentbom.json`)
+
+Describes the deployed composition of the bscode agent:
+
+- **Model layer**: Anthropic Claude Sonnet 4.6 with code generation, review, and editing capabilities
+- **Tool layer**: 9 registered tools (6 builtin, 2 MCP-sourced, 1 plugin)
+  - Builtin: Read, Write, Edit, Bash, Grep, Glob
+  - MCP: Cloudflare Docs search, GitHub PR creation
+  - Plugin: LSP diagnostics
+- **Prompt layer**: System prompt hash and template IDs for the bscode implementer workflow
+- **Permission layer**: 5 granted scopes (fs:read, fs:write, process:exec, network:outbound, api:github)
+- **Risk layer**: 4 risk entries (1 high/open, 2 medium, 1 low)
+
+## MCP Posture (`posture.json`)
+
+Describes the permission attack surface of MCP-connected servers:
+
+- **3 MCP servers**:
+  - Cloudflare Docs MCP (verified, 1 tool)
+  - GitHub Actions MCP (unverified, 2 tools)
+  - Local Filesystem MCP (verified, 2 tools)
+- **5 tools** with risk assessments
+- **2 high-risk tools** (run_workflow_dispatch, write_file)
+- **5 risk findings** mapped to OWASP MCP Top 10 categories
+
+## Trust Passport (`trust-passport.json`)
+
+A signed, expiring trust-state artifact summarizing the agent's trust posture:
+
+- **Identity**: Links to `bscode-agent-demo-001`
+- **Evidence references**: Hash references to AgentBOM and posture snapshot
+- **Evidence quality**: `low` (demo fixture, not a real audit)
+- **Framework coverage**: OWASP-MCP-Top10 (partial), NIST-AI-RMF (none)
+- **Risk summary**: 0 critical, 0 high, 1 medium, 1 low, 1 open finding
+- **Validity**: 90-day validity period with defined renewal triggers
+- **Revocation**: Not revoked; defined revocation triggers
 
 ## Validate
 
+All three fixtures can be validated with the `agent-trust` CLI:
+
 ```bash
-agent-trust agentbom validate examples/agentbom-demo/agentbom.json
-agent-trust mcp-posture validate examples/mcp-risk-demo/posture.json
-agent-trust passport validate examples/passport-demo/trust-passport.json
+# Validate AgentBOM schema
+agent-trust agentbom inspect examples/bscode-agent/agentbom.json
+
+# Validate MCP Posture schema
+agent-trust mcp-posture inspect examples/bscode-agent/posture.json
+
+# Validate Trust Passport schema
+agent-trust passport validate examples/bscode-agent/trust-passport.json
+agent-trust passport inspect examples/bscode-agent/trust-passport.json
 ```
 
 ## Notes
 
-These are demo fixtures only. The hashes are placeholders. This is not a real audit or real trust assessment.
+- Hashes in all fixtures are **placeholders** — they do not represent real content hashes.
+- The audit report reference (`audit_ref`) is a placeholder. In production, this would reference a real audit report generated by `open-agent-audit`.
+- The Trust Passport is `self-issued`. In production, it would be issued by `trustavo.com/passport`.
+- The evidence quality is `low` because no real runtime evidence was collected. This is a static demo.
