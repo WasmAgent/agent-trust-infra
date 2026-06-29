@@ -29,13 +29,58 @@ export function validateMCPPosture(data: unknown): ValidationResult {
 
 export function inspectMCPPosture(data: Record<string, unknown>): string {
   const identity = data.identity as Record<string, string> | undefined;
-  const servers = (data.servers as unknown[]) ?? [];
-  const risks = (data.risk_summary as unknown[]) ?? [];
-  return [
+  const servers = (data.servers as Record<string, unknown>[]) ?? [];
+  const risks = (data.risk_summary as Record<string, string>[]) ?? [];
+  const permissionGraph = data.permission_graph as Record<string, unknown> | undefined;
+
+  const totalTools = servers.reduce(
+    (sum, s) => sum + ((s.tools as unknown[]) ?? []).length,
+    0,
+  );
+
+  const highRiskTools =
+    (permissionGraph?.high_risk_tools as number) ??
+    servers.reduce(
+      (sum, s) =>
+        sum +
+        ((s.tools as Record<string, string>[]) ?? []).filter(
+          (t) => t.risk_severity === "critical" || t.risk_severity === "high",
+        ).length,
+      0,
+    );
+
+  const lines: string[] = [
     `MCP Posture v${data.posture_version}`,
-    `  Snapshot: ${identity?.snapshot_id ?? "?"}`,
-    `  Agent:    ${identity?.agent_id ?? "?"}`,
-    `  Servers:  ${servers.length}`,
-    `  Risks:    ${risks.length}`,
-  ].join("\n");
+    `  Snapshot:        ${identity?.snapshot_id ?? "?"}`,
+    `  Agent:           ${identity?.agent_id ?? "?"}`,
+    `  Servers:         ${servers.length}`,
+    `  Tools:           ${totalTools}`,
+    `  High-risk tools: ${highRiskTools}`,
+    `  Risks:           ${risks.length}`,
+  ];
+
+  const criticalOrHigh = risks.filter(
+    (r) => r.severity === "critical" || r.severity === "high",
+  );
+
+  if (criticalOrHigh.length > 0) {
+    lines.push("");
+    lines.push(`  ⚠  ${criticalOrHigh.length} critical/high finding(s):`);
+    for (const r of criticalOrHigh) {
+      lines.push(`    [${r.severity.toUpperCase()}] ${r.finding_id}: ${r.description}`);
+    }
+  }
+
+  if (risks.length > 0 && criticalOrHigh.length < risks.length) {
+    const other = risks.filter(
+      (r) => r.severity !== "critical" && r.severity !== "high",
+    );
+    lines.push("");
+    lines.push("  Other findings:");
+    for (const r of other) {
+      lines.push(`    [${r.severity.toUpperCase()}] ${r.finding_id}: ${r.description}`);
+    }
+  }
+
+  return lines.join("\n");
 }
