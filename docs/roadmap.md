@@ -1,10 +1,11 @@
 # Roadmap
 
-> **Status: public research preview.** Shipped features (Weeks 0–12: repo and
-> spec skeletons, working examples with schemas and validators, and the
-> end-to-end trust-chain demo) are recorded in the
-> [Changelog](./CHANGELOG.md). This roadmap lists only future and in-flight
-> work, which is tracked as follow-up issues.
+> **Status: public research preview.** The Weeks 0–12 milestones are complete
+> and shipped — repo and spec skeletons (Weeks 0–2), working examples with
+> schemas and validators (Weeks 2–6), and the **Weeks 6–12 close-out: end-to-end
+> chain visualization, runnable demo, and README stitching (PR #42)**. These
+> shipped features are recorded in the [Changelog](./CHANGELOG.md). This roadmap
+> lists only future and in-flight work, which is tracked as follow-up issues.
 
 ## In-flight / future work
 
