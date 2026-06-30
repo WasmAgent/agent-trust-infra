@@ -1,6 +1,6 @@
 # Roadmap
 
-> **Status: public research preview.** The Week 0–12 items below are complete — they record what this repository already ships (public repo, README with research-preview status, specs, JSON schemas, validators, and the end-to-end trust-chain demo), not outstanding work. Later split and federation work is tracked as follow-up issues.
+> **Status: public research preview.** The Week 0–12 items below are complete — they record what this repository already ships (public repo, README with research-preview status, specs, JSON schemas, validators, and the end-to-end trust-chain demo), not outstanding work. This close-out is represented by the merged PRs: the spec and skeleton work (e.g. #25, #28), the working examples and validators (e.g. #31, #35, #37), and the end-to-end Weeks 6–12 visualization and runnable demo close-out (#41, #42). Later split and federation work is tracked as follow-up issues.
 
 ## Weeks 0–2: Public repository and spec skeletons
 
