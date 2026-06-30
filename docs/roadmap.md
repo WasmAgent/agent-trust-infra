@@ -1,12 +1,32 @@
 # Roadmap
 
-> **Status: public research preview.** The Weeks 0–12 milestones are complete
-> and shipped — public repo and the three specifications, now implemented in
-> the codebase with JSON schemas and validators (Weeks 0–6), working examples,
-> and the **Weeks 6–12 close-out: end-to-end chain visualization, runnable
-> demo, and README stitching (PR #42)**. These
-> shipped features are recorded in the [Changelog](./CHANGELOG.md). This roadmap
-> lists only future and in-flight work, which is tracked as follow-up issues.
+> **Status: public research preview.** All Weeks 0–12 deliverables are
+> **Shipped / Closed** — the public repo and the three specifications (AgentBOM,
+> MCP Posture, Trust Passport), implemented in the codebase with JSON schemas
+> and validators (Weeks 0–6), the working examples, and the Weeks 6–12
+> close-out (end-to-end chain visualization, runnable demo, and README
+> stitching, PR #42). This matches the 'Published' status recorded for these
+> specifications in the `wasmagent` project. Shipped features are recorded in
+> the [Changelog](./CHANGELOG.md); this roadmap lists only future and in-flight
+> work, tracked as follow-up issues.
+
+## Shipped / Closed (Weeks 0–12)
+
+These milestones are complete — they record what this repository already ships,
+not outstanding work. See the [Changelog](./CHANGELOG.md) for the full per-item
+checklist.
+
+- [x] **Weeks 0–2 — repo and spec skeletons:** public repo,
+      vision/architecture/boundaries docs, and the AgentBOM, MCP Posture, and
+      Trust Passport spec skeletons.
+- [x] **Weeks 2–6 — working examples:** JSON schemas and validators for
+      AgentBOM, MCP Posture, and Trust Passport, plus fixture-based tests.
+- [x] **Weeks 6–12 — end-to-end demo (close-out):** the full trust chain is
+      wired up — one command (`agent-trust chain` /
+      `examples/bscode-agent/run-chain.sh`) walks
+      `bscode → CapabilityManifest + AEP → AgentBOM → MCP Posture → audit
+      report → Trust Passport` offline, with an architecture diagram and a
+      runnable demo.
 
 ## In-flight / future work
 
