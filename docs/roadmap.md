@@ -11,23 +11,23 @@
 - [x] Add docs/project-boundaries.md
 - [x] Add docs/external-trends.md
 - [x] Add docs/relationship-to-wasmagent.md
-- [ ] Add specs/agentbom/agentbom-v0.1.md
-- [ ] Add specs/mcp-posture/posture-model-v0.1.md
-- [ ] Add specs/trust-passport/passport-v0.1.md
-- [ ] Add example placeholders
+- [x] Add specs/agentbom/agentbom-v0.1.md
+- [x] Add specs/mcp-posture/posture-model-v0.1.md
+- [x] Add specs/trust-passport/passport-v0.1.md
+- [x] Add example placeholders
 
 ## Weeks 2–6: Working examples
 
 **Goal:** The repo contains working examples of all three artifacts that can be validated.
 
-- [ ] Add schema.json for AgentBOM
-- [ ] Add schema.json for MCP Posture
-- [ ] Add schema.json for Trust Passport
-- [ ] Add sample AgentBOM for bscode agent workload
-- [ ] Add sample MCP posture snapshot
-- [ ] Add sample Trust Passport
-- [ ] Implement basic validation commands (AgentBOM, MCP Posture, Trust Passport)
-- [ ] Add fixture-based tests
+- [x] Add schema.json for AgentBOM
+- [x] Add schema.json for MCP Posture
+- [x] Add schema.json for Trust Passport
+- [x] Add sample AgentBOM for bscode agent workload
+- [x] Add sample MCP posture snapshot
+- [x] Add sample Trust Passport
+- [x] Implement basic validation commands (AgentBOM, MCP Posture, Trust Passport)
+- [x] Add fixture-based tests
 
 **Acceptance criteria:**
 ```bash
@@ -55,13 +55,13 @@ open-agent-audit report reference
 Trust Passport
 ```
 
-- [ ] Add bscode demo fixture
-- [ ] Add generated AgentBOM sample from CapabilityManifest
-- [ ] Add posture snapshot and posture diff
-- [ ] Add audit report reference hash
-- [ ] Add Trust Passport sample with validity model
-- [ ] Add architecture diagram
-- [ ] Add short technical report in papers/
+- [x] Add bscode demo fixture
+- [x] Add generated AgentBOM sample from CapabilityManifest
+- [x] Add posture snapshot and posture diff
+- [x] Add audit report reference hash
+- [x] Add Trust Passport sample with validity model
+- [x] Add architecture diagram
+- [x] Add short technical report in papers/
 
 ## Future: Split criteria
 
