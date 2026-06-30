@@ -116,14 +116,17 @@ Do not treat any artifact here as a legal compliance certification, security cer
 
 ### Roadmap status
 
-Roadmap progress ([`docs/roadmap.md`](docs/roadmap.md)):
+**Shipped (Weeks 0–12):** repo and spec skeletons, working examples with JSON
+schemas and validators, and the end-to-end trust-chain demo are complete and
+recorded in the [`Changelog`](docs/CHANGELOG.md).
 
 - **Weeks 0–2 — repo and spec skeletons:** public repo, vision/architecture/boundaries docs, and spec skeletons. ✅
 - **Weeks 2–6 — working examples:** JSON schemas and validators for AgentBOM, MCP Posture, and Trust Passport, plus fixture-based tests. ✅
 - **Weeks 6–12 — end-to-end demo:** the full trust chain is wired up — one command (`agent-trust chain` / `examples/bscode-agent/run-chain.sh`) walks `bscode → CapabilityManifest + AEP → AgentBOM → MCP Posture → audit report → Trust Passport` offline, with an architecture diagram and a runnable demo. ✅
 
-Later phases (split criteria, federation with `open-agent-audit` / `trace-pipeline`,
-cryptographic Passport signing, and a static site for `papers/`) are tracked as
+[`docs/roadmap.md`](docs/roadmap.md) now lists only future and in-flight work:
+split criteria, federation with `open-agent-audit` / `trace-pipeline`,
+cryptographic Passport signing, and a static site for `papers/`, tracked as
 follow-up issues.
 
 ## License
