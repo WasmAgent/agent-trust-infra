@@ -2,7 +2,7 @@
 
 Public research preview for Agent Trust Infrastructure: AgentBOM, MCP posture, and trust passport specifications for auditable AI agents.
 
-> **Status: experimental research preview.**
+> **Status: experimental research preview — end-to-end trust-chain demo shipped.**
 > Not production software.
 > Not a compliance certification product.
 
