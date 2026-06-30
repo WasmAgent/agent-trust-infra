@@ -1,15 +1,19 @@
 /**
- * Roadmap coherence check (issue #57, org-coherence patrol).
+ * Roadmap coherence check (issues #57 / #60, org-coherence patrol).
  *
  * The `wasmagent` project lists the AgentBOM, MCP Posture, and Trust Passport
- * specifications as 'Published'. The `agent-trust-infra` roadmap must agree:
- * every Weeks 0–12 deliverable — including the Weeks 6–12 close-out
- * (end-to-end chain visualization and runnable demo) — must be marked as
- * 'Shipped' or 'Closed', never as outstanding/in-flight work.
+ * specifications as 'Published', and its release ledger confirms the
+ * Weeks 0–12 deliverables — the spec skeletons, working examples, and the
+ * end-to-end demo — are Shipped. The `agent-trust-infra` roadmap must agree:
+ * every Weeks 0–12 deliverable must be marked 'Shipped' or 'Closed', never
+ * carried as outstanding/in-flight work or described with an 'In Progress'
+ * status.
  *
- * The patrol filed this issue because the roadmap had drifted back to marking
- * the close-out as 'In-flight'. This test reads `docs/roadmap.md` and fails if
- * that drift recurs.
+ * The patrol re-filed (#60) after an earlier filing (#57): the roadmap is the
+ * recurring drift surface. This test reads `docs/roadmap.md` and fails if any
+ * Weeks 0–12 deliverable — including the spec skeletons ("Skeleton Specs
+ * Task") or the Weeks 6–12 close-out — reappears as outstanding work, or if
+ * the shipped milestones are ever labelled 'In Progress'.
  */
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -56,5 +60,24 @@ describe("roadmap coherence (issue #57)", () => {
 			/(end-to-end|end to end|chain visualization|runnable demo)/i;
 		const stray = uncheckedItems.filter((item) => closeOut.test(item));
 		expect(stray).toEqual([]);
+	});
+
+	it("does not list any Weeks 0–12 deliverable (incl. spec skeletons) as outstanding (issue #60)", () => {
+		// The whole Weeks 0–12 scope — repo/spec skeletons, working examples,
+		// and the end-to-end demo — is Shipped. None of it may reappear as an
+		// unchecked (`- [ ]`) item. The patrol (#60) specifically flagged a
+		// "Skeleton Specs Task" and open Week 0–12 items lingering in the
+		// roadmap; this guards against that broader drift.
+		const weekOrSkeleton = /weeks?\s*\d|skeleton/i;
+		const stray = uncheckedItems.filter((item) => weekOrSkeleton.test(item));
+		expect(stray).toEqual([]);
+	});
+
+	it("does not describe the shipped milestones as 'In Progress' (issue #60)", () => {
+		// The roadmap's status for the Shipped Weeks 0–12 milestones must never
+		// read 'In Progress'; it must reflect the Shipped/Closed state recorded
+		// in the `wasmagent` release ledger. (Genuine future work in the
+		// 'In-flight / future work' section is unaffected.)
+		expect(text).not.toMatch(/in[ -]?progress/i);
 	});
 });
