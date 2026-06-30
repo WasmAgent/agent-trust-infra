@@ -4,11 +4,13 @@ import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
+import { chainCommand } from "./chain.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
   "",
   "Commands:",
+  "  chain [--example <dir>] [--out <path>]  Run the full trust chain end-to-end (offline)",
   "  passport validate <path>  Validate a trust passport file",
   "  passport inspect <path>    Inspect a trust passport file",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
@@ -20,6 +22,10 @@ export function runCommand(args: string[]): number {
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     console.log(USAGE);
     return 0;
+  }
+
+  if (args[0] === "chain") {
+    return chainCommand(args.slice(1));
   }
 
   if (args[0] === "passport") {

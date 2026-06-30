@@ -48,11 +48,48 @@ Trustavo Passport
 agent-trust-infra/
 ├── docs/          — vision, architecture, boundaries, roadmap
 ├── specs/         — AgentBOM, MCP Posture, Trust Passport specifications
-├── packages/      — TypeScript reference implementations
+├── packages/      — TypeScript reference implementations (no CLI dependency)
 ├── cli/           — agent-trust unified CLI
 ├── examples/      — demo fixtures and end-to-end demos
 └── papers/        — technical reports
 ```
+
+## How the pieces fit together
+
+The trust artifacts form a single chain that runs from a workload to a
+verifiable, expiring trust state. Each link is generated from runtime facts and
+validated by the `agent-trust` CLI:
+
+![Agent Trust Infrastructure chain](docs/diagrams/trust-chain.svg)
+
+```
+bscode workload
+      ↓ declare capabilities + emit evidence
+CapabilityManifest + AEP
+      ↓ compose
+AgentBOM                  → what is this agent made of?
+      ↓ scan MCP surface
+MCP Posture               → what is the permission attack surface?
+      ↓ validate evidence + map frameworks
+audit report              → open-agent-audit reference
+      ↓ summarize
+Trust Passport            → signed, expiring, verifiable trust state
+```
+
+The `agent-trust chain` command walks this entire chain in-process and offline,
+emitting one JSON object per step and writing `chain-report.json` with a
+per-step `verdict`, `duration_ms`, and `output_hash`.
+
+### Run the full chain
+
+```bash
+bun install
+bash examples/bscode-agent/run-chain.sh
+cat examples/bscode-agent/chain-report.json
+```
+
+For the rationale and architecture behind this chain, see the short technical
+report: [Agent Trust Infrastructure](papers/agent-trust-infrastructure.md).
 
 ## Quick start
 
@@ -76,6 +113,18 @@ This repository is a public research preview.
 
 The specifications and prototypes may change rapidly.
 Do not treat any artifact here as a legal compliance certification, security certification, or production-grade audit attestation.
+
+### Roadmap status
+
+Roadmap progress ([`docs/roadmap.md`](docs/roadmap.md)):
+
+- **Weeks 0–2 — repo and spec skeletons:** public repo, vision/architecture/boundaries docs, and spec skeletons. ✅
+- **Weeks 2–6 — working examples:** JSON schemas and validators for AgentBOM, MCP Posture, and Trust Passport, plus fixture-based tests. ✅
+- **Weeks 6–12 — end-to-end demo:** the full trust chain is wired up — one command (`agent-trust chain` / `examples/bscode-agent/run-chain.sh`) walks `bscode → CapabilityManifest + AEP → AgentBOM → MCP Posture → audit report → Trust Passport` offline, with an architecture diagram and a runnable demo. ✅
+
+Later phases (split criteria, federation with `open-agent-audit` / `trace-pipeline`,
+cryptographic Passport signing, and a static site for `papers/`) are tracked as
+follow-up issues.
 
 ## License
 

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 600" font-family="ui-sans-serif, system-ui, -apple-system, &apos;Segoe UI&apos;, Roboto, sans-serif" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Trust Infrastructure chain</title>
+  <desc id="desc">End-to-end trust artifact chain: bscode workload to CapabilityManifest and AEP, to AgentBOM, to MCP Posture, to audit report, to Trust Passport.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .node { stroke-width: 1.5; }
+      .n-workload { fill: #eef2ff; stroke: #4338ca; }
+      .n-manifest { fill: #ecfeff; stroke: #0e7490; }
+      .n-bom { fill: #f0fdf4; stroke: #15803d; }
+      .n-posture { fill: #fff7ed; stroke: #c2410c; }
+      .n-audit { fill: #fdf4ff; stroke: #a21caf; }
+      .n-passport { fill: #fefce8; stroke: #a16207; }
+      .title { fill: #0f172a; font-size: 15px; font-weight: 600; }
+      .subtitle { fill: #475569; font-size: 11px; }
+      .edge-label { fill: #334155; font-size: 11px; font-style: italic; }
+      .header { fill: #0f172a; font-size: 17px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="720" height="600" fill="#ffffff"/>
+
+  <text x="360" y="30" text-anchor="middle" class="header">Agent Trust Infrastructure — end-to-end chain</text>
+
+  <!-- Node 1: bscode workload -->
+  <g>
+    <rect class="node n-workload" x="160" y="56" width="400" height="54" rx="8"/>
+    <text x="360" y="80" text-anchor="middle" class="title">bscode workload</text>
+    <text x="360" y="98" text-anchor="middle" class="subtitle">reference AI coding agent</text>
+  </g>
+  <line x1="360" y1="118" x2="360" y2="148" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="372" y="138" class="edge-label">declare capabilities + emit evidence</text>
+
+  <!-- Node 2: CapabilityManifest + AEP -->
+  <g>
+    <rect class="node n-manifest" x="160" y="154" width="400" height="54" rx="8"/>
+    <text x="360" y="178" text-anchor="middle" class="title">CapabilityManifest + AEP</text>
+    <text x="360" y="196" text-anchor="middle" class="subtitle">declared tools / permissions + runtime evidence</text>
+  </g>
+  <line x1="360" y1="216" x2="360" y2="246" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="372" y="236" class="edge-label">compose</text>
+
+  <!-- Node 3: AgentBOM -->
+  <g>
+    <rect class="node n-bom" x="160" y="252" width="400" height="54" rx="8"/>
+    <text x="360" y="276" text-anchor="middle" class="title">AgentBOM</text>
+    <text x="360" y="294" text-anchor="middle" class="subtitle">model · tools · prompts · permissions · risks</text>
+  </g>
+  <line x1="360" y1="314" x2="360" y2="344" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="372" y="334" class="edge-label">scan MCP surface</text>
+
+  <!-- Node 4: MCP Posture -->
+  <g>
+    <rect class="node n-posture" x="160" y="350" width="400" height="54" rx="8"/>
+    <text x="360" y="374" text-anchor="middle" class="title">MCP Posture</text>
+    <text x="360" y="392" text-anchor="middle" class="subtitle">servers · tools · permission attack surface · drift</text>
+  </g>
+  <line x1="360" y1="412" x2="360" y2="442" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="372" y="432" class="edge-label">validate evidence + map frameworks</text>
+
+  <!-- Node 5: audit report -->
+  <g>
+    <rect class="node n-audit" x="160" y="448" width="400" height="54" rx="8"/>
+    <text x="360" y="472" text-anchor="middle" class="title">audit report</text>
+    <text x="360" y="490" text-anchor="middle" class="subtitle">open-agent-audit reference (placeholder in demo)</text>
+  </g>
+  <line x1="360" y1="510" x2="360" y2="540" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="372" y="530" class="edge-label">summarize</text>
+
+  <!-- Node 6: Trust Passport -->
+  <g>
+    <rect class="node n-passport" x="160" y="546" width="400" height="54" rx="8"/>
+    <text x="360" y="570" text-anchor="middle" class="title">Trust Passport</text>
+    <text x="360" y="588" text-anchor="middle" class="subtitle">signed · expiring · verifiable trust-state summary</text>
+  </g>
+</svg>
