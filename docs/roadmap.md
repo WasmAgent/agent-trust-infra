@@ -8,14 +8,14 @@
 
 - [x] Create WasmAgent/agent-trust-infra
 - [x] Add README with research preview status
-- [x] Add docs/vision.md
-- [x] Add docs/architecture.md
-- [x] Add docs/project-boundaries.md
-- [x] Add docs/external-trends.md
-- [x] Add docs/relationship-to-wasmagent.md
-- [x] Add specs/agentbom/agentbom-v0.1.md
-- [x] Add specs/mcp-posture/posture-model-v0.1.md
-- [x] Add specs/trust-passport/passport-v0.1.md
+- [x] Add [docs/vision.md](./vision.md)
+- [x] Add [docs/architecture.md](./architecture.md)
+- [x] Add [docs/project-boundaries.md](./project-boundaries.md)
+- [x] Add [docs/external-trends.md](./external-trends.md)
+- [x] Add [docs/relationship-to-wasmagent.md](./relationship-to-wasmagent.md)
+- [x] Add [specs/agentbom/agentbom-v0.1.md](../specs/agentbom/agentbom-v0.1.md)
+- [x] Add [specs/mcp-posture/posture-model-v0.1.md](../specs/mcp-posture/posture-model-v0.1.md)
+- [x] Add [specs/trust-passport/passport-v0.1.md](../specs/trust-passport/passport-v0.1.md)
 - [x] Add example placeholders
 
 ## Weeks 2–6: Working examples
