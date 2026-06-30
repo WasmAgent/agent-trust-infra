@@ -6,6 +6,13 @@ Public research preview for Agent Trust Infrastructure: AgentBOM, MCP posture, a
 > Not production software.
 > Not a compliance certification product.
 
+> **Source of truth for trust artifacts.** This repository is the canonical home
+> for the AgentBOM, MCP Posture, and Trust Passport specifications and reference
+> implementations consumed across the WasmAgent organization — including the
+> `wasmagent-js` runtime, which depends on the artifact schemas defined here. The
+> specifications and schemas are authoritative; the *implementation maturity*
+> remains an experimental research preview (see status above).
+
 ## Why this exists
 
 AI agents are becoming deployable software systems with tools, permissions, model dependencies, runtime policies, and audit evidence.
