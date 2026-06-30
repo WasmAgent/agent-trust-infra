@@ -1,5 +1,7 @@
 # Roadmap
 
+> **Status: public research preview.** The Week 0–12 items below are complete — they record what this repository already ships (public repo, README with research-preview status, specs, JSON schemas, validators, and the end-to-end trust-chain demo), not outstanding work. Later split and federation work is tracked as follow-up issues.
+
 ## Weeks 0–2: Public repository and spec skeletons
 
 **Goal:** Public repo exists. README clearly communicates research preview status. Three specs have initial skeletons.
