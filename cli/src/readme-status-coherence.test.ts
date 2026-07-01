@@ -45,4 +45,13 @@ describe("README status coherence (issue #48)", () => {
 		// with no production claims — the shipped-demo status must not drop it.
 		expect(/research preview/i.test(text)).toBe(true);
 	});
+
+	it("does not reference the private `erp-agent` repo (issue #62)", () => {
+		// The WasmAgent org profile dropped its stale erp-agent reference (PR #10
+		// in `.github`). This public repo's README must not leak that private
+		// component name or imply a dependency on it. The regex tolerates
+		// `erp-agent`/`erp_agent`/`erp agent`/`erpagent`/`ErpAgent` but not
+		// unrelated prose such as "enterprise".
+		expect(/erp[ _-]?agent/i.test(text)).toBe(false);
+	});
 });
