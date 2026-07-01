@@ -80,4 +80,13 @@ describe("roadmap coherence (issue #57)", () => {
 		// 'In-flight / future work' section is unaffected.)
 		expect(text).not.toMatch(/in[ -]?progress/i);
 	});
+
+	it("does not reference the private `erp-agent` repo (issue #62)", () => {
+		// The WasmAgent org profile dropped its stale erp-agent reference (PR #10
+		// in `.github`). This public repo's roadmap must not leak that private
+		// component name or imply a dependency on it. The regex tolerates
+		// `erp-agent`/`erp_agent`/`erp agent`/`erpagent`/`ErpAgent` but not
+		// unrelated prose such as "enterprise".
+		expect(/erp[ _-]?agent/i.test(text)).toBe(false);
+	});
 });
