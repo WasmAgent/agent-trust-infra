@@ -30,7 +30,7 @@ open-agent-audit / Trustavo
 - **AEP emitter** — generates Agent Evidence Protocol events for audit consumption
 - **Runtime facts** — the ground truth that AgentBOM and MCP Posture are derived from
 
-Future integration: AgentBOM generation primitives and MCP scanning primitives should be contributed back to `wasmagent-js` once they stabilize.
+The MCP scanning primitives and the AEP emitter that produces AgentBOM evidence have shipped to `wasmagent-js` as the implementation packages [`@wasmagent/mcp-attestation`](https://www.npmjs.com/package/@wasmagent/mcp-attestation) and [`@wasmagent/aep`](https://www.npmjs.com/package/@wasmagent/aep); they are versioned against the schemas defined here. See the README's ["Implementation packages"](../README.md#implementation-packages) section for the spec-to-package mapping.
 
 ## open-agent-audit / Trustavo
 
