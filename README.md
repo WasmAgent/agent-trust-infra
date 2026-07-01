@@ -49,6 +49,23 @@ Trustavo Passport
  eventual product home: trustavo.com/passport
 ```
 
+### Implementation packages
+
+The `wasmagent-js` runtime ships the implementation layer for two of the
+specifications defined in this repository. They are the consumer-facing
+counterparts to the authoritative schemas here and are versioned against them:
+
+| Spec defined here | Runtime implementation package |
+|---|---|
+| AgentBOM `evidence_layer` / AEP event references ([`specs/agentbom/`](specs/agentbom)) | [`@wasmagent/aep`](https://www.npmjs.com/package/@wasmagent/aep) — AEP emitter for runtime evidence |
+| MCP Posture ([`specs/mcp-posture/`](specs/mcp-posture)) | [`@wasmagent/mcp-attestation`](https://www.npmjs.com/package/@wasmagent/mcp-attestation) — MCP posture and attestation |
+
+This repository remains the source of truth for the artifact schemas; the
+packages above are where the runtime consumes them. Interface changes are
+tracked here first, then mirrored into the implementation packages. See
+[`docs/relationship-to-wasmagent.md`](docs/relationship-to-wasmagent.md) for
+the full dependency map.
+
 ## Repository structure
 
 ```
