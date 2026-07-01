@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/trust-passport/schema.json",
   "title": "TrustPassport",
-  "description": "Agent Trust Passport v0.1 — experimental draft",
+  "description": "Agent Trust Passport v0.1 — shipped specification schema",
   "type": "object",
   "required": ["passport_version", "identity", "validity", "revocation", "attestation"],
   "properties": {

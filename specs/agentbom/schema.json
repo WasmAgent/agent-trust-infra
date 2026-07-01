@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/agentbom/schema.json",
   "title": "AgentBOM",
-  "description": "Agent Bill of Materials v0.1 — experimental draft",
+  "description": "Agent Bill of Materials v0.1 — shipped specification schema",
   "type": "object",
   "required": ["agentbom_version", "identity", "attestation"],
   "additionalProperties": false,

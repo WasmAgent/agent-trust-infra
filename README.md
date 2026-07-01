@@ -1,8 +1,8 @@
 # Agent Trust Infrastructure
 
-Public research preview for Agent Trust Infrastructure: AgentBOM, MCP posture, and trust passport specifications for auditable AI agents.
+Public research preview for Agent Trust Infrastructure: shipped AgentBOM, MCP Posture, and Trust Passport specifications for auditable AI agents.
 
-> **Status: experimental research preview — end-to-end trust-chain demo shipped.**
+> **Status: experimental research preview — AgentBOM, MCP Posture, Trust Passport, and the end-to-end trust-chain demo are shipped.**
 > Not production software.
 > Not a compliance certification product.
 
@@ -10,8 +10,8 @@ Public research preview for Agent Trust Infrastructure: AgentBOM, MCP posture, a
 > for the AgentBOM, MCP Posture, and Trust Passport specifications and reference
 > implementations consumed across the WasmAgent organization — including the
 > `wasmagent-js` runtime, which depends on the artifact schemas defined here. The
-> specifications and schemas are authoritative; the *implementation maturity*
-> remains an experimental research preview (see status above).
+> specifications and schemas are shipped and authoritative; the *implementation
+> maturity* remains an experimental research preview (see status above).
 
 ## Why this exists
 
@@ -139,6 +139,12 @@ The specifications and prototypes may change rapidly.
 Do not treat any artifact here as a legal compliance certification, security certification, or production-grade audit attestation.
 
 ### Roadmap status
+
+| Specification | Public roadmap status |
+|---|---|
+| AgentBOM | Shipped |
+| MCP Posture | Shipped |
+| Trust Passport | Shipped |
 
 **Shipped (Weeks 0–12):** repo and spec skeletons, working examples with JSON
 schemas and validators, and the end-to-end trust-chain demo are complete and
