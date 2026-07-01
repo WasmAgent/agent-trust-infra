@@ -1,14 +1,19 @@
 # Roadmap
 
-> **Status: public research preview.** All Weeks 0–12 deliverables are
-> **Shipped / Closed** — the public repo and the three specifications (AgentBOM,
-> MCP Posture, Trust Passport), implemented in the codebase with JSON schemas
-> and validators (Weeks 0–6), the working examples, and the Weeks 6–12
-> close-out (end-to-end chain visualization, runnable demo, and README
-> stitching, PR #42). This matches the 'Published' status recorded for these
-> specifications in the `wasmagent` project. Shipped features are recorded in
-> the [Changelog](./CHANGELOG.md); this roadmap lists only future and in-flight
-> work, tracked as follow-up issues.
+> **Status: public research preview — not production software.** All Weeks 0–12
+> deliverables are **Shipped / Closed** — the public repo and the three
+> specifications (AgentBOM, MCP Posture, Trust Passport), implemented in the
+> codebase with JSON schemas and validators (Weeks 0–6), the working examples,
+> and the Weeks 6–12 close-out (end-to-end chain visualization, runnable demo,
+> and README stitching, PR #42). "Shipped / Closed" records these
+> research-preview deliverables; it is not a production-readiness claim, and the
+> repository's public production status remains an experimental research preview
+> (see [`decision-log.md`](./decision-log.md)). The canonical,
+> cross-organization record of that public production status — including the
+> 'Published' spec status mirrored here — is the `wasmagent` **Release Ledger**;
+> this roadmap defers to it so the two repos cannot diverge. Shipped features
+> are recorded in the [Changelog](./CHANGELOG.md); this roadmap lists only
+> future and in-flight work, tracked as follow-up issues.
 
 ## Shipped / Closed (Weeks 0–12)
 
