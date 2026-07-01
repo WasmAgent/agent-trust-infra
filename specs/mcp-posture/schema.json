@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/mcp-posture/schema.json",
   "title": "MCPPosture",
-  "description": "MCP Posture snapshot v0.1 — experimental draft",
+  "description": "MCP Posture snapshot v0.1 — shipped specification schema",
   "type": "object",
   "required": ["posture_version", "identity", "servers", "attestation"],
   "properties": {

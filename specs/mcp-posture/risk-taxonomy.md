@@ -1,6 +1,6 @@
 # MCP Posture Risk Taxonomy
 
-> Status: experimental draft. Subject to change.
+> Status: shipped v0.1 reference taxonomy for the MCP Posture specification.
 
 This document defines the risk categories used in the MCP Posture Model. Each category corresponds to an enum value in the posture schema and maps to an OWASP MCP Top 10 reference.
 

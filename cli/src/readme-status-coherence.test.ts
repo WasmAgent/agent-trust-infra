@@ -40,6 +40,15 @@ describe("README status coherence (issue #48)", () => {
 		expect(statusLine).toMatch(/(shipped|complete|done)/i);
 	});
 
+	it("public roadmap lists each core specification as Shipped (issue #65)", () => {
+		// The org-level roadmap tracks these specifications as shipped. The
+		// public README must mirror that status explicitly by artifact, not only
+		// through the broader Weeks 0-12 milestone language.
+		expect(text).toMatch(/\|\s*AgentBOM\s*\|\s*Shipped\s*\|/i);
+		expect(text).toMatch(/\|\s*MCP Posture\s*\|\s*Shipped\s*\|/i);
+		expect(text).toMatch(/\|\s*Trust Passport\s*\|\s*Shipped\s*\|/i);
+	});
+
 	it("preserves the research-preview positioning (decision-log mandate)", () => {
 		// docs/decision-log.md mandates "experimental research preview" language
 		// with no production claims — the shipped-demo status must not drop it.

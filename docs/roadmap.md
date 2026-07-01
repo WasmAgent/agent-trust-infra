@@ -16,6 +16,12 @@ These milestones are complete — they record what this repository already ships
 not outstanding work. See the [Changelog](./CHANGELOG.md) for the full per-item
 checklist.
 
+| Specification | Status |
+|---|---|
+| AgentBOM | Shipped |
+| MCP Posture | Shipped |
+| Trust Passport | Shipped |
+
 - [x] **Weeks 0–2 — repo and spec skeletons:** public repo,
       vision/architecture/boundaries docs, and the AgentBOM, MCP Posture, and
       Trust Passport spec skeletons.

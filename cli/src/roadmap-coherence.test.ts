@@ -52,6 +52,14 @@ describe("roadmap coherence (issue #57)", () => {
 		expect(joined).toMatch(/weeks\s*6[–-]12/i);
 	});
 
+	it("lists each core specification as Shipped (issue #65)", () => {
+		// The public roadmap must mirror the org roadmap's shipped status for
+		// these three specifications directly, not only through week ranges.
+		expect(text).toMatch(/\|\s*AgentBOM\s*\|\s*Shipped\s*\|/i);
+		expect(text).toMatch(/\|\s*MCP Posture\s*\|\s*Shipped\s*\|/i);
+		expect(text).toMatch(/\|\s*Trust Passport\s*\|\s*Shipped\s*\|/i);
+	});
+
 	it("does not list the Weeks 6–12 close-out as outstanding work", () => {
 		// The end-to-end chain visualization / runnable demo must never appear
 		// as an unchecked (`- [ ]`) roadmap item — that is the exact drift the

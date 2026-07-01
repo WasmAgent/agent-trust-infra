@@ -1,6 +1,8 @@
 # AgentBOM v0.1 Specification
 
-> Status: experimental draft. Subject to change.
+> Status: shipped v0.1 specification. The schema and reference validator are
+> published in this repository; implementation maturity remains a research
+> preview.
 
 ## What is AgentBOM?
 
