@@ -4,7 +4,7 @@
   "description": "CLI for Agent Trust Infrastructure — experimental",
   "type": "module",
   "bin": {
-    "agent-trust": "./bin/agent-trust.cjs"
+    "agent-trust": "./bin/agent-trust.mjs"
   },
   "files": [
     "src",
