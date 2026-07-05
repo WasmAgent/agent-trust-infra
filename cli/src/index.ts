@@ -5,17 +5,19 @@ import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
+import { validateCommand } from "./validate.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
   "",
   "Commands:",
   "  chain [--example <dir>] [--out <path>]  Run the full trust chain end-to-end (offline)",
-  "  passport validate <path>  Validate a trust passport file",
-  "  passport inspect <path>    Inspect a trust passport file",
-  "  agentbom inspect <path>    Inspect an AgentBOM file",
-  "  agentbom diff <old> <new>  Diff two AgentBOM files",
-  "  mcp-posture inspect <path> Inspect an MCP posture file",
+  "  validate <artifact.json>                Validate an artifact against its JSON schema",
+  "  passport validate <path>                Validate a trust passport file",
+  "  passport inspect <path>                  Inspect a trust passport file",
+  "  agentbom inspect <path>                  Inspect an AgentBOM file",
+  "  agentbom diff <old> <new>                Diff two AgentBOM files",
+  "  mcp-posture inspect <path>               Inspect an MCP posture file",
 ].join("\n");
 
 export function runCommand(args: string[]): number {
@@ -26,6 +28,14 @@ export function runCommand(args: string[]): number {
 
   if (args[0] === "chain") {
     return chainCommand(args.slice(1));
+  }
+
+  if (args[0] === "validate") {
+    if (args.length < 2) {
+      console.error("Error: validate requires a <artifact.json> argument");
+      return 1;
+    }
+    return validateCommand(args[1]);
   }
 
   if (args[0] === "passport") {
