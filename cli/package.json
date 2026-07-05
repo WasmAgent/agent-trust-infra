@@ -1,18 +1,23 @@
 {
-  "name": "@wasmagent/agent-trust-cli",
+  "name": "@wasmagent/trust-cli",
   "version": "0.0.0-research",
   "description": "CLI for Agent Trust Infrastructure — experimental",
   "type": "module",
   "bin": {
-    "agent-trust": "./src/index.ts"
+    "agent-trust": "./bin/agent-trust.cjs"
   },
+  "files": [
+    "src",
+    "bin",
+    "package.json"
+  ],
   "dependencies": {
     "@wasmagent/agentbom-core": "workspace:*",
     "@wasmagent/mcp-posture-core": "workspace:*",
     "@wasmagent/trust-passport-core": "workspace:*"
   },
   "scripts": {
-    "build": "echo 'build: stub'",
+    "build": "echo 'build: stub - CLI executes TypeScript directly via bun'",
     "test": "bun test src/",
     "typecheck": "echo 'typecheck: stub'"
   }

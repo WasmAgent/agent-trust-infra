@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
+import { validateAgentBOMCommand } from "./agentbom-validate.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
+import { validateMCPPostureCommand } from "./mcp-posture-validate.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
 
@@ -13,8 +15,10 @@ const USAGE = [
   "  chain [--example <dir>] [--out <path>]  Run the full trust chain end-to-end (offline)",
   "  passport validate <path>  Validate a trust passport file",
   "  passport inspect <path>    Inspect a trust passport file",
+  "  agentbom validate <path>   Validate an AgentBOM file",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
   "  agentbom diff <old> <new>  Diff two AgentBOM files",
+  "  mcp-posture validate <path> Validate an MCP posture file",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
 ].join("\n");
 
@@ -48,6 +52,13 @@ export function runCommand(args: string[]): number {
   }
 
   if (args[0] === "agentbom") {
+    if (args[1] === "validate") {
+      if (args.length < 3) {
+        console.error("Error: agentbom validate requires a <path> argument");
+        return 1;
+      }
+      return validateAgentBOMCommand(args[2]);
+    }
     if (args[1] === "inspect") {
       if (args.length < 3) {
         console.error("Error: agentbom inspect requires a <path> argument");
@@ -67,6 +78,13 @@ export function runCommand(args: string[]): number {
   }
 
   if (args[0] === "mcp-posture") {
+    if (args[1] === "validate") {
+      if (args.length < 3) {
+        console.error("Error: mcp-posture validate requires a <path> argument");
+        return 1;
+      }
+      return validateMCPPostureCommand(args[2]);
+    }
     if (args[1] === "inspect") {
       if (args.length < 3) {
         console.error("Error: mcp-posture inspect requires a <path> argument");
