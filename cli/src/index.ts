@@ -1,4 +1,3 @@
-#!/usr/bin/env bun
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { validateAgentBOMCommand } from "./agentbom-validate.js";
