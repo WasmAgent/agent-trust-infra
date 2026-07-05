@@ -3,6 +3,7 @@ import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
+import { generateAgentBOMCommand } from "./bom-generate.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
 
@@ -15,6 +16,7 @@ const USAGE = [
   "  passport inspect <path>    Inspect a trust passport file",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
   "  agentbom diff <old> <new>  Diff two AgentBOM files",
+  "  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
 ].join("\n");
 
@@ -61,6 +63,9 @@ export function runCommand(args: string[]): number {
         return 1;
       }
       return diffAgentBOMCommand(args[2], args[3]);
+    }
+    if (args[1] === "generate") {
+      return generateAgentBOMCommand(args.slice(2));
     }
     console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
     return 1;
