@@ -8,5 +8,8 @@
     "build": "echo 'build: stub'",
     "test": "bun test src/",
     "typecheck": "echo 'typecheck: stub'"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0"
   }
 }

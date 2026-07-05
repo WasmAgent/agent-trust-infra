@@ -1,51 +1,90 @@
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import Ajv from "ajv";
+import type { ErrorObject, ValidateFunction } from "ajv";
+
+export interface ValidationError {
+  /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
+  field: string;
+  /** Human-readable description of the failure. */
+  message: string;
+  /** AJV keyword that failed, e.g. "required", "enum", "type". */
+  keyword: string;
 }
 
-const PASSPORT_REQUIRED = ["passport_version", "identity", "validity", "revocation", "attestation"] as const;
+export interface ValidationResult {
+  valid: boolean;
+  /** Human-readable error strings, each prefixed with the field path. */
+  errors: string[];
+  /** Structured errors with field paths. */
+  errorDetails: ValidationError[];
+}
 
-const VALID_COVERAGE_VALUES = ["selected_technical_evidence", "partial", "none"] as const;
+// Schema lives at the repository root: <root>/specs/trust-passport/schema.json
+// This file is <root>/packages/trust-passport-core/src/index.ts.
+const SCHEMA_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../specs/trust-passport/schema.json",
+);
+
+let validateSchema: ValidateFunction | null = null;
+
+function getValidator(): ValidateFunction {
+  if (validateSchema) return validateSchema;
+  const ajv = new Ajv({ allErrors: true, strict: false });
+  const schema = JSON.parse(readFileSync(SCHEMA_PATH, "utf-8"));
+  validateSchema = ajv.compile(schema);
+  return validateSchema;
+}
+
+/** Convert an AJV instancePath (JSON pointer) into a dot-notation field path. */
+function toFieldPath(instancePath: string, extra?: string): string {
+  let path = instancePath.startsWith("/") ? instancePath.slice(1) : instancePath;
+  path = path.replace(/\//g, ".");
+  if (extra) path = path ? `${path}.${extra}` : extra;
+  return path || "(root)";
+}
+
+/** For errors that name a specific property, return it so it can be folded into the field path. */
+function namedProperty(err: ErrorObject): string | undefined {
+  if (err.keyword === "required") {
+    return (err.params as { missingProperty?: string } | undefined)?.missingProperty;
+  }
+  if (err.keyword === "additionalProperties") {
+    return (err.params as { additionalProperty?: string } | undefined)?.additionalProperty;
+  }
+  return undefined;
+}
 
 export function validateTrustPassport(data: unknown): ValidationResult {
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    return { valid: false, errors: ["root must be an object"] };
-  }
-  const d = data as Record<string, unknown>;
-  const errors: string[] = [];
+  const validate = getValidator();
 
-  errors.push(...PASSPORT_REQUIRED.filter((k) => !(k in d)).map((k) => `missing required: ${k}`));
-
-  if ("passport_version" in d && d.passport_version !== "0.1") {
-    errors.push(`passport_version must be "0.1"`);
-  }
-
-  if (d.validity && typeof d.validity === "object") {
-    const v = d.validity as Record<string, unknown>;
-    ["issued_at", "expires_at"].forEach((k) => {
-      if (!(k in v)) errors.push(`validity: missing ${k}`);
-    });
+  let valid = false;
+  try {
+    valid = validate(data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      valid: false,
+      errors: [`(root): schema validation crashed: ${message}`],
+      errorDetails: [
+        { field: "(root)", message: `schema validation crashed: ${message}`, keyword: "exception" },
+      ],
+    };
   }
 
-  if (d.evidence_summary && typeof d.evidence_summary === "object") {
-    const es = d.evidence_summary as Record<string, unknown>;
-    if (Array.isArray(es.framework_mappings)) {
-      for (const mapping of es.framework_mappings) {
-        if (typeof mapping === "object" && mapping !== null && !Array.isArray(mapping)) {
-          const m = mapping as Record<string, unknown>;
-          if ("coverage" in m && typeof m.coverage === "string") {
-            if (!VALID_COVERAGE_VALUES.includes(m.coverage as (typeof VALID_COVERAGE_VALUES)[number])) {
-              errors.push(
-                `evidence_summary.framework_mappings.coverage: invalid value "${m.coverage}", must be one of: ${VALID_COVERAGE_VALUES.join(", ")}`,
-              );
-            }
-          }
-        }
-      }
-    }
-  }
+  const errorDetails: ValidationError[] = (validate.errors ?? []).map((err) => {
+    const field = toFieldPath(err.instancePath, namedProperty(err));
+    return {
+      field,
+      message: err.message ?? `failed constraint "${err.keyword}"`,
+      keyword: err.keyword,
+    };
+  });
+  const errors = errorDetails.map((e) => `${e.field}: ${e.message}`);
 
-  return { valid: errors.length === 0, errors };
+  return { valid, errors, errorDetails };
 }
 
 export function isExpired(passport: { validity?: { expires_at?: string } }): boolean {

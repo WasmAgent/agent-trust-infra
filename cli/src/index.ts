@@ -3,6 +3,7 @@ import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
+import { generateAgentBOMCommand } from "./bom-generate.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
 import { validateCommand } from "./validate.js";
@@ -17,6 +18,8 @@ const USAGE = [
   "  passport inspect <path>                  Inspect a trust passport file",
   "  agentbom inspect <path>                  Inspect an AgentBOM file",
   "  agentbom diff <old> <new>                Diff two AgentBOM files",
+  "  agentbom generate --agent <path>         Generate AgentBOM JSON from agent directory",
+  "  generate bom --agent <path>             Generate AgentBOM JSON from agent directory (alias)",
   "  mcp-posture inspect <path>               Inspect an MCP posture file",
 ].join("\n");
 
@@ -72,6 +75,9 @@ export function runCommand(args: string[]): number {
       }
       return diffAgentBOMCommand(args[2], args[3]);
     }
+    if (args[1] === "generate") {
+      return generateAgentBOMCommand(args.slice(2));
+    }
     console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
     return 1;
   }
@@ -85,6 +91,14 @@ export function runCommand(args: string[]): number {
       return inspectMCPPostureCommand(args[2]);
     }
     console.error(`Error: unknown mcp-posture subcommand "${args[1]}"`);
+    return 1;
+  }
+
+  if (args[0] === "generate") {
+    if (args[1] === "bom") {
+      return generateAgentBOMCommand(args.slice(2));
+    }
+    console.error(`Error: unknown generate subcommand "${args[1]}"`);
     return 1;
   }
 

@@ -56,34 +56,34 @@ describe("validateMCPPosture", () => {
     const { posture_version, ...rest } = VALID_POSTURE;
     const result = validateMCPPosture(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: posture_version");
+    expect(result.errors.some((e) => e.includes("posture_version") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing identity", () => {
     const { identity, ...rest } = VALID_POSTURE;
     const result = validateMCPPosture(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: identity");
+    expect(result.errors.some((e) => e.includes("identity") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing servers", () => {
     const { servers, ...rest } = VALID_POSTURE;
     const result = validateMCPPosture(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: servers");
+    expect(result.errors.some((e) => e.includes("servers") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing attestation", () => {
     const { attestation, ...rest } = VALID_POSTURE;
     const result = validateMCPPosture(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: attestation");
+    expect(result.errors.some((e) => e.includes("attestation") && e.includes("required"))).toBe(true);
   });
 
   it("rejects unknown posture_version", () => {
     const result = validateMCPPosture({ ...VALID_POSTURE, posture_version: "99.0" });
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('posture_version must be "0.1"');
+    expect(result.errors.some((e) => e.includes("posture_version") && e.includes("allowed values"))).toBe(true);
   });
 
   describe("identity object", () => {
@@ -94,7 +94,7 @@ describe("validateMCPPosture", () => {
       };
       const result = validateMCPPosture(posture);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("identity: missing snapshot_id");
+      expect(result.errors.some((e) => e.includes("identity") && e.includes("snapshot_id") && e.includes("required"))).toBe(true);
     });
 
     it("requires agent_id", () => {
@@ -104,7 +104,7 @@ describe("validateMCPPosture", () => {
       };
       const result = validateMCPPosture(posture);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("identity: missing agent_id");
+      expect(result.errors.some((e) => e.includes("identity") && e.includes("agent_id") && e.includes("required"))).toBe(true);
     });
 
     it("requires captured_at", () => {
@@ -114,7 +114,7 @@ describe("validateMCPPosture", () => {
       };
       const result = validateMCPPosture(posture);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("identity: missing captured_at");
+      expect(result.errors.some((e) => e.includes("identity") && e.includes("captured_at") && e.includes("required"))).toBe(true);
     });
   });
 });

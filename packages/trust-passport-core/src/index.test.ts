@@ -47,41 +47,41 @@ describe("validateTrustPassport", () => {
     const { passport_version, ...rest } = VALID_PASSPORT;
     const result = validateTrustPassport(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: passport_version");
+    expect(result.errors.some((e) => e.includes("passport_version") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing identity", () => {
     const { identity, ...rest } = VALID_PASSPORT;
     const result = validateTrustPassport(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: identity");
+    expect(result.errors.some((e) => e.includes("identity") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing validity", () => {
     const { validity, ...rest } = VALID_PASSPORT;
     const result = validateTrustPassport(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: validity");
+    expect(result.errors.some((e) => e.includes("validity") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing revocation", () => {
     const { revocation, ...rest } = VALID_PASSPORT;
     const result = validateTrustPassport(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: revocation");
+    expect(result.errors.some((e) => e.includes("revocation") && e.includes("required"))).toBe(true);
   });
 
   it("rejects missing attestation", () => {
     const { attestation, ...rest } = VALID_PASSPORT;
     const result = validateTrustPassport(rest);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain("missing required: attestation");
+    expect(result.errors.some((e) => e.includes("attestation") && e.includes("required"))).toBe(true);
   });
 
   it("rejects unknown passport_version", () => {
     const result = validateTrustPassport({ ...VALID_PASSPORT, passport_version: "99.0" });
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('passport_version must be "0.1"');
+    expect(result.errors.some((e) => e.includes("passport_version") && e.includes("allowed values"))).toBe(true);
   });
 
   describe("validity object", () => {
@@ -92,7 +92,7 @@ describe("validateTrustPassport", () => {
       };
       const result = validateTrustPassport(passport);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("validity: missing issued_at");
+      expect(result.errors.some((e) => e.includes("validity") && e.includes("issued_at") && e.includes("required"))).toBe(true);
     });
 
     it("requires expires_at", () => {
@@ -102,7 +102,7 @@ describe("validateTrustPassport", () => {
       };
       const result = validateTrustPassport(passport);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain("validity: missing expires_at");
+      expect(result.errors.some((e) => e.includes("validity") && e.includes("expires_at") && e.includes("required"))).toBe(true);
     });
   });
 
@@ -161,9 +161,7 @@ describe("validateTrustPassport", () => {
       };
       const result = validateTrustPassport(passport);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes("evidence_summary.framework_mappings.coverage: invalid value"))).toBe(
-        true,
-      );
+      expect(result.errors.some((e) => e.includes("coverage") && (e.includes("allowed") || e.includes("enum")))).toBe(true);
     });
   });
 });
