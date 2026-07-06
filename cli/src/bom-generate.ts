@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { resolve, join, basename } from "node:path";
 import { validateAgentBOM } from "../../packages/agentbom-core/src/index.js";
 
@@ -21,6 +21,34 @@ interface AgentInfo {
   agent_name: string;
   agent_version?: string;
   deployment_context?: "development" | "staging" | "production";
+}
+
+interface ParsedGenerateArgs {
+  agentPath: string;
+  outputPath?: string;
+}
+
+const USAGE = "Usage: agent-trust generate bom --agent <path> [--out <path>]";
+
+function parseGenerateArgs(args: string[]): ParsedGenerateArgs | null {
+  let agentPath: string | undefined;
+  let outputPath: string | undefined;
+
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg === "--agent") {
+      agentPath = args[i + 1];
+      i += 1;
+    } else if (arg === "--out") {
+      outputPath = args[i + 1];
+      i += 1;
+    } else {
+      return null;
+    }
+  }
+
+  if (!agentPath) return null;
+  return { agentPath, outputPath };
 }
 
 /**
@@ -286,12 +314,17 @@ export function generateAgentBOM(options: GenerateOptions): Record<string, unkno
  * Main command function for generating AgentBOM
  */
 export function generateAgentBOMCommand(args: string[]): number {
-  if (args.length < 2 || args[0] !== "--agent") {
-    console.error("Usage: agent-trust agentbom generate --agent <path>");
+  const parsed = parseGenerateArgs(args);
+  if (!parsed) {
+    console.error(USAGE);
     return 1;
   }
 
-  const agentPath = resolve(args[1]);
+  const agentPath = resolve(parsed.agentPath);
+  if (!existsSync(agentPath) || !statSync(agentPath).isDirectory()) {
+    console.error(`Error: agent path is not a directory: ${agentPath}`);
+    return 1;
+  }
 
   // Generate AgentBOM
   const agentbom = generateAgentBOM({ agentPath });
@@ -307,7 +340,12 @@ export function generateAgentBOMCommand(args: string[]): number {
   }
 
   // Output the AgentBOM JSON
-  console.log(JSON.stringify(agentbom, null, 2));
+  const output = `${JSON.stringify(agentbom, null, 2)}\n`;
+  if (parsed.outputPath) {
+    writeFileSync(resolve(parsed.outputPath), output, "utf-8");
+  } else {
+    console.log(output.trimEnd());
+  }
 
   return 0;
 }
