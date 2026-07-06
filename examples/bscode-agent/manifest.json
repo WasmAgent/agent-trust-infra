@@ -1,0 +1,49 @@
+{
+  "manifest_version": "0.1",
+  "agent_id": "bscode-agent-demo-001",
+  "mcp_servers": [
+    {
+      "server_id": "cloudflare-docs",
+      "server_name": "Cloudflare Docs MCP",
+      "allowed_tools": [
+        {
+          "tool_id": "search-cf-docs",
+          "permissions": ["network:outbound"],
+          "max_risk_severity": "low"
+        }
+      ]
+    },
+    {
+      "server_id": "github-actions",
+      "server_name": "GitHub Actions MCP",
+      "allowed_tools": [
+        {
+          "tool_id": "run-workflow",
+          "permissions": ["network:outbound", "workflow:trigger"],
+          "max_risk_severity": "high"
+        },
+        {
+          "tool_id": "create-issue",
+          "permissions": ["network:outbound"],
+          "max_risk_severity": "medium"
+        }
+      ]
+    },
+    {
+      "server_id": "local-filesystem",
+      "server_name": "Local Filesystem MCP",
+      "allowed_tools": [
+        {
+          "tool_id": "read-file",
+          "permissions": ["fs:read"],
+          "max_risk_severity": "medium"
+        },
+        {
+          "tool_id": "write-file",
+          "permissions": ["fs:write"],
+          "max_risk_severity": "high"
+        }
+      ]
+    }
+  ]
+}

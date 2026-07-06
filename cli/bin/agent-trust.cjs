@@ -1,15 +1,23 @@
 #!/usr/bin/env node
-const { spawn } = require('child_process');
-const path = require('path');
+/**
+ * Entry point for the agent-trust CLI.
+ *
+ * This CommonJS wrapper dynamically imports the ESM module
+ * from the compiled dist/index.js and delegates to runCommand.
+ */
 
-// Get the absolute path to the TypeScript entry point
-const cliPath = path.join(__dirname, '..', 'src', 'index.ts');
+// Use dynamic import to load ESM module from CJS
+async function main() {
+  try {
+    const dist = await import('../dist/index.js');
+    const args = process.argv.slice(2);
+    const exitCode = dist.runCommand(args);
+    process.exit(exitCode ?? 1);
+  } catch (error) {
+    console.error('Failed to load agent-trust CLI module:', error.message);
+    console.error('Make sure the CLI is properly built.');
+    process.exit(1);
+  }
+}
 
-// Spawn bun to execute the TypeScript file
-const bun = spawn('bun', [cliPath, ...process.argv.slice(2)], {
-  stdio: 'inherit'
-});
-
-bun.on('exit', (code) => {
-  process.exit(code ?? 1);
-});
+main();

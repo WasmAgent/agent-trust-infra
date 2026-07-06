@@ -1,6 +1,6 @@
 {
   "name": "@wasmagent/trust-cli",
-  "version": "0.0.0",
+  "version": "0.0.0-research",
   "description": "CLI for Agent Trust Infrastructure — experimental",
   "type": "module",
   "bin": {
@@ -9,6 +9,7 @@
   "files": [
     "src",
     "bin",
+    "dist",
     "package.json"
   ],
   "dependencies": {
@@ -17,7 +18,7 @@
     "@wasmagent/trust-passport-core": "workspace:*"
   },
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node --external @wasmagent/*",
+    "build": "bun build ./src/index.ts --outdir ./dist --target node",
     "test": "bun test src/",
     "typecheck": "echo 'typecheck: stub'"
   }

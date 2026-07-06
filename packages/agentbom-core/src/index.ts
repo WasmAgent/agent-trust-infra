@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv from "ajv";
@@ -23,10 +23,22 @@ export interface ValidationResult {
 
 // Schema lives at the repository root: <root>/specs/agentbom/schema.json
 // This file is <root>/packages/agentbom-core/src/index.ts.
-const SCHEMA_PATH = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../../specs/agentbom/schema.json",
-);
+// When bundled into the CLI (<root>/cli/dist/index.js), the relative path changes.
+function getSchemaPath(): string {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+
+  // Try the bundled path first (cli/dist -> ../.. -> root)
+  const bundledPath = resolve(currentDir, "../../specs/agentbom/schema.json");
+  if (existsSync(bundledPath)) {
+    return bundledPath;
+  }
+
+  // Fall back to the development path (packages/agentbom-core/src -> ../../../ -> root)
+  const devPath = resolve(currentDir, "../../../specs/agentbom/schema.json");
+  return devPath;
+}
+
+const SCHEMA_PATH = getSchemaPath();
 
 let validateSchema: ValidateFunction | null = null;
 
