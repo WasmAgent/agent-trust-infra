@@ -1,0 +1,11 @@
+# agent-trust-infra verify manifest — TypeScript/Node project
+commands:
+  - name: install
+    cmd: npm install --frozen-lockfile
+    timeout: 3m
+  - name: build
+    cmd: npm run build
+    timeout: 3m
+  - name: test
+    cmd: npm test
+    timeout: 3m
