@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test";
-import { writeFileSync, unlinkSync, mkdirSync, rmSync, existsSync } from "node:fs";
+import { writeFileSync, readFileSync, unlinkSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
@@ -8,6 +8,8 @@ import { inspectPassportCommand } from "./passport-inspect.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
+import { runCommand } from "./index.js";
+import { validateAgentBOM } from "../../packages/agentbom-core/src/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -262,6 +264,72 @@ describe("inspectAgentBOMCommand", () => {
     expect(output).toContain("development");
     expect(output).toContain("Tools:");
     expect(output).toContain("Risks:");
+  });
+});
+
+describe("generate bom command", () => {
+  it("emits valid AgentBOM JSON with tool inventory and permission mapping", () => {
+    const agentDir = join(tmpDir, "sample-agent");
+    const serverDir = join(agentDir, "search");
+    mkdirSync(serverDir, { recursive: true });
+    writeFileSync(
+      join(agentDir, "package.json"),
+      JSON.stringify({ name: "@example/sample-agent", version: "1.2.3" }),
+      "utf-8",
+    );
+    writeFileSync(
+      join(serverDir, "mcp.config.json"),
+      JSON.stringify({
+        tools: [
+          {
+            name: "web_search",
+            permissions: ["network:outbound", "fs:read"],
+          },
+        ],
+      }),
+      "utf-8",
+    );
+
+    const spy = spyOn(console, "log");
+    expect(runCommand(["generate", "bom", "--agent", agentDir])).toBe(0);
+
+    const output = spy.mock.calls.at(-1)?.join(" ") ?? "";
+    const bom = JSON.parse(output);
+    expect(validateAgentBOM(bom).valid).toBe(true);
+    expect(bom.identity.agent_name).toBe("sample-agent");
+    expect(bom.identity.agent_version).toBe("1.2.3");
+    expect(bom.tool_layer).toContainEqual({
+      tool_id: "mcp-search-web_search",
+      tool_name: "web_search",
+      source: "mcp",
+      mcp_server_id: "search",
+      permissions: ["network:outbound", "fs:read"],
+      risk_signals: [],
+    });
+    expect(bom.permission_layer.granted_scopes).toEqual(
+      expect.arrayContaining(["fs:read", "fs:write", "network:outbound", "process:exec"]),
+    );
+  });
+
+  it("supports writing generated AgentBOM JSON to --out", () => {
+    const agentDir = join(tmpDir, "out-agent");
+    const outPath = join(tmpDir, "agentbom.json");
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(join(agentDir, "package.json"), JSON.stringify({ name: "out-agent" }), "utf-8");
+
+    expect(runCommand(["generate", "bom", "--agent", agentDir, "--out", outPath])).toBe(0);
+
+    const bom = JSON.parse(readFileSync(outPath, "utf-8"));
+    expect(validateAgentBOM(bom).valid).toBe(true);
+    expect(bom.identity.agent_name).toBe("out-agent");
+    expect(bom.tool_layer.length).toBeGreaterThan(0);
+    expect(bom.permission_layer.granted_scopes).toEqual(
+      expect.arrayContaining(["fs:read", "fs:write", "process:exec"]),
+    );
+  });
+
+  it("rejects missing agent directories", () => {
+    expect(runCommand(["generate", "bom", "--agent", join(tmpDir, "missing")])).toBe(1);
   });
 });
 

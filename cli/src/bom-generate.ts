@@ -197,54 +197,122 @@ function extractPermissionScope(toolLayer: ToolDefinition[]): string[] {
 }
 
 /**
- * Generate risk entries from tool risk signals
+ * Generate basic risk assessment for tools
  */
-function generateRiskEntries(toolLayer: ToolDefinition[]): Array<{
+function generateRiskAssessment(toolLayer: ToolDefinition[]): Array<{
   risk_id: string;
-  severity: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
   category: string;
   description: string;
-  status: string;
+  status: "open" | "mitigated" | "accepted";
 }> {
   const risks: Array<{
     risk_id: string;
-    severity: string;
+    severity: "critical" | "high" | "medium" | "low" | "info";
     category: string;
     description: string;
-    status: string;
+    status: "open" | "mitigated" | "accepted";
   }> = [];
 
-  const categoryMap: Record<string, { severity: string; category: string; description: string }> = {
-    "command_execution": {
-      severity: "high",
-      category: "command_execution",
-      description: "Tool allows execution of arbitrary commands"
-    },
-    "file_access": {
-      severity: "medium",
-      category: "ssrf",
-      description: "Tool can access files on the filesystem"
-    }
-  };
-
   for (const tool of toolLayer) {
-    for (const signal of tool.risk_signals) {
-      const mapping = categoryMap[signal];
-      if (mapping) {
-        risks.push({
-          risk_id: `risk-${tool.tool_id}-${signal}`,
-          severity: mapping.severity,
-          category: mapping.category,
-          description: mapping.description,
-          status: "open"
-        });
-      }
+    // Check for high-risk tools
+    if (tool.tool_id === "bash-exec" || tool.tool_id.includes("exec")) {
+      risks.push({
+        risk_id: `risk-${tool.tool_id}-001`,
+        severity: "medium",
+        category: "command_execution",
+        description: `${tool.tool_name} tool allows arbitrary process execution`,
+        status: "accepted"
+      });
+    }
+
+    // Check for network-related tools
+    if (tool.source === "mcp" && tool.permissions.some(p => p.includes("network"))) {
+      risks.push({
+        risk_id: `risk-${tool.tool_id}-001`,
+        severity: "high",
+        category: "ssrf",
+        description: `${tool.tool_name} makes outbound network requests`,
+        status: "open"
+      });
+    }
+
+    // Check for file write operations
+    if (tool.permissions.includes("fs:write")) {
+      risks.push({
+        risk_id: `risk-${tool.tool_id}-002`,
+        severity: "low",
+        category: "data_modification",
+        description: `${tool.tool_name} can modify files in the workspace`,
+        status: "accepted"
+      });
     }
   }
 
   return risks;
 }
 
+/**
+ * Generate AgentBOM JSON from agent path
+ */
+export function generateAgentBOM(options: GenerateOptions): Record<string, unknown> {
+  const { agentPath } = options;
+
+  // Extract agent information
+  const agentInfo = extractAgentInfo(agentPath);
+
+  // Scan for tools
+  const discoveredTools = scanAgentDirectory(agentPath);
+  const standardTools = generateStandardToolInventory();
+
+  // Merge tool inventories, avoiding duplicates
+  const toolMap = new Map<string, ToolDefinition>();
+  for (const tool of [...discoveredTools, ...standardTools]) {
+    toolMap.set(tool.tool_id, tool);
+  }
+  const toolLayer = Array.from(toolMap.values());
+
+  // Extract permission scopes
+  const grantedScopes = extractPermissionScope(toolLayer);
+
+  // Generate risk assessment
+  const riskLayer = generateRiskAssessment(toolLayer);
+
+  // Build AgentBOM
+  const agentbom: Record<string, unknown> = {
+    agentbom_version: "0.1",
+    identity: {
+      agent_id: agentInfo.agent_id,
+      agent_name: agentInfo.agent_name,
+      generated_at: new Date().toISOString()
+    },
+    tool_layer: toolLayer,
+    permission_layer: {
+      granted_scopes: grantedScopes,
+      data_access: ["local_workspace"],
+      credential_references: []
+    },
+    risk_layer: riskLayer,
+    attestation: {
+      generator: "@wasmagent/agent-trust-cli",
+      generator_version: "0.0.0-research"
+    }
+  };
+
+  // Add optional fields if available
+  if (agentInfo.agent_version) {
+    (agentbom.identity as Record<string, unknown>).agent_version = agentInfo.agent_version;
+  }
+  if (agentInfo.deployment_context) {
+    (agentbom.identity as Record<string, unknown>).deployment_context = agentInfo.deployment_context;
+  }
+
+  return agentbom;
+}
+
+/**
+ * Main command function for generating AgentBOM
+ */
 export function generateAgentBOMCommand(args: string[]): number {
   const parsed = parseGenerateArgs(args);
   if (!parsed) {
@@ -252,76 +320,31 @@ export function generateAgentBOMCommand(args: string[]): number {
     return 1;
   }
 
-  const { agentPath, outputPath } = parsed;
-
-  // Validate agent path exists
-  if (!existsSync(agentPath)) {
-    console.error(`Error: agent path does not exist: ${agentPath}`);
+  const agentPath = resolve(parsed.agentPath);
+  if (!existsSync(agentPath) || !statSync(agentPath).isDirectory()) {
+    console.error(`Error: agent path is not a directory: ${agentPath}`);
     return 1;
   }
 
-  // Extract agent information
-  const agentInfo = extractAgentInfo(agentPath);
-
-  // Scan for tools
-  const scannedTools = scanAgentDirectory(agentPath);
-  const standardTools = generateStandardToolInventory();
-  const toolLayer = [...standardTools, ...scannedTools];
-
-  // Generate permission scope
-  const permissionScope = extractPermissionScope(toolLayer);
-
-  // Generate risk entries
-  const riskLayer = generateRiskEntries(toolLayer);
-
-  // Build AgentBOM
-  const agentBOM = {
-    agentbom_version: "0.1",
-    identity: {
-      agent_id: agentInfo.agent_id,
-      agent_name: agentInfo.agent_name,
-      agent_version: agentInfo.agent_version,
-      deployment_context: agentInfo.deployment_context,
-      generated_at: new Date().toISOString()
-    },
-    attestation: {
-      generator: "agent-trust-cli",
-      generator_version: "0.0.1-research"
-    },
-    tool_layer: toolLayer,
-    permission_layer: {
-      granted_scopes: permissionScope,
-      data_access: ["local_workspace"],
-      credential_references: []
-    },
-    risk_layer: riskLayer
-  };
+  // Generate AgentBOM
+  const agentbom = generateAgentBOM({ agentPath });
 
   // Validate the generated AgentBOM
-  const validationResult = validateAgentBOM(agentBOM);
-  if (!validationResult.valid) {
-    console.error("Error: generated AgentBOM is not valid:");
-    for (const error of validationResult.errors) {
-      console.error(`  ${error}`);
+  const validation = validateAgentBOM(agentbom);
+  if (!validation.valid) {
+    console.error("Error: Generated AgentBOM is invalid:");
+    for (const err of validation.errors) {
+      console.error(`  - ${err}`);
     }
     return 1;
   }
 
-  // Write output
-  const outputPathResolved = outputPath || resolve(agentPath, "agentbom.json");
-  try {
-    writeFileSync(outputPathResolved, JSON.stringify(agentBOM, null, 2));
-    console.log(`AgentBOM generated successfully: ${outputPathResolved}`);
-    console.log(`  Agent: ${agentInfo.agent_name} (${agentInfo.agent_id})`);
-    console.log(`  Tools: ${toolLayer.length}`);
-    console.log(`  Permissions: ${permissionScope.length}`);
-    console.log(`  Risks: ${riskLayer.length}`);
-  } catch (err) {
-    console.error(`Error: failed to write AgentBOM to ${outputPathResolved}`);
-    if (err instanceof Error) {
-      console.error(`  ${err.message}`);
-    }
-    return 1;
+  // Output the AgentBOM JSON
+  const output = `${JSON.stringify(agentbom, null, 2)}\n`;
+  if (parsed.outputPath) {
+    writeFileSync(resolve(parsed.outputPath), output, "utf-8");
+  } else {
+    console.log(output.trimEnd());
   }
 
   return 0;
