@@ -17,6 +17,7 @@ const USAGE = [
   "  agentbom inspect <path>    Inspect an AgentBOM file",
   "  agentbom diff <old> <new>  Diff two AgentBOM files",
   "  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory",
+  "  generate bom --agent <path>  Generate AgentBOM JSON from agent directory (alias)",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
 ].join("\n");
 
@@ -80,6 +81,14 @@ export function runCommand(args: string[]): number {
       return inspectMCPPostureCommand(args[2]);
     }
     console.error(`Error: unknown mcp-posture subcommand "${args[1]}"`);
+    return 1;
+  }
+
+  if (args[0] === "generate") {
+    if (args[1] === "bom") {
+      return generateAgentBOMCommand(args.slice(2));
+    }
+    console.error(`Error: unknown generate subcommand "${args[1]}"`);
     return 1;
   }
 
