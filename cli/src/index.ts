@@ -6,6 +6,7 @@ import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { generateAgentBOMCommand } from "./bom-generate.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
+import { attestCommand } from "./attest.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
@@ -19,6 +20,7 @@ const USAGE = [
   "  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory",
   "  generate bom --agent <path>  Generate AgentBOM JSON from agent directory (alias)",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
+  "  attest <action> [--actor <id>] [--resource <id>] [--outcome <status>] [--details <json>]  Generate signed attestation for audit log",
 ].join("\n");
 
 export function runCommand(args: string[]): number {
@@ -82,6 +84,10 @@ export function runCommand(args: string[]): number {
     }
     console.error(`Error: unknown mcp-posture subcommand "${args[1]}"`);
     return 1;
+  }
+
+  if (args[0] === "attest") {
+    return attestCommand(args.slice(1));
   }
 
   if (args[0] === "generate") {
