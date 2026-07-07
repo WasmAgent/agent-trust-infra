@@ -10,6 +10,18 @@
         "typescript": "^5.5.0",
       },
     },
+    "cli": {
+      "name": "@wasmagent/agent-trust-cli",
+      "version": "0.0.0-research",
+      "bin": {
+        "agent-trust": "./src/index.ts",
+      },
+      "dependencies": {
+        "@wasmagent/agentbom-core": "workspace:*",
+        "@wasmagent/mcp-posture-core": "workspace:*",
+        "@wasmagent/trust-passport-core": "workspace:*",
+      },
+    },
     "packages/agentbom-core": {
       "name": "@wasmagent/agentbom-core",
       "version": "0.0.0-research",
@@ -71,6 +83,8 @@
     "@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 
     "@types/node": ["@types/node@26.1.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-O0A1G3xPGy4w7AgQdAQYUlQ+BKk2Oovw8eRpofyp5KdBZULnbe+WqaOVNrm705SHphCiG4XHsACrSmPu1f+Kgw=="],
+
+    "@wasmagent/agent-trust-cli": ["@wasmagent/agent-trust-cli@workspace:cli"],
 
     "@wasmagent/agentbom-core": ["@wasmagent/agentbom-core@workspace:packages/agentbom-core"],
 
