@@ -71,6 +71,7 @@ AgentBOM v0.1
 ├── prompt_layer     — system prompt references, template IDs
 ├── permission_layer — granted scopes, data access boundaries, credential references
 ├── evidence_layer   — AEP event references, runtime evidence hashes
+├── audit_log        — structured audit trail entries
 ├── risk_layer       — known risk signals, open findings
 └── attestation      — generator, timestamp, hash
 ```
@@ -129,6 +130,19 @@ Array of tool entries:
 |---|---|---|---|
 | `aep_references` | string[] | no | AEP event IDs or hashes |
 | `evidence_hashes` | object[] | no | `{type, hash, timestamp}` |
+
+## audit_log
+
+Array of audit trail entries:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `timestamp` | ISO 8601 | yes | Event timestamp |
+| `event_type` | string | yes | Type of audit event (e.g., `tool_call`, `permission_check`, `prompt_injection_attempt`) |
+| `actor` | string | yes | Entity that performed the action (user ID, system component, or external service) |
+| `resource` | string | no | Target resource identifier affected by the event |
+| `outcome` | string | no | `success`, `failure`, or `partial` |
+| `details` | object | no | Additional event-specific context and metadata |
 
 ## risk_layer
 
