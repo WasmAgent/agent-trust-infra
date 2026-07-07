@@ -42,4 +42,4 @@
 - [ ] `trust-cli export-dashboard <bom.json> --output <dir>` — generates static HTML report
 - [ ] Marketplace schema: `AgentListing.md` for publishing discoverable agents with trust metadata
 - [ ] CLI command: `trust-cli publish <bom.json> --registry <url>` — publishes agent listing to registry
-- [ ] End-to-end demo: published agent appears in marketplace, buyer verifies trust chain before download
+- [x] End-to-end demo: published agent appears in marketplace, buyer verifies trust chain before download

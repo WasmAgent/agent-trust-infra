@@ -1,0 +1,53 @@
+{
+  "posture_version": "0.1",
+  "identity": {
+    "agent_id": "wasmagent/customer-support-v1",
+    "snapshot_id": "customer-support-posture-2026-06",
+    "collected_at": "2026-06-10T00:00:00Z"
+  },
+  "permission_graph": {
+    "total_tools": 4,
+    "high_risk_tools": 1,
+    "permission_categories": {
+      "database:read": 2,
+      "api:ticket": 1,
+      "api:crm": 1,
+      "network:outbound": 2
+    },
+    "risk_distribution": {
+      "low": 2,
+      "medium": 1,
+      "high": 1
+    }
+  },
+  "tool_inventory": [
+    {
+      "tool_id": "knowledge-base-search",
+      "permissions": ["database:read"],
+      "risk_level": "low",
+      "usage_frequency": "high"
+    },
+    {
+      "tool_id": "ticket-system-api",
+      "permissions": ["api:ticket", "network:outbound"],
+      "risk_level": "medium",
+      "usage_frequency": "high"
+    },
+    {
+      "tool_id": "customer-lookup",
+      "permissions": ["database:read", "api:crm"],
+      "risk_level": "high",
+      "usage_frequency": "medium"
+    },
+    {
+      "tool_id": "human-escalation",
+      "permissions": ["api:escalation", "network:outbound"],
+      "risk_level": "low",
+      "usage_frequency": "low"
+    }
+  ],
+  "attestation": {
+    "generator": "@wasmagent/customer-support",
+    "generator_version": "1.0.5"
+  }
+}

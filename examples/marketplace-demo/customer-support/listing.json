@@ -1,0 +1,88 @@
+{
+  "listing_version": "0.1",
+  "agent_id": "wasmagent/customer-support-v1",
+  "metadata": {
+    "name": "Customer Support Agent",
+    "tagline": "Automated customer service with human escalation",
+    "description": "An intelligent customer support agent that handles common inquiries, processes returns, and escalates complex issues to human agents. Reduces support ticket volume by 60% while maintaining high customer satisfaction scores.",
+    "version": "1.0.5",
+    "author": {
+      "name": "WasmAgent Corp",
+      "email": "support@wasmagent.com",
+      "website": "https://wasmagent.com"
+    },
+    "repository": "https://github.com/WasmAgent/customer-support",
+    "homepage": "https://wasmagent.com/customer-support"
+  },
+  "discovery": {
+    "category": "customer-support",
+    "tags": ["automation", "chatbot", "customer-service", "escalation", "tickets"],
+    "keywords": ["support", "help-desk", "customer-care", "tickets"],
+    "screenshots": [
+      {
+        "url": "https://wasmagent.com/customer-support/screenshot1.png",
+        "caption": "Chat interface showing automated support conversation",
+        "type": "image"
+      }
+    ]
+  },
+  "marketplace": {
+    "pricing": {
+      "model": "enterprise",
+      "amount": "Contact Sales",
+      "currency": "USD"
+    },
+    "license": "PROPRIETARY",
+    "downloads": {
+      "total": 890,
+      "this_month": 123
+    },
+    "rating": {
+      "average": 4.2,
+      "count": 67
+    }
+  },
+  "trust_artifacts": {
+    "agentbom": {
+      "url": "file://examples/marketplace-demo/customer-support/agentbom.json",
+      "hash": "e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6"
+    },
+    "trust_passport": {
+      "url": "file://examples/marketplace-demo/customer-support/trust-passport.json",
+      "issuer": "did:web:wasmagent.com"
+    },
+    "compliance_reports": [
+      {
+        "framework": "SOC2",
+        "url": "https://wasmagent.com/customer-support/soc2-report.pdf",
+        "status": "compliant"
+      },
+      {
+        "framework": "GDPR",
+        "url": "https://wasmagent.com/customer-support/gdpr-report.pdf",
+        "status": "compliant"
+      },
+      {
+        "framework": "HIPAA",
+        "url": "https://wasmagent.com/customer-support/hipaa-report.pdf",
+        "status": "partial"
+      }
+    ]
+  },
+  "publication": {
+    "publisher": {
+      "name": "WasmAgent Marketplace",
+      "did": "did:web:marketplace.wasmagent.com",
+      "email": "marketplace@wasmagent.com"
+    },
+    "published_at": "2026-03-01T08:00:00Z",
+    "updated_at": "2026-06-10T16:45:00Z",
+    "status": "published"
+  },
+  "attestation": {
+    "listing_hash": "g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4",
+    "signature": "MEUCIH...",
+    "signature_algorithm": "rsa-pkcs1-sha256",
+    "verification_url": "https://marketplace.wasmagent.com/verify/wasmagent/customer-support-v1"
+  }
+}

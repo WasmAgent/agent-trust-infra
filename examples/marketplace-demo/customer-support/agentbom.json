@@ -1,0 +1,85 @@
+{
+  "agentbom_version": "0.1",
+  "identity": {
+    "agent_id": "wasmagent/customer-support-v1",
+    "agent_name": "Customer Support Agent",
+    "agent_version": "1.0.5",
+    "deployment_context": "production",
+    "generated_at": "2026-06-10T00:00:00Z"
+  },
+  "model_layer": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "model_version": "2025-06",
+    "capabilities": ["tool_use", "conversation", "ticket_management", "escalation"]
+  },
+  "tool_layer": [
+    {
+      "tool_id": "knowledge-base-search",
+      "tool_name": "KnowledgeBaseSearch",
+      "source": "builtin",
+      "permissions": ["database:read"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "ticket-system-api",
+      "tool_name": "TicketSystemAPI",
+      "source": "builtin",
+      "permissions": ["api:ticket", "network:outbound"],
+      "risk_signals": ["data_modification"]
+    },
+    {
+      "tool_id": "customer-lookup",
+      "tool_name": "CustomerLookup",
+      "source": "builtin",
+      "permissions": ["database:read", "api:crm"],
+      "risk_signals": ["data_access"]
+    },
+    {
+      "tool_id": "human-escalation",
+      "tool_name": "HumanEscalation",
+      "source": "builtin",
+      "permissions": ["api:escalation", "network:outbound"],
+      "risk_signals": []
+    }
+  ],
+  "prompt_layer": {
+    "system_prompt_hash": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+    "template_ids": ["customer-support-system-v1", "escalation-handler-v1"]
+  },
+  "permission_layer": {
+    "granted_scopes": ["database:read", "api:ticket", "api:crm", "network:outbound"],
+    "data_access": ["customer_database", "ticketing_system", "crm_system"],
+    "credential_references": ["api_key", "crm_token"]
+  },
+  "evidence_layer": {
+    "aep_references": ["aep-tool-invocation-001", "aep-data-access-001"],
+    "evidence_hashes": [
+      {
+        "type": "system_prompt",
+        "hash": "sha256:e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6",
+        "timestamp": "2026-06-10T00:00:00Z"
+      }
+    ]
+  },
+  "risk_layer": [
+    {
+      "risk_id": "risk-customer-data-001",
+      "severity": "high",
+      "category": "data_access",
+      "description": "Agent can access customer PII through CRM integration",
+      "status": "mitigated"
+    },
+    {
+      "risk_id": "risk-ticket-mod-001",
+      "severity": "medium",
+      "category": "data_modification",
+      "description": "Agent can modify ticket status and add comments",
+      "status": "accepted"
+    }
+  ],
+  "attestation": {
+    "generator": "@wasmagent/customer-support",
+    "generator_version": "1.0.5"
+  }
+}
