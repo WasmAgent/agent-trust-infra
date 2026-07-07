@@ -113,22 +113,22 @@ class RuntimeValidatorImpl implements RuntimeValidator {
       };
     }
 
-    // Check if all required permissions are granted
+    // Check if requested permissions exceed tool's declared permissions
     const requestedPerms = new Set(invocation.permissions ?? []);
     for (const perm of requestedPerms) {
-      if (!this.grantedScopes.has(perm)) {
+      if (!declaredTool.permissions.has(perm)) {
         errors.push({
           type: "undeclared_permission",
-          message: `Tool '${invocation.tool_name}' requires permission '${perm}' which is not in granted_scopes`,
+          message: `Tool '${invocation.tool_name}' requested permission '${perm}' which exceeds its declared permissions in AgentBOM`,
           tool_id: invocation.tool_id,
           permission: perm,
         });
       }
     }
 
-    // If tool requires permissions in AgentBOM but request doesn't specify them, still validate
+    // Check if tool's declared permissions are granted
     const requiredPerms = declaredTool.permissions;
-    if (requiredPerms.size > 0 && requestedPerms.size === 0) {
+    if (requiredPerms.size > 0) {
       for (const perm of requiredPerms) {
         if (!this.grantedScopes.has(perm)) {
           errors.push({
@@ -196,7 +196,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
 export function createRuntimeValidator(
   agentBOM: Record<string, unknown>
 ): RuntimeValidator | null {
-  const bomValidation = validateAgentBOM(agentBOM);
+  const bomValidation = validateAgentBOMCore(agentBOM);
   if (!bomValidation.valid) {
     // AgentBOM is invalid - cannot create validator
     return null;

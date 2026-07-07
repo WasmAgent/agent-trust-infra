@@ -1,4 +1,4 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 import {
   MCPServerDecorator,
   createDecoratedServer,
@@ -6,10 +6,16 @@ import {
   enforcePostureOnServers,
   checkToolAccessAcrossServers,
   summarizeEnforcementState,
+  createRuntimeValidator,
+  validateAgentBOM,
   type MCPServer,
   type MCPTool,
   type PostureEnforcementConfig,
   type RiskCategory,
+  type RuntimeValidator,
+  type ToolInvocation,
+  type PermissionRequest,
+  type RuntimeRequest,
 } from "./index";
 
 describe("MCPServerDecorator", () => {
@@ -643,5 +649,568 @@ describe("Integration scenarios", () => {
 
     const execCheck = checkToolAccessAcrossServers(decorators, "run-command");
     expect(execCheck.allowed).toBe(false);
+  });
+});
+
+describe("AgentBOM Runtime Validation", () => {
+  const validAgentBOM = {
+    agentbom_version: "0.1" as const,
+    identity: {
+      agent_id: "test-agent-001",
+      agent_name: "Test Agent",
+      agent_version: "1.0.0",
+      deployment_context: "production",
+      generated_at: "2026-07-07T00:00:00Z",
+    },
+    model_layer: {
+      provider: "anthropic",
+      model_id: "claude-sonnet-4-6",
+      model_version: "2025-06",
+      capabilities: ["tool_use"],
+    },
+    tool_layer: [
+      {
+        tool_id: "file-read",
+        tool_name: "Read",
+        source: "builtin",
+        permissions: ["fs:read"],
+        risk_signals: [],
+      },
+      {
+        tool_id: "file-write",
+        tool_name: "Write",
+        source: "builtin",
+        permissions: ["fs:write"],
+        risk_signals: [],
+      },
+      {
+        tool_id: "bash-exec",
+        tool_name: "Bash",
+        source: "builtin",
+        permissions: ["process:exec", "fs:read", "fs:write"],
+        risk_signals: ["command_execution"],
+      },
+      {
+        tool_id: "network-fetch",
+        tool_name: "Fetch",
+        source: "builtin",
+        permissions: ["network:outbound"],
+        risk_signals: ["ssrf"],
+      },
+    ],
+    prompt_layer: {
+      system_prompt_hash: "sha256:abcdef1234567890",
+      template_ids: ["template-v1"],
+    },
+    permission_layer: {
+      granted_scopes: ["fs:read", "fs:write", "process:exec", "network:outbound"],
+      data_access: ["local_workspace"],
+      credential_references: [],
+    },
+    attestation: {
+      generator: "test-suite",
+      generator_version: "1.0.0",
+    },
+  };
+
+  describe("createRuntimeValidator", () => {
+    it("creates a validator from a valid AgentBOM", () => {
+      const validator = createRuntimeValidator(validAgentBOM);
+      expect(validator).toBeDefined();
+      expect(validator).not.toBeNull();
+    });
+
+    it("returns null for an invalid AgentBOM", () => {
+      const invalidBOM = {
+        agentbom_version: "0.1",
+        // Missing required fields
+      };
+      const validator = createRuntimeValidator(invalidBOM);
+      expect(validator).toBeNull();
+    });
+
+    it("returns null for malformed AgentBOM", () => {
+      const malformedBOM = { not: "a valid bom" };
+      const validator = createRuntimeValidator(malformedBOM);
+      expect(validator).toBeNull();
+    });
+  });
+
+  describe("validateToolInvocation", () => {
+    let validator: RuntimeValidator;
+
+    beforeEach(() => {
+      validator = createRuntimeValidator(validAgentBOM)!;
+    });
+
+    it("allows access to declared tools with proper permissions", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "file-read",
+        tool_name: "Read",
+        permissions: ["fs:read"],
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.errorDetails).toHaveLength(0);
+    });
+
+    it("allows access to declared tools when permissions match granted scopes", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "bash-exec",
+        tool_name: "Bash",
+        permissions: ["process:exec", "fs:read", "fs:write"],
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("rejects tools not declared in AgentBOM tool_layer", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "undeclared-tool",
+        tool_name: "Undeclared Tool",
+        permissions: [],
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("not declared in AgentBOM");
+      expect(result.errorDetails[0].type).toBe("unknown_tool");
+      expect(result.errorDetails[0].tool_id).toBe("undeclared-tool");
+    });
+
+    it("rejects declared tools when requested permissions exceed tool's declared permissions", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "file-read",
+        tool_name: "Read",
+        permissions: ["fs:read", "fs:write"], // fs:write is not in the tool's declared permissions
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("exceeds its declared permissions");
+      expect(result.errorDetails[0].type).toBe("undeclared_permission");
+      expect(result.errorDetails[0].permission).toBe("fs:write");
+    });
+
+    it("rejects tools when requested permissions are not in tool's declared permissions", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "network-fetch",
+        tool_name: "Fetch",
+        permissions: ["network:outbound", "admin:access"], // admin:access is not in tool's declared permissions
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("exceeds its declared permissions");
+      expect(result.errorDetails[0].permission).toBe("admin:access");
+    });
+
+    it("rejects tools when tool's declared permissions are not in granted_scopes", () => {
+      // Create an AgentBOM where tool requires permissions not in granted_scopes
+      const bomWithMissingPerms = {
+        ...validAgentBOM,
+        tool_layer: [
+          {
+            tool_id: "database-write",
+            tool_name: "DB Write",
+            source: "builtin",
+            permissions: ["db:write"],
+            risk_signals: [],
+          },
+        ],
+        permission_layer: {
+          granted_scopes: ["fs:read"], // db:write is not granted
+          data_access: ["local_workspace"],
+          credential_references: [],
+        },
+      };
+
+      const validator = createRuntimeValidator(bomWithMissingPerms)!;
+      const invocation: ToolInvocation = {
+        tool_id: "database-write",
+        tool_name: "DB Write",
+        permissions: ["db:write"],
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("not in granted_scopes");
+      expect(result.errorDetails[0].permission).toBe("db:write");
+    });
+
+    it("validates tools with no permissions requirement", () => {
+      // Create an AgentBOM with a tool that has no permissions
+      const bomWithNoPerms = {
+        ...validAgentBOM,
+        tool_layer: [
+          {
+            tool_id: "safe-tool",
+            tool_name: "Safe Tool",
+            source: "builtin",
+            permissions: [],
+            risk_signals: [],
+          },
+        ],
+      };
+
+      const validatorNoPerms = createRuntimeValidator(bomWithNoPerms)!;
+      const invocation: ToolInvocation = {
+        tool_id: "safe-tool",
+        tool_name: "Safe Tool",
+        permissions: [],
+      };
+
+      const result = validatorNoPerms.validateToolInvocation(invocation);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("checks AgentBOM-declared permissions even when not explicitly requested", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "file-write",
+        tool_name: "Write",
+        permissions: [], // Not requesting permissions explicitly
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      // Should be valid because fs:write IS in granted_scopes
+      expect(result.valid).toBe(true);
+    });
+
+    it("rejects tools when AgentBOM-declared permissions are not in granted_scopes", () => {
+      const invocation: ToolInvocation = {
+        tool_id: "file-read",
+        tool_name: "Read",
+        permissions: [], // Not requesting permissions explicitly
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      // Should be valid because fs:read IS in granted_scopes
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe("validatePermissionScope", () => {
+    let validator: RuntimeValidator;
+
+    beforeEach(() => {
+      validator = createRuntimeValidator(validAgentBOM)!;
+    });
+
+    it("allows access to granted permission scopes", () => {
+      const request: PermissionRequest = {
+        scope: "fs:read",
+      };
+
+      const result = validator.validatePermissionScope(request);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("rejects permission scopes not in granted_scopes", () => {
+      const request: PermissionRequest = {
+        scope: "admin:access",
+      };
+
+      const result = validator.validatePermissionScope(request);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("not in granted_scopes");
+      expect(result.errorDetails[0].type).toBe("undeclared_permission");
+      expect(result.errorDetails[0].permission).toBe("admin:access");
+    });
+
+    it("allows all scopes from granted_scopes", () => {
+      const scopes = ["fs:read", "fs:write", "process:exec", "network:outbound"];
+      for (const scope of scopes) {
+        const request: PermissionRequest = { scope };
+        const result = validator.validatePermissionScope(request);
+        expect(result.valid).toBe(true);
+      }
+    });
+
+    it("rejects multiple undeclared scopes", () => {
+      const undeclaredScopes = ["db:write", "admin:root", "cloud:deploy"];
+      for (const scope of undeclaredScopes) {
+        const request: PermissionRequest = { scope };
+        const result = validator.validatePermissionScope(request);
+        expect(result.valid).toBe(false);
+        expect(result.errorDetails[0].permission).toBe(scope);
+      }
+    });
+  });
+
+  describe("validateRuntimeRequest", () => {
+    let validator: RuntimeValidator;
+
+    beforeEach(() => {
+      validator = createRuntimeValidator(validAgentBOM)!;
+    });
+
+    it("allows a complete valid runtime request", () => {
+      const request: RuntimeRequest = {
+        tool_invocations: [
+          {
+            tool_id: "file-read",
+            tool_name: "Read",
+            permissions: ["fs:read"],
+          },
+          {
+            tool_id: "file-write",
+            tool_name: "Write",
+            permissions: ["fs:write"],
+          },
+        ],
+        permission_requests: [
+          { scope: "fs:read" },
+          { scope: "fs:write" },
+        ],
+      };
+
+      const result = validator.validateRuntimeRequest(request);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("rejects runtime request with undeclared tools", () => {
+      const request: RuntimeRequest = {
+        tool_invocations: [
+          {
+            tool_id: "file-read",
+            tool_name: "Read",
+            permissions: ["fs:read"],
+          },
+          {
+            tool_id: "malicious-tool",
+            tool_name: "Malicious Tool",
+            permissions: [],
+          },
+        ],
+        permission_requests: [],
+      };
+
+      const result = validator.validateRuntimeRequest(request);
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((e) => e.includes("malicious-tool"))).toBe(true);
+      expect(
+        result.errorDetails.some((d) => d.type === "unknown_tool")
+      ).toBe(true);
+    });
+
+    it("rejects runtime request with undeclared permissions", () => {
+      const request: RuntimeRequest = {
+        tool_invocations: [],
+        permission_requests: [
+          { scope: "fs:read" },
+          { scope: "admin:root" },
+        ],
+      };
+
+      const result = validator.validateRuntimeRequest(request);
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors.some((e) => e.includes("admin:root"))).toBe(true);
+      expect(
+        result.errorDetails.some((d) => d.type === "undeclared_permission")
+      ).toBe(true);
+    });
+
+    it("collects all validation errors from both tools and permissions", () => {
+      const request: RuntimeRequest = {
+        tool_invocations: [
+          {
+            tool_id: "file-read",
+            tool_name: "Read",
+            permissions: ["fs:read"],
+          },
+          {
+            tool_id: "unknown-tool",
+            tool_name: "Unknown",
+            permissions: [],
+          },
+          {
+            tool_id: "network-fetch",
+            tool_name: "Fetch",
+            permissions: ["network:outbound", "admin:access"], // admin:access not granted
+          },
+        ],
+        permission_requests: [
+          { scope: "fs:read" },
+          { scope: "db:delete" }, // Not granted
+        ],
+      };
+
+      const result = validator.validateRuntimeRequest(request);
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThanOrEqual(2);
+      expect(result.errorDetails.length).toBeGreaterThanOrEqual(2);
+
+      // Should have at least one unknown_tool error
+      expect(
+        result.errorDetails.some((d) => d.type === "unknown_tool")
+      ).toBe(true);
+
+      // Should have at least one undeclared_permission error
+      expect(
+        result.errorDetails.some((d) => d.type === "undeclared_permission")
+      ).toBe(true);
+    });
+
+    it("handles empty runtime request", () => {
+      const request: RuntimeRequest = {
+        tool_invocations: [],
+        permission_requests: [],
+      };
+
+      const result = validator.validateRuntimeRequest(request);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("validates complex multi-tool runtime scenario", () => {
+      const request: RuntimeRequest = {
+        tool_invocations: [
+          {
+            tool_id: "file-read",
+            tool_name: "Read",
+            permissions: ["fs:read"],
+          },
+          {
+            tool_id: "file-write",
+            tool_name: "Write",
+            permissions: ["fs:write"],
+          },
+          {
+            tool_id: "bash-exec",
+            tool_name: "Bash",
+            permissions: ["process:exec"],
+          },
+        ],
+        permission_requests: [
+          { scope: "fs:read" },
+          { scope: "fs:write" },
+          { scope: "process:exec" },
+        ],
+      };
+
+      const result = validator.validateRuntimeRequest(request);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
+  describe("Integration scenario: complete AgentBOM validation flow", () => {
+    it("creates validator and validates complex runtime scenario", () => {
+      // Create AgentBOM with multiple tools and limited permissions
+      const restrictiveBOM = {
+        ...validAgentBOM,
+        permission_layer: {
+          granted_scopes: ["fs:read"], // Only read access
+          data_access: ["local_workspace"],
+          credential_references: [],
+        },
+      };
+
+      const validator = createRuntimeValidator(restrictiveBOM);
+      expect(validator).not.toBeNull();
+
+      // Try to use write tool - should fail due to missing permissions
+      const writeInvocation: ToolInvocation = {
+        tool_id: "file-write",
+        tool_name: "Write",
+        permissions: ["fs:write"],
+      };
+
+      const writeResult = validator.validateToolInvocation(writeInvocation);
+      expect(writeResult.valid).toBe(false);
+      expect(writeResult.errorDetails[0].type).toBe("undeclared_permission");
+
+      // Try to use bash tool - should fail due to missing permissions
+      const bashInvocation: ToolInvocation = {
+        tool_id: "bash-exec",
+        tool_name: "Bash",
+        permissions: ["process:exec"],
+      };
+
+      const bashResult = validator.validateToolInvocation(bashInvocation);
+      expect(bashResult.valid).toBe(false);
+      expect(bashResult.errorDetails[0].type).toBe("undeclared_permission");
+
+      // Read tool should work
+      const readInvocation: ToolInvocation = {
+        tool_id: "file-read",
+        tool_name: "Read",
+        permissions: ["fs:read"],
+      };
+
+      const readResult = validator.validateToolInvocation(readInvocation);
+      expect(readResult.valid).toBe(true);
+
+      // Validate a complete runtime request
+      const runtimeRequest: RuntimeRequest = {
+        tool_invocations: [
+          {
+            tool_id: "file-read",
+            tool_name: "Read",
+            permissions: ["fs:read"],
+          },
+          {
+            tool_id: "file-write",
+            tool_name: "Write",
+            permissions: ["fs:write"],
+          },
+        ],
+        permission_requests: [
+          { scope: "fs:read" },
+          { scope: "fs:write" },
+        ],
+      };
+
+      const finalResult = validator.validateRuntimeRequest(runtimeRequest);
+      expect(finalResult.valid).toBe(false);
+      expect(finalResult.errors.length).toBeGreaterThan(0);
+    });
+
+    it("validates against AgentBOM with no permissions", () => {
+      const bomNoPermissions = {
+        ...validAgentBOM,
+        tool_layer: [
+          {
+            tool_id: "simple-tool",
+            tool_name: "Simple Tool",
+            source: "builtin",
+            permissions: [],
+            risk_signals: [],
+          },
+        ],
+        permission_layer: {
+          granted_scopes: [],
+          data_access: [],
+          credential_references: [],
+        },
+      };
+
+      const validator = createRuntimeValidator(bomNoPermissions);
+      expect(validator).not.toBeNull();
+
+      // Tool should be accessible
+      const invocation: ToolInvocation = {
+        tool_id: "simple-tool",
+        tool_name: "Simple Tool",
+        permissions: [],
+      };
+
+      const result = validator.validateToolInvocation(invocation);
+      expect(result.valid).toBe(true);
+    });
   });
 });
