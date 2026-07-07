@@ -6,6 +6,8 @@ import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { generateAgentBOMCommand } from "./bom-generate.js";
 import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
+import { complianceCheckCommand } from "./compliance-check.js";
+import { auditReportCommand } from "./audit-report.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
@@ -19,6 +21,8 @@ const USAGE = [
   "  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory",
   "  generate bom --agent <path>  Generate AgentBOM JSON from agent directory (alias)",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
+  "  audit-report <bom.json>    Generate human-readable audit summary with evidence citations",
+  "  compliance-check <bom.json> --profile <name>  Validate AgentBOM against compliance profile",
 ].join("\n");
 
 export function runCommand(args: string[]): number {
@@ -90,6 +94,18 @@ export function runCommand(args: string[]): number {
     }
     console.error(`Error: unknown generate subcommand "${args[1]}"`);
     return 1;
+  }
+
+  if (args[0] === "audit-report") {
+    if (args.length < 2) {
+      console.error("Error: audit-report requires a <bom.json> argument");
+      return 1;
+    }
+    return auditReportCommand(args.slice(1));
+  }
+
+  if (args[0] === "compliance-check") {
+    return complianceCheckCommand(args.slice(1));
   }
 
   console.error(`Error: unknown command "${args[0]}"`);

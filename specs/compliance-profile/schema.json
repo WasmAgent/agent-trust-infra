@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/compliance-profile/schema.json",
+  "title": "ComplianceProfile",
+  "description": "Compliance Profile v0.1 — defines rules for validating AgentBOM artifacts against compliance frameworks",
+  "type": "object",
+  "required": ["profile_version", "profile_id", "framework", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "profile_version": {
+      "type": "string",
+      "enum": ["0.1"],
+      "description": "Profile schema version"
+    },
+    "profile_id": {
+      "type": "string",
+      "description": "Unique identifier for this profile (e.g., 'soc2-2024')"
+    },
+    "framework": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "description": "Compliance framework identification",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Framework name (e.g., 'SOC2', 'ISO27001', 'EIDAS')"
+        },
+        "version": {
+          "type": "string",
+          "description": "Framework version or year (e.g., '2024', '2022')"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the compliance framework"
+        }
+      }
+    },
+    "rules": {
+      "type": "object",
+      "required": ["identity", "tool_layer", "risk_layer"],
+      "additionalProperties": false,
+      "description": "Validation rules for different AgentBOM sections",
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Rules for the identity section",
+          "properties": {
+            "required_fields": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Required identity fields beyond the base schema"
+            },
+            "allowed_contexts": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Allowed deployment contexts (empty means all allowed)"
+            },
+            "requires_version": {
+              "type": "boolean",
+              "description": "Whether agent_version is required"
+            }
+          }
+        },
+        "tool_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Rules for the tool_layer section",
+          "properties": {
+            "max_severity": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"],
+              "description": "Maximum allowed risk severity for tools"
+            },
+            "requires_tool_inventory": {
+              "type": "boolean",
+              "description": "Whether tool_layer must be present and non-empty"
+            },
+            "blocked_permissions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Permissions that are not allowed (e.g., ['filesystem:write', 'network:external'])"
+            },
+            "blocked_sources": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Tool sources that are not allowed"
+            }
+          }
+        },
+        "risk_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Rules for the risk_layer section",
+          "properties": {
+            "requires_risk_assessment": {
+              "type": "boolean",
+              "description": "Whether risk_layer must be present"
+            },
+            "max_unmitigated_critical": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum number of unmitigated critical risks allowed"
+            },
+            "max_unmitigated_high": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Maximum number of unmitigated high risks allowed"
+            },
+            "requires_mitigation_for": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["critical", "high", "medium", "low"]
+              },
+              "description": "Severity levels that require mitigation status"
+            }
+          }
+        },
+        "attestation": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Rules for the attestation section",
+          "properties": {
+            "requires_signature": {
+              "type": "boolean",
+              "description": "Whether attestation must be signed"
+            },
+            "requires_timestamp": {
+              "type": "boolean",
+              "description": "Whether attestation must include timestamp"
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional metadata about the profile",
+      "properties": {
+        "author": {
+          "type": "string",
+          "description": "Profile author or organization"
+        },
+        "created_at": {
+          "type": "string",
+          "description": "Profile creation timestamp"
+        },
+        "updated_at": {
+          "type": "string",
+          "description": "Last update timestamp"
+        },
+        "documentation_url": {
+          "type": "string",
+          "description": "Link to compliance framework documentation"
+        }
+      }
+    }
+  }
+}
