@@ -28,14 +28,16 @@ const SCHEMA_PATH = resolve(
   "../../../specs/agentbom/schema.json",
 );
 
-let validateSchema: ValidateFunction | null = null;
+let validateSchema: ValidateFunction | undefined = undefined;
 
 function getValidator(): ValidateFunction {
   if (validateSchema) return validateSchema;
+  // @ts-ignore - Ajv ESM import issue with TypeScript module resolution
   const ajv = new Ajv({ allErrors: true, strict: false });
   const schema = JSON.parse(readFileSync(SCHEMA_PATH, "utf-8"));
-  validateSchema = ajv.compile(schema);
-  return validateSchema;
+  const validator = ajv.compile(schema);
+  validateSchema = validator;
+  return validator;
 }
 
 /** Convert an AJV instancePath (JSON pointer) into a dot-notation field path. */
@@ -198,7 +200,7 @@ function parseRisks(riskLayer: unknown): Map<string, RiskEntry> {
           severity: String(r.severity ?? ""),
           category: String(r.category ?? ""),
           description: String(r.description ?? ""),
-          status: String(r.status ?? ""),
+          status: r.status ? String(r.status) : undefined,
         });
       }
     }
@@ -284,8 +286,10 @@ export function diffAgentBOM(oldData: Record<string, unknown>, newData: Record<s
     if (oldRisk.severity !== newRisk.severity) {
       risksModified.push({ risk_id: id, field: "severity", old: oldRisk.severity, new: newRisk.severity });
     }
-    if (oldRisk.status !== newRisk.status) {
-      risksModified.push({ risk_id: id, field: "status", old: oldRisk.status, new: newRisk.status });
+    const oldStatus = oldRisk.status ?? "";
+    const newStatus = newRisk.status ?? "";
+    if (oldStatus !== newStatus) {
+      risksModified.push({ risk_id: id, field: "status", old: oldStatus, new: newStatus });
     }
     if (oldRisk.category !== newRisk.category) {
       risksModified.push({ risk_id: id, field: "category", old: oldRisk.category, new: newRisk.category });

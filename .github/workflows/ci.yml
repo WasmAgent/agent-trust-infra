@@ -39,3 +39,28 @@ jobs:
           for f in examples/**/*.json; do
             python3 -m json.tool "$f" > /dev/null && echo "ok: $f" || (echo "INVALID JSON: $f" && exit 1)
           done
+
+  npm-publish:
+    name: Publish @wasmagent/trust-runtime to npm
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/@wasmagent/trust-runtime@')
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build trust-runtime
+        run: bun run build --filter=@wasmagent/trust-runtime
+
+      - name: Publish to npm
+        run: bun publish --token ${{ secrets.NPM_TOKEN }} --tag rc
+        working-directory: packages/trust-runtime
