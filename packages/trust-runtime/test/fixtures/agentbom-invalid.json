@@ -1,0 +1,14 @@
+{
+  "agentbom_version": "0.1",
+  "tool_layer": [
+    {
+      "tool_id": "some-tool",
+      "tool_name": "some_tool",
+      "source": "builtin"
+    }
+  ],
+  "risk_layer": [],
+  "attestation": {
+    "generator": "test-fixture-generator"
+  }
+}

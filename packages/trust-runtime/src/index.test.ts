@@ -6,6 +6,8 @@ import {
   enforcePostureOnServers,
   checkToolAccessAcrossServers,
   summarizeEnforcementState,
+  loadAgentBOM,
+  loadAgentBOMOrThrow,
   type MCPServer,
   type MCPTool,
   type PostureEnforcementConfig,
@@ -643,5 +645,177 @@ describe("Integration scenarios", () => {
 
     const execCheck = checkToolAccessAcrossServers(decorators, "run-command");
     expect(execCheck.allowed).toBe(false);
+  });
+});
+
+describe("AgentBOM Load-Time Integration", () => {
+  describe("loadAgentBOM", () => {
+    it("loads a valid AgentBOM and creates a validator", () => {
+      const result = loadAgentBOM("test/fixtures/agentbom-valid.json");
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.agentBOM).toBeDefined();
+      expect(result.validator).toBeDefined();
+    });
+
+    it("returns validation errors for an invalid AgentBOM", () => {
+      const result = loadAgentBOM("test/fixtures/agentbom-invalid.json");
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.agentBOM).toBeDefined();
+      expect(result.validator).toBeDefined(); // Still creates validator for partial enforcement
+    });
+
+    it("throws error for a missing file", () => {
+      expect(() => loadAgentBOM("test/fixtures/non-existent.json")).toThrow(
+        "Failed to read AgentBOM"
+      );
+    });
+
+    it("creates a validator that enforces policies from the loaded AgentBOM", () => {
+      const result = loadAgentBOM("test/fixtures/agentbom-valid.json");
+      expect(result.valid).toBe(true);
+
+      const validator = result.validator;
+
+      // Test tool invocation validation
+      const validInvocation = validator.validateToolInvocation({
+        tool_id: "read-file",
+        tool_name: "read_file",
+        permissions: ["fs:read"],
+      });
+      expect(validInvocation.valid).toBe(true);
+
+      // Test undeclared tool
+      const unknownTool = validator.validateToolInvocation({
+        tool_id: "unknown-tool",
+        tool_name: "unknown_tool",
+      });
+      expect(unknownTool.valid).toBe(false);
+      expect(unknownTool.errors.some(e => e.includes("not declared"))).toBe(true);
+
+      // Test permission scope validation
+      const validPermission = validator.validatePermissionScope({
+        scope: "fs:read",
+      });
+      expect(validPermission.valid).toBe(true);
+
+      const invalidPermission = validator.validatePermissionScope({
+        scope: "admin:delete",
+      });
+      expect(invalidPermission.valid).toBe(false);
+    });
+
+    it("validates a complete runtime request with multiple tools and permissions", () => {
+      const result = loadAgentBOM("test/fixtures/agentbom-valid.json");
+      expect(result.valid).toBe(true);
+
+      const request = {
+        tool_invocations: [
+          {
+            tool_id: "read-file",
+            tool_name: "read_file",
+            permissions: ["fs:read"],
+          },
+          {
+            tool_id: "write-file",
+            tool_name: "write_file",
+            permissions: ["fs:write"],
+          },
+        ],
+        permission_requests: [
+          { scope: "fs:read" },
+          { scope: "fs:write" },
+        ],
+      };
+
+      const validationResult = result.validator.validateRuntimeRequest(request);
+      expect(validationResult.valid).toBe(true);
+    });
+
+    it("detects permission mismatches in runtime requests", () => {
+      const result = loadAgentBOM("test/fixtures/agentbom-valid.json");
+      expect(result.valid).toBe(true);
+
+      const request = {
+        tool_invocations: [
+          {
+            tool_id: "read-file",
+            tool_name: "read_file",
+            permissions: ["admin:delete"], // Permission not in granted_scopes
+          },
+        ],
+        permission_requests: [],
+      };
+
+      const validationResult = result.validator.validateRuntimeRequest(request);
+      expect(validationResult.valid).toBe(false);
+      expect(validationResult.errors.some(e => e.includes("admin:delete"))).toBe(true);
+    });
+  });
+
+  describe("loadAgentBOMOrThrow", () => {
+    it("returns a validator for a valid AgentBOM", () => {
+      const validator = loadAgentBOMOrThrow("test/fixtures/agentbom-valid.json");
+      expect(validator).toBeDefined();
+
+      const result = validator.validateToolInvocation({
+        tool_id: "safe-tool",
+        tool_name: "safe_tool",
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it("throws error for an invalid AgentBOM", () => {
+      expect(() => loadAgentBOMOrThrow("test/fixtures/agentbom-invalid.json")).toThrow(
+        "AgentBOM validation failed"
+      );
+    });
+
+    it("throws error for a missing file", () => {
+      expect(() => loadAgentBOMOrThrow("test/fixtures/non-existent.json")).toThrow(
+        "Failed to read AgentBOM"
+      );
+    });
+  });
+
+  describe("wasmagent-js integration scenario", () => {
+    it("simulates agent load-time policy enforcement", () => {
+      // Simulate agent loading process
+      const agentBOMPath = "test/fixtures/agentbom-valid.json";
+      const loadResult = loadAgentBOM(agentBOMPath);
+
+      if (!loadResult.valid) {
+        // Agent would be rejected at load time
+        expect(loadResult.errors).toBeTruthy();
+        return;
+      }
+
+      // Agent is loaded, now enforce policies during runtime
+      const validator = loadResult.validator;
+
+      // Simulate runtime tool invocation
+      const toolCall = {
+        tool_id: "read-file",
+        tool_name: "read_file",
+        permissions: ["fs:read"],
+      };
+
+      const enforcementResult = validator.validateToolInvocation(toolCall);
+
+      // Tool call is allowed because it's declared in AgentBOM
+      expect(enforcementResult.valid).toBe(true);
+
+      // Simulate an undeclared tool invocation (would be blocked)
+      const undeclaredTool = {
+        tool_id: "hack-tool",
+        tool_name: "hack_tool",
+      };
+
+      const blockResult = validator.validateToolInvocation(undeclaredTool);
+      expect(blockResult.valid).toBe(false);
+    });
   });
 });

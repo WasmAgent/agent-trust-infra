@@ -1,0 +1,35 @@
+{
+  "agentbom_version": "0.1",
+  "identity": {
+    "agent_id": "test-agent-001",
+    "agent_name": "Test Agent",
+    "generated_at": "2026-07-07T00:00:00Z",
+    "deployment_context": "development"
+  },
+  "tool_layer": [
+    {
+      "tool_id": "read-file",
+      "tool_name": "read_file",
+      "source": "builtin",
+      "permissions": ["fs:read"]
+    },
+    {
+      "tool_id": "write-file",
+      "tool_name": "write_file",
+      "source": "builtin",
+      "permissions": ["fs:write"]
+    },
+    {
+      "tool_id": "safe-tool",
+      "tool_name": "safe_tool",
+      "source": "builtin"
+    }
+  ],
+  "permission_layer": {
+    "granted_scopes": ["fs:read", "fs:write", "network:http"]
+  },
+  "risk_layer": [],
+  "attestation": {
+    "generator": "test-fixture-generator"
+  }
+}

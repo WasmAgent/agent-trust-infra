@@ -205,6 +205,88 @@ export function createRuntimeValidator(
   return new RuntimeValidatorImpl(agentBOM);
 }
 
+/**
+ * Result of loading an AgentBOM at runtime
+ */
+export interface AgentBOMLoadResult {
+  /** The loaded and validated AgentBOM data */
+  agentBOM: Record<string, unknown>;
+  /** Runtime validator for enforcing the AgentBOM policies */
+  validator: RuntimeValidator;
+  /** Whether the AgentBOM is valid */
+  valid: boolean;
+  /** Validation errors if invalid */
+  errors: string[];
+}
+
+/**
+ * Loads an AgentBOM from a file path at agent load time.
+ * This is the main entry point for wasmagent-js integration, where the runtime
+ * reads the AgentBOM when an agent is loaded and enforces the declared policies.
+ *
+ * @param agentBOMPath - Path to the AgentBOM JSON file
+ * @returns AgentBOMLoadResult with the loaded data and validator, or errors if invalid
+ * @throws Error if the file cannot be read
+ */
+export function loadAgentBOM(agentBOMPath: string): AgentBOMLoadResult {
+  // Import fs dynamically to avoid issues in environments where it's not available
+  let fs: typeof import("node:fs");
+  try {
+    fs = require("node:fs");
+  } catch {
+    throw new Error("File system module not available in this environment");
+  }
+
+  // Read the AgentBOM file
+  let agentBOMData: Record<string, unknown>;
+  try {
+    const fileContent = fs.readFileSync(agentBOMPath, "utf-8");
+    agentBOMData = JSON.parse(fileContent);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read AgentBOM from ${agentBOMPath}: ${message}`);
+  }
+
+  // Validate the AgentBOM
+  const validation = validateAgentBOMCore(agentBOMData);
+  if (!validation.valid) {
+    return {
+      agentBOM: agentBOMData,
+      validator: new RuntimeValidatorImpl(agentBOMData), // Still create validator for partial enforcement
+      valid: false,
+      errors: validation.errors,
+    };
+  }
+
+  // Create runtime validator for enforcing declared policies
+  const validator = new RuntimeValidatorImpl(agentBOMData);
+
+  return {
+    agentBOM: agentBOMData,
+    validator,
+    valid: true,
+    errors: [],
+  };
+}
+
+/**
+ * Loads an AgentBOM and creates a runtime validator, throwing if invalid.
+ * Use this when you want to fail fast if the AgentBOM is not valid.
+ *
+ * @param agentBOMPath - Path to the AgentBOM JSON file
+ * @returns RuntimeValidator for enforcing the AgentBOM policies
+ * @throws Error if the file cannot be read or AgentBOM is invalid
+ */
+export function loadAgentBOMOrThrow(agentBOMPath: string): RuntimeValidator {
+  const result = loadAgentBOM(agentBOMPath);
+  if (!result.valid) {
+    throw new Error(
+      `AgentBOM validation failed: ${result.errors.join(", ")}`
+    );
+  }
+  return result.validator;
+}
+
 // ============================================================================
 // MCP Server Decorator for Posture Enforcement
 // ============================================================================
@@ -529,7 +611,22 @@ export function summarizeEnforcementState(decorators: MCPServerDecorator[]): str
 // ============================================================================
 
 /**
+ * Type exports for AgentBOM runtime validation
+ */
+export type { ToolInvocation, PermissionRequest, RuntimeRequest, ValidationResult, ValidationError, RuntimeValidator };
+
+/**
  * Validates an AgentBOM and returns detailed validation results.
  * Re-exported from @wasmagent/agentbom-core for convenience.
  */
 export { validateAgentBOM } from "@wasmagent/agentbom-core";
+
+/**
+ * Type exports for MCP server decorator
+ */
+export type { MCPServer, MCPTool, PostureEnforcementConfig, EnforcementResult, RiskCategory };
+
+/**
+ * AgentBOM load-time integration exports
+ */
+export type { AgentBOMLoadResult };
