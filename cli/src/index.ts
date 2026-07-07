@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
+import { signPassportCommand } from "./passport-sign.js";
+import { verifySignedPassportCommand } from "./passport-verify-signed.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { generateAgentBOMCommand } from "./bom-generate.js";
@@ -16,6 +18,8 @@ const USAGE = [
   "  chain [--example <dir>] [--out <path>]  Run the full trust chain end-to-end (offline)",
   "  passport validate <path>  Validate a trust passport file",
   "  passport inspect <path>    Inspect a trust passport file",
+  "  passport sign <path> --key <key-path>  Sign a passport as JWT (EdDSA)",
+  "  passport verify-signed <jwt-path> [--key <pubkey>]  Verify a signed passport JWT",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
   "  agentbom diff <old> <new>  Diff two AgentBOM files",
   "  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory",
@@ -49,6 +53,12 @@ export function runCommand(args: string[]): number {
         return 1;
       }
       return inspectPassportCommand(args[2]);
+    }
+    if (args[1] === "sign") {
+      return signPassportCommand(args.slice(2));
+    }
+    if (args[1] === "verify-signed") {
+      return verifySignedPassportCommand(args.slice(2));
     }
     console.error(`Error: unknown passport subcommand "${args[1]}"`);
     return 1;
