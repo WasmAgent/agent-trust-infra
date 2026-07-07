@@ -7,7 +7,7 @@
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateTrustPassport, isExpired } from "../../packages/trust-passport-core/src/index.js";
+import { validateTrustPassport, isExpired, isRevoked } from "../../packages/trust-passport-core/src/index.js";
 
 /** Decode a base64url string to a Buffer. */
 function base64urlDecode(input: string): Buffer {
@@ -45,6 +45,7 @@ export interface VerifyResult {
   valid: boolean;
   signatureValid: boolean;
   expired: boolean;
+  revoked: boolean;
   structureValid: boolean;
   structureErrors: string[];
   payload: Record<string, unknown> | null;
@@ -78,6 +79,7 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
       structureErrors: [],
       payload: null,
       errors: ["No JWT input provided (path or string)"],
+      revoked: false,
     };
   }
 
@@ -92,6 +94,7 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
       structureErrors: [],
       payload: null,
       errors: ["Invalid JWT format: expected 3 dot-separated parts"],
+      revoked: false,
     };
   }
 
@@ -110,6 +113,7 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
       structureErrors: [],
       payload: null,
       errors: ["Failed to decode JWT header"],
+      revoked: false,
     };
   }
 
@@ -130,6 +134,7 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
       structureErrors: [],
       payload: null,
       errors: ["Failed to decode JWT payload"],
+      revoked: false,
     };
   }
 
@@ -169,6 +174,13 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
     }
   }
 
+  // Check revocation status — a revoked passport fails verification even if
+  // the signature and structure are otherwise valid.
+  const revoked = isRevoked(payload as { revocation?: { revoked?: unknown } });
+  if (revoked) {
+    errors.push("Passport has been revoked");
+  }
+
   // Validate passport structure (excluding JWT-specific fields)
   const passportPayload = { ...payload };
   delete passportPayload.iat;
@@ -180,12 +192,13 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
     errors.push(...structureResult.errors.map((e) => `Structure: ${e}`));
   }
 
-  const valid = signatureValid && !expired && structureValid && errors.length === 0;
+  const valid = signatureValid && !expired && !revoked && structureValid && errors.length === 0;
 
   return {
     valid,
     signatureValid,
     expired,
+    revoked,
     structureValid,
     structureErrors: structureResult.errors,
     payload,
@@ -243,6 +256,7 @@ export function verifySignedPassportCommand(args: string[]): number {
       valid: result.valid,
       signature: result.signatureValid ? "valid" : "invalid",
       expired: result.expired,
+      revoked: result.revoked,
       structure: result.structureValid ? "valid" : "invalid",
       errors: result.errors,
     }, null, 2));

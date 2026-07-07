@@ -1,16 +1,18 @@
 /**
- * E2E test: generate keypair → sign passport → verify → test expiry (revocation proxy).
+ * E2E test: generate keypair → sign passport → verify → revoke.
  *
  * Tests the full flow: key generation, passport signing, verification,
- * and failure cases (expired passport, wrong key).
+ * revocation, and failure cases (expired passport, wrong key, revoked passport).
  */
 import { describe, test, expect } from "bun:test";
 import { generateKeyPairSync, createPublicKey } from "node:crypto";
-import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { signPassport } from "./passport-sign.js";
 import { verifySignedPassport } from "./passport-verify-signed.js";
+import { revokePassportFile } from "./passport-revoke.js";
+import { revokePassport } from "../../packages/trust-passport-core/src/index.js";
 
 function createTempDir(): string {
   return mkdtempSync(join(tmpdir(), "trust-e2e-"));
@@ -312,6 +314,74 @@ describe("E2E: sign → verify flow", () => {
       expect(result.valid).toBe(false);
       expect(result.structureValid).toBe(false);
       expect(result.structureErrors.length).toBeGreaterThan(0);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("full generate → sign → verify → revoke flow", () => {
+    tempDir = createTempDir();
+    try {
+      const { privateKeyPath, publicKeyPath } = writeKeyPairFiles(tempDir);
+
+      // generate → create a minimal valid Trust Passport
+      const passport = createMinimalPassport();
+      const passportPath = join(tempDir, "passport.json");
+      writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
+
+      // sign → produce a signed JWT
+      const jwt = signPassport({ artifactPath: passportPath, keyPath: privateKeyPath });
+      expect(jwt.split(".")).toHaveLength(3);
+
+      // verify → the signed passport is valid and not revoked
+      const verified = verifySignedPassport({ jwtString: jwt, publicKeyPath });
+      expect(verified.valid).toBe(true);
+      expect(verified.revoked).toBe(false);
+      expect(verified.signatureValid).toBe(true);
+
+      // revoke → mark the passport as revoked
+      const revokedPassport = revokePassport(passport, { reason: "critical_security_finding" });
+      const revokedField = revokedPassport.revocation as Record<string, unknown>;
+      expect(revokedField.revoked).toBe(true);
+      expect(revokedField.revocation_reason).toBe("critical_security_finding");
+      expect(typeof revokedField.revoked_at).toBe("string");
+      // pre-existing revocation metadata is preserved
+      expect(revokedField.revocation_triggers).toEqual(["critical_security_finding"]);
+      const revokedPath = join(tempDir, "passport-revoked.json");
+      writeFileSync(revokedPath, JSON.stringify(revokedPassport, null, 2), "utf-8");
+
+      // re-sign the revoked passport
+      const revokedJwt = signPassport({ artifactPath: revokedPath, keyPath: privateKeyPath });
+      expect(revokedJwt.split(".")).toHaveLength(3);
+
+      // verify → revoked passports are rejected even with a valid signature
+      const revokedResult = verifySignedPassport({ jwtString: revokedJwt, publicKeyPath });
+      expect(revokedResult.valid).toBe(false);
+      expect(revokedResult.revoked).toBe(true);
+      expect(revokedResult.signatureValid).toBe(true);
+      expect(revokedResult.expired).toBe(false);
+      expect(revokedResult.errors.some((e) => e.toLowerCase().includes("revoked"))).toBe(true);
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test("passport revoke CLI command marks a passport file as revoked", () => {
+    tempDir = createTempDir();
+    try {
+      const passport = createMinimalPassport();
+      const passportPath = join(tempDir, "passport.json");
+      writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
+
+      // revoke via the CLI command helper (writes back to source by default)
+      const dest = revokePassportFile({ passportPath, reason: "key_compromise" });
+      expect(dest).toBe(passportPath);
+
+      const after = JSON.parse(readFileSync(passportPath, "utf-8")) as Record<string, unknown>;
+      const revocation = after.revocation as Record<string, unknown>;
+      expect(revocation.revoked).toBe(true);
+      expect(revocation.revocation_reason).toBe("key_compromise");
+      expect(typeof revocation.revoked_at).toBe("string");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

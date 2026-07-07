@@ -54,6 +54,37 @@ export function isExpired(passport: { validity?: { expires_at?: string } }): boo
   return new Date(expiresAt) < new Date();
 }
 
+/** Returns true if the passport has been marked as revoked. */
+export function isRevoked(passport: { revocation?: { revoked?: unknown } }): boolean {
+  return passport.revocation?.revoked === true;
+}
+
+export interface RevokeOptions {
+  reason?: string;
+}
+
+/**
+ * Mark a Trust Passport as revoked.
+ *
+ * Returns a new passport object with `revocation.revoked` set to true and a
+ * `revocation.revoked_at` ISO-8601 timestamp. An optional human-readable
+ * reason is recorded under `revocation.revocation_reason`. Pre-existing
+ * revocation metadata (e.g. `revocation_triggers`) is preserved, and the
+ * result remains conformant with the Trust Passport v0.1 schema.
+ */
+export function revokePassport(passport: Record<string, unknown>, options: RevokeOptions = {}): Record<string, unknown> {
+  const existing = (passport.revocation as Record<string, unknown> | undefined) ?? {};
+  const next: Record<string, unknown> = {
+    ...existing,
+    revoked: true,
+    revoked_at: new Date().toISOString(),
+  };
+  if (options.reason) {
+    next.revocation_reason = options.reason;
+  }
+  return { ...passport, revocation: next };
+}
+
 export function inspectTrustPassport(data: Record<string, unknown>): string {
   const identity = data.identity as Record<string, string> | undefined;
   const validity = data.validity as Record<string, string> | undefined;

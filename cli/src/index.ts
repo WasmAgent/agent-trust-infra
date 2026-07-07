@@ -3,6 +3,7 @@ import { validatePassportCommand } from "./passport-validate.js";
 import { inspectPassportCommand } from "./passport-inspect.js";
 import { signPassportCommand } from "./passport-sign.js";
 import { verifySignedPassportCommand } from "./passport-verify-signed.js";
+import { revokePassportCommand } from "./passport-revoke.js";
 import { inspectAgentBOMCommand } from "./agentbom-inspect.js";
 import { diffAgentBOMCommand } from "./agentbom-diff.js";
 import { generateAgentBOMCommand } from "./bom-generate.js";
@@ -20,6 +21,7 @@ const USAGE = [
   "  passport inspect <path>    Inspect a trust passport file",
   "  passport sign <path> --key <key-path>  Sign a passport as JWT (EdDSA)",
   "  passport verify-signed <jwt-path> [--key <pubkey>]  Verify a signed passport JWT",
+  "  passport revoke <path> [--reason <text>] [--out <path>]  Mark a passport as revoked",
   "  agentbom inspect <path>    Inspect an AgentBOM file",
   "  agentbom diff <old> <new>  Diff two AgentBOM files",
   "  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory",
@@ -59,6 +61,9 @@ export function runCommand(args: string[]): number {
     }
     if (args[1] === "verify-signed") {
       return verifySignedPassportCommand(args.slice(2));
+    }
+    if (args[1] === "revoke") {
+      return revokePassportCommand(args.slice(2));
     }
     console.error(`Error: unknown passport subcommand "${args[1]}"`);
     return 1;
