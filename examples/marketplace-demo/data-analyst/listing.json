@@ -1,0 +1,83 @@
+{
+  "listing_version": "0.1",
+  "agent_id": "wasmagent/data-analyst-v1",
+  "metadata": {
+    "name": "Data Analyst Agent",
+    "tagline": "Automated data analysis and reporting for business intelligence",
+    "description": "A comprehensive agent for data analysis that automatically processes CSV files, generates visualizations, and creates executive reports. Built for business intelligence teams who need rapid insights from their data without manual analysis.",
+    "version": "1.2.0",
+    "author": {
+      "name": "WasmAgent Corp",
+      "email": "analytics@wasmagent.com",
+      "website": "https://wasmagent.com"
+    },
+    "repository": "https://github.com/WasmAgent/data-analyst",
+    "homepage": "https://wasmagent.com/data-analyst"
+  },
+  "discovery": {
+    "category": "data-analysis",
+    "tags": ["analytics", "reporting", "business-intelligence", "csv", "visualization"],
+    "keywords": ["data", "analysis", "charts", "excel", "reports", "bi"],
+    "screenshots": [
+      {
+        "url": "https://wasmagent.com/data-analyst/screenshot1.png",
+        "caption": "Dashboard view showing data analysis results with interactive charts",
+        "type": "image"
+      }
+    ]
+  },
+  "marketplace": {
+    "pricing": {
+      "model": "freemium",
+      "amount": "$0/$99",
+      "currency": "USD"
+    },
+    "license": "PROPRIETARY",
+    "downloads": {
+      "total": 1250,
+      "this_month": 342
+    },
+    "rating": {
+      "average": 4.5,
+      "count": 89
+    }
+  },
+  "trust_artifacts": {
+    "agentbom": {
+      "url": "file://examples/marketplace-demo/data-analyst/agentbom.json",
+      "hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+    },
+    "trust_passport": {
+      "url": "file://examples/marketplace-demo/data-analyst/trust-passport.json",
+      "issuer": "did:web:wasmagent.com"
+    },
+    "compliance_reports": [
+      {
+        "framework": "SOC2",
+        "url": "https://wasmagent.com/data-analyst/soc2-report.pdf",
+        "status": "compliant"
+      },
+      {
+        "framework": "ISO27001",
+        "url": "https://wasmagent.com/data-analyst/iso27001-report.pdf",
+        "status": "compliant"
+      }
+    ]
+  },
+  "publication": {
+    "publisher": {
+      "name": "WasmAgent Marketplace",
+      "did": "did:web:marketplace.wasmagent.com",
+      "email": "marketplace@wasmagent.com"
+    },
+    "published_at": "2026-01-15T10:30:00Z",
+    "updated_at": "2026-06-01T14:22:00Z",
+    "status": "published"
+  },
+  "attestation": {
+    "listing_hash": "e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2",
+    "signature": "MEUCIH...",
+    "signature_algorithm": "rsa-pkcs1-sha256",
+    "verification_url": "https://marketplace.wasmagent.com/verify/wasmagent/data-analyst-v1"
+  }
+}

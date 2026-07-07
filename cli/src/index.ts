@@ -8,6 +8,8 @@ import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
 import { complianceCheckCommand } from "./compliance-check.js";
 import { auditReportCommand } from "./audit-report.js";
+import { publishCommand } from "./publish.js";
+import { marketplaceCommand } from "./marketplace.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
@@ -23,6 +25,8 @@ const USAGE = [
   "  mcp-posture inspect <path> Inspect an MCP posture file",
   "  audit-report <bom.json>    Generate human-readable audit summary with evidence citations",
   "  compliance-check <bom.json> --profile <name>  Validate AgentBOM against compliance profile",
+  "  publish <bom.json> --registry <url>  Publish agent listing to registry",
+  "  marketplace [browse|inspect|verify]  Browse marketplace listings and verify trust chains",
 ].join("\n");
 
 export function runCommand(args: string[]): number {
@@ -108,13 +112,38 @@ export function runCommand(args: string[]): number {
     return complianceCheckCommand(args.slice(1));
   }
 
+  if (args[0] === "publish") {
+    // Publish is async - return a promise that will be awaited in main
+    return publishCommand(args.slice(1)) as unknown as number;
+  }
+
+  if (args[0] === "marketplace") {
+    // Marketplace is async - return a promise that will be awaited in main
+    return marketplaceCommand(args.slice(1)) as unknown as number;
+  }
+
   console.error(`Error: unknown command "${args[0]}"`);
   return 1;
+}
+
+// Internal async runner that handles both sync and async commands
+async function runCommandAsync(args: string[]): Promise<number> {
+  const result = runCommand(args);
+  // If result is a Promise, await it; otherwise return as-is
+  if (result instanceof Promise) {
+    return await result;
+  }
+  return result;
 }
 
 // Only auto-run main when executed directly (not when imported for testing)
 const isDirectRun = process.argv[1]?.endsWith("index.ts") || process.argv[1]?.endsWith("index.js");
 if (isDirectRun) {
   const args = process.argv.slice(2);
-  process.exit(runCommand(args));
+  runCommandAsync(args).then((exitCode) => {
+    process.exit(exitCode);
+  }).catch((error) => {
+    console.error(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
+  });
 }

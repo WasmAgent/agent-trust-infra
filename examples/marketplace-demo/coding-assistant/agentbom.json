@@ -1,0 +1,92 @@
+{
+  "agentbom_version": "0.1",
+  "identity": {
+    "agent_id": "wasmagent/coding-assistant-v2",
+    "agent_name": "Coding Assistant Agent",
+    "agent_version": "2.0.1",
+    "deployment_context": "production",
+    "generated_at": "2026-06-15T00:00:00Z"
+  },
+  "model_layer": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "model_version": "2025-06",
+    "capabilities": ["tool_use", "code_generation", "code_review", "debugging"]
+  },
+  "tool_layer": [
+    {
+      "tool_id": "file-read",
+      "tool_name": "Read",
+      "source": "builtin",
+      "permissions": ["fs:read"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "file-write",
+      "tool_name": "Write",
+      "source": "builtin",
+      "permissions": ["fs:write"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "file-edit",
+      "tool_name": "Edit",
+      "source": "builtin",
+      "permissions": ["fs:read", "fs:write"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "bash-exec",
+      "tool_name": "Bash",
+      "source": "builtin",
+      "permissions": ["process:exec", "fs:read", "fs:write"],
+      "risk_signals": ["command_execution"]
+    },
+    {
+      "tool_id": "git-operation",
+      "tool_name": "GitOperation",
+      "source": "builtin",
+      "permissions": ["fs:read", "fs:write", "process:exec"],
+      "risk_signals": ["command_execution"]
+    }
+  ],
+  "prompt_layer": {
+    "system_prompt_hash": "sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+    "template_ids": ["coding-assistant-system-v2", "code-reviewer-v2"]
+  },
+  "permission_layer": {
+    "granted_scopes": ["fs:read", "fs:write", "process:exec"],
+    "data_access": ["local_workspace", "git_repositories"],
+    "credential_references": []
+  },
+  "evidence_layer": {
+    "aep_references": ["aep-tool-invocation-001", "aep-code-generation-001"],
+    "evidence_hashes": [
+      {
+        "type": "system_prompt",
+        "hash": "sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+        "timestamp": "2026-06-15T00:00:00Z"
+      }
+    ]
+  },
+  "risk_layer": [
+    {
+      "risk_id": "risk-bash-code-001",
+      "severity": "medium",
+      "category": "command_execution",
+      "description": "Bash tool allows running build/test commands within workspace",
+      "status": "mitigated"
+    },
+    {
+      "risk_id": "risk-git-operation-001",
+      "severity": "low",
+      "category": "data_integrity",
+      "description": "Git operations can modify repository state",
+      "status": "accepted"
+    }
+  ],
+  "attestation": {
+    "generator": "@wasmagent/coding-assistant",
+    "generator_version": "2.0.1"
+  }
+}

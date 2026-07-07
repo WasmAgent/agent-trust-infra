@@ -1,0 +1,78 @@
+{
+  "listing_version": "0.1",
+  "agent_id": "wasmagent/coding-assistant-v2",
+  "metadata": {
+    "name": "Coding Assistant Agent",
+    "tagline": "AI-powered pair programmer for code generation and review",
+    "description": "An intelligent coding assistant that helps developers write better code faster. Supports multiple languages, provides code reviews, suggests refactoring, and helps debug issues. Perfect for teams looking to accelerate development while maintaining code quality.",
+    "version": "2.0.1",
+    "author": {
+      "name": "WasmAgent Corp",
+      "email": "devtools@wasmagent.com",
+      "website": "https://wasmagent.com"
+    },
+    "repository": "https://github.com/WasmAgent/coding-assistant",
+    "homepage": "https://wasmagent.com/coding-assistant"
+  },
+  "discovery": {
+    "category": "development",
+    "tags": ["code-generation", "code-review", "refactoring", "debugging", "ide"],
+    "keywords": ["programming", "development", "pair-programmer", "code-quality"],
+    "screenshots": [
+      {
+        "url": "https://wasmagent.com/coding-assistant/screenshot1.png",
+        "caption": "IDE integration showing code suggestions in real-time",
+        "type": "image"
+      }
+    ]
+  },
+  "marketplace": {
+    "pricing": {
+      "model": "paid",
+      "amount": "$49/month",
+      "currency": "USD"
+    },
+    "license": "PROPRIETARY",
+    "downloads": {
+      "total": 3420,
+      "this_month": 567
+    },
+    "rating": {
+      "average": 4.8,
+      "count": 234
+    }
+  },
+  "trust_artifacts": {
+    "agentbom": {
+      "url": "file://examples/marketplace-demo/coding-assistant/agentbom.json",
+      "hash": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4"
+    },
+    "trust_passport": {
+      "url": "file://examples/marketplace-demo/coding-assistant/trust-passport.json",
+      "issuer": "did:web:wasmagent.com"
+    },
+    "compliance_reports": [
+      {
+        "framework": "SOC2",
+        "url": "https://wasmagent.com/coding-assistant/soc2-report.pdf",
+        "status": "compliant"
+      }
+    ]
+  },
+  "publication": {
+    "publisher": {
+      "name": "WasmAgent Marketplace",
+      "did": "did:web:marketplace.wasmagent.com",
+      "email": "marketplace@wasmagent.com"
+    },
+    "published_at": "2026-02-01T09:00:00Z",
+    "updated_at": "2026-06-15T11:30:00Z",
+    "status": "published"
+  },
+  "attestation": {
+    "listing_hash": "f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3",
+    "signature": "MEUCIH...",
+    "signature_algorithm": "rsa-pkcs1-sha256",
+    "verification_url": "https://marketplace.wasmagent.com/verify/wasmagent/coding-assistant-v2"
+  }
+}

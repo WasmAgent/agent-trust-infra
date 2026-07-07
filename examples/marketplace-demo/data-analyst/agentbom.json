@@ -1,0 +1,85 @@
+{
+  "agentbom_version": "0.1",
+  "identity": {
+    "agent_id": "wasmagent/data-analyst-v1",
+    "agent_name": "Data Analyst Agent",
+    "agent_version": "1.2.0",
+    "deployment_context": "production",
+    "generated_at": "2026-06-01T00:00:00Z"
+  },
+  "model_layer": {
+    "provider": "anthropic",
+    "model_id": "claude-sonnet-4-6",
+    "model_version": "2025-06",
+    "capabilities": ["tool_use", "data_analysis", "code_generation", "file_editing"]
+  },
+  "tool_layer": [
+    {
+      "tool_id": "file-read",
+      "tool_name": "Read",
+      "source": "builtin",
+      "permissions": ["fs:read"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "file-write",
+      "tool_name": "Write",
+      "source": "builtin",
+      "permissions": ["fs:write"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "csv-parser",
+      "tool_name": "CSVParser",
+      "source": "builtin",
+      "permissions": ["fs:read"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "chart-generator",
+      "tool_name": "ChartGenerator",
+      "source": "builtin",
+      "permissions": ["fs:write"],
+      "risk_signals": []
+    },
+    {
+      "tool_id": "data-export",
+      "tool_name": "DataExport",
+      "source": "builtin",
+      "permissions": ["fs:write", "network:outbound"],
+      "risk_signals": ["exfiltration"]
+    }
+  ],
+  "prompt_layer": {
+    "system_prompt_hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+    "template_ids": ["data-analyst-system-v1", "bi-reporter-v1"]
+  },
+  "permission_layer": {
+    "granted_scopes": ["fs:read", "fs:write", "network:outbound"],
+    "data_access": ["local_files", "export_destinations"],
+    "credential_references": ["export_api_key"]
+  },
+  "evidence_layer": {
+    "aep_references": ["aep-tool-invocation-001", "aep-data-processing-001"],
+    "evidence_hashes": [
+      {
+        "type": "system_prompt",
+        "hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+        "timestamp": "2026-06-01T00:00:00Z"
+      }
+    ]
+  },
+  "risk_layer": [
+    {
+      "risk_id": "risk-data-export-001",
+      "severity": "medium",
+      "category": "exfiltration",
+      "description": "DataExport tool can send processed data to external destinations",
+      "status": "mitigated"
+    }
+  ],
+  "attestation": {
+    "generator": "@wasmagent/data-analyst",
+    "generator_version": "1.2.0"
+  }
+}

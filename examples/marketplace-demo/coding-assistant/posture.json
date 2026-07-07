@@ -1,0 +1,58 @@
+{
+  "posture_version": "0.1",
+  "identity": {
+    "agent_id": "wasmagent/coding-assistant-v2",
+    "snapshot_id": "coding-assistant-posture-2026-06",
+    "collected_at": "2026-06-15T00:00:00Z"
+  },
+  "permission_graph": {
+    "total_tools": 5,
+    "high_risk_tools": 0,
+    "permission_categories": {
+      "fs:read": 5,
+      "fs:write": 3,
+      "process:exec": 2
+    },
+    "risk_distribution": {
+      "low": 3,
+      "medium": 2,
+      "high": 0
+    }
+  },
+  "tool_inventory": [
+    {
+      "tool_id": "file-read",
+      "permissions": ["fs:read"],
+      "risk_level": "low",
+      "usage_frequency": "high"
+    },
+    {
+      "tool_id": "file-write",
+      "permissions": ["fs:write"],
+      "risk_level": "low",
+      "usage_frequency": "medium"
+    },
+    {
+      "tool_id": "file-edit",
+      "permissions": ["fs:read", "fs:write"],
+      "risk_level": "low",
+      "usage_frequency": "high"
+    },
+    {
+      "tool_id": "bash-exec",
+      "permissions": ["process:exec", "fs:read", "fs:write"],
+      "risk_level": "medium",
+      "usage_frequency": "low"
+    },
+    {
+      "tool_id": "git-operation",
+      "permissions": ["fs:read", "fs:write", "process:exec"],
+      "risk_level": "medium",
+      "usage_frequency": "low"
+    }
+  ],
+  "attestation": {
+    "generator": "@wasmagent/coding-assistant",
+    "generator_version": "2.0.1"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "posture_version": "0.1",
+  "identity": {
+    "agent_id": "wasmagent/data-analyst-v1",
+    "snapshot_id": "data-analyst-posture-2026-06",
+    "collected_at": "2026-06-01T00:00:00Z"
+  },
+  "permission_graph": {
+    "total_tools": 5,
+    "high_risk_tools": 1,
+    "permission_categories": {
+      "fs:read": 3,
+      "fs:write": 3,
+      "network:outbound": 1
+    },
+    "risk_distribution": {
+      "low": 4,
+      "medium": 1,
+      "high": 0
+    }
+  },
+  "tool_inventory": [
+    {
+      "tool_id": "file-read",
+      "permissions": ["fs:read"],
+      "risk_level": "low",
+      "usage_frequency": "high"
+    },
+    {
+      "tool_id": "file-write",
+      "permissions": ["fs:write"],
+      "risk_level": "low",
+      "usage_frequency": "medium"
+    },
+    {
+      "tool_id": "csv-parser",
+      "permissions": ["fs:read"],
+      "risk_level": "low",
+      "usage_frequency": "high"
+    },
+    {
+      "tool_id": "chart-generator",
+      "permissions": ["fs:write"],
+      "risk_level": "low",
+      "usage_frequency": "medium"
+    },
+    {
+      "tool_id": "data-export",
+      "permissions": ["fs:write", "network:outbound"],
+      "risk_level": "medium",
+      "usage_frequency": "low"
+    }
+  ],
+  "attestation": {
+    "generator": "@wasmagent/data-analyst",
+    "generator_version": "1.2.0"
+  }
+}
