@@ -21,5 +21,8 @@
     "@biomejs/biome": "^1.9.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "@wasmagent/aep": "^1.8.0"
   }
 }

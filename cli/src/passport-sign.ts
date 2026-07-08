@@ -1,37 +1,45 @@
 /**
  * passport sign — Sign a Trust Passport JSON as a JWT using Ed25519 (EdDSA).
  *
- * Reads a Trust Passport JSON, signs the payload with an Ed25519 private key,
- * and outputs the signed JWT to stdout.
+ * Uses @wasmagent/aep's LocalEd25519Signer (backed by @noble/ed25519) to align
+ * with the signing implementation used across the WasmAgent ecosystem.
+ * Previously used node:crypto with manual PKCS#8 DER construction.
  */
-import { createPrivateKey, sign } from "node:crypto";
+import { LocalEd25519Signer } from "@wasmagent/aep";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-/** Base64url encode a Buffer or string. */
-function base64url(input: Buffer | string): string {
-  const buf = typeof input === "string" ? Buffer.from(input, "utf-8") : input;
+/** Base64url encode a Buffer or Uint8Array or string. */
+function base64url(input: Buffer | Uint8Array | string): string {
+  const buf =
+    typeof input === "string"
+      ? Buffer.from(input, "utf-8")
+      : Buffer.from(input);
   return buf.toString("base64url");
 }
 
-/** Read an Ed25519 private key from PEM or raw hex format. */
-export function readPrivateKey(keyPath: string): ReturnType<typeof createPrivateKey> {
+/** Read an Ed25519 private key seed (32 bytes) from PEM or raw hex format. */
+export function readKeySeed(keyPath: string): Uint8Array {
   const raw = readFileSync(keyPath, "utf-8").trim();
 
   if (raw.startsWith("-----BEGIN")) {
-    // PEM format
-    return createPrivateKey(raw);
+    // PEM format — extract raw seed bytes from PKCS#8 DER
+    // PKCS#8 Ed25519 DER: 30 2e 02 01 00 30 05 06 03 2b 65 70 04 22 04 20 <32-byte seed>
+    const b64 = raw
+      .replace(/-----[^-]+-----/g, "")
+      .replace(/\s+/g, "");
+    const der = Buffer.from(b64, "base64");
+    // Seed starts at offset 16 in standard PKCS#8 Ed25519 DER
+    if (der.length >= 48) {
+      return new Uint8Array(der.slice(16, 48));
+    }
+    throw new Error(`Cannot extract seed from PEM in "${keyPath}" — unexpected DER length ${der.length}`);
   }
 
   // Raw hex format: 64 hex chars = 32 bytes seed
   const hexClean = raw.replace(/\s+/g, "");
   if (/^[0-9a-fA-F]{64}$/.test(hexClean)) {
-    const seed = Buffer.from(hexClean, "hex");
-    // Wrap raw seed in PKCS#8 DER for Ed25519
-    // Ed25519 PKCS#8 prefix: 302e020100300506032b6570042204 20
-    const pkcs8Prefix = Buffer.from("302e020100300506032b657004220420", "hex");
-    const der = Buffer.concat([pkcs8Prefix, seed]);
-    return createPrivateKey({ key: der, format: "der", type: "pkcs8" });
+    return new Uint8Array(Buffer.from(hexClean, "hex"));
   }
 
   throw new Error(
@@ -46,16 +54,11 @@ function parseDuration(duration: string): number {
   const value = parseInt(match[1], 10);
   const unit = match[2].toLowerCase();
   switch (unit) {
-    case "y":
-      return value * 365 * 24 * 60 * 60 * 1000;
-    case "m":
-      return value * 30 * 24 * 60 * 60 * 1000;
-    case "d":
-      return value * 24 * 60 * 60 * 1000;
-    case "h":
-      return value * 60 * 60 * 1000;
-    default:
-      throw new Error(`Unknown duration unit: ${unit}`);
+    case "y": return value * 365 * 24 * 60 * 60 * 1000;
+    case "m": return value * 30 * 24 * 60 * 60 * 1000;
+    case "d": return value * 24 * 60 * 60 * 1000;
+    case "h": return value * 60 * 60 * 1000;
+    default: throw new Error(`Unknown duration unit: ${unit}`);
   }
 }
 
@@ -67,61 +70,56 @@ export interface SignOptions {
 
 /**
  * Sign a Trust Passport JSON and return the JWT string.
+ * Uses LocalEd25519Signer from @wasmagent/aep for signing.
  */
-export function signPassport(options: SignOptions): string {
+export async function signPassport(options: SignOptions): Promise<string> {
   const { artifactPath, keyPath, expires } = options;
 
-  // Read and parse the passport
   const passportRaw = readFileSync(resolve(artifactPath), "utf-8");
   const passport = JSON.parse(passportRaw) as Record<string, unknown>;
 
-  // Ensure validity.expires_at is set
   const validity = (passport.validity ?? {}) as Record<string, unknown>;
   if (!validity.expires_at) {
-    const expiryMs = expires ? parseDuration(expires) : 365 * 24 * 60 * 60 * 1000; // default 1 year
+    const expiryMs = expires ? parseDuration(expires) : 365 * 24 * 60 * 60 * 1000;
     validity.expires_at = new Date(Date.now() + expiryMs).toISOString();
     passport.validity = validity;
   }
 
-  // Read the private key
-  const privateKey = readPrivateKey(resolve(keyPath));
+  const seed = readKeySeed(resolve(keyPath));
+  const signer = new LocalEd25519Signer("trust-passport-key", seed);
 
-  // Build JWT header
-  const header = {
-    alg: "EdDSA",
-    typ: "JWT",
-  };
-
-  // Build JWT payload
+  const header = { alg: "EdDSA", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
   const expiresAtStr = (passport.validity as Record<string, unknown>)?.expires_at as string;
-  const exp = expiresAtStr ? Math.floor(new Date(expiresAtStr).getTime() / 1000) : now + 365 * 24 * 60 * 60;
+  const exp = expiresAtStr
+    ? Math.floor(new Date(expiresAtStr).getTime() / 1000)
+    : now + 365 * 24 * 60 * 60;
 
-  const payload = {
-    ...passport,
-    iat: now,
-    exp,
-  };
+  const payload = { ...passport, iat: now, exp };
 
-  // Encode and sign
   const headerB64 = base64url(JSON.stringify(header));
   const payloadB64 = base64url(JSON.stringify(payload));
   const signingInput = `${headerB64}.${payloadB64}`;
 
-  const signature = sign(null, Buffer.from(signingInput, "utf-8"), privateKey);
-  const signatureB64 = base64url(signature);
+  // AEPSigner.sign() returns base64 — we need base64url for JWT
+  const sigBase64 = await signer.sign(Buffer.from(signingInput, "utf-8"));
+  const signatureB64url = sigBase64
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
 
-  return `${signingInput}.${signatureB64}`;
+  return `${signingInput}.${signatureB64url}`;
 }
 
 /** CLI entry point for `passport sign`. */
-export function signPassportCommand(args: string[]): number {
+export async function signPassportCommand(args: string[]): Promise<number> {
   if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
     console.log(
       [
         "Usage: agent-trust passport sign <artifact.json> --key <key-path> [--expires <duration>]",
         "",
         "Signs a Trust Passport JSON as a JWT using Ed25519 (EdDSA).",
+        "Signing uses @wasmagent/aep LocalEd25519Signer (@noble/ed25519).",
         "",
         "Options:",
         "  --key <path>       Path to Ed25519 private key (PEM or 64-char hex seed)",
@@ -141,15 +139,10 @@ export function signPassportCommand(args: string[]): number {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const next = args[i + 1];
-    if (arg === "--key" && next) {
-      keyPath = next;
-      i++;
-    } else if (arg === "--expires" && next) {
-      expires = next;
-      i++;
-    } else if (!arg.startsWith("--") && !artifactPath) {
-      artifactPath = arg;
-    } else if (!arg.startsWith("--")) {
+    if (arg === "--key" && next) { keyPath = next; i++; }
+    else if (arg === "--expires" && next) { expires = next; i++; }
+    else if (!arg.startsWith("--") && !artifactPath) { artifactPath = arg; }
+    else if (!arg.startsWith("--")) {
       console.error(`Error: unexpected argument "${arg}"`);
       return 1;
     }
@@ -165,7 +158,7 @@ export function signPassportCommand(args: string[]): number {
   }
 
   try {
-    const jwt = signPassport({ artifactPath, keyPath, expires });
+    const jwt = await signPassport({ artifactPath, keyPath, expires });
     console.log(jwt);
     return 0;
   } catch (err) {

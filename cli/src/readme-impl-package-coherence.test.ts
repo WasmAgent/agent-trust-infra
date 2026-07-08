@@ -1,6 +1,11 @@
 /**
  * README implementation-package coherence check (issue #66, org-coherence patrol).
  *
+ * NOTE: This is a DOCUMENTATION coherence test — it verifies that README.md
+ * contains the correct package name strings. It does NOT verify that this repo
+ * actually imports or integrates with @wasmagent/aep or @wasmagent/mcp-attestation.
+ * For a real code integration test, see aep-integration.test.ts.
+ *
  * The WasmAgent roadmap records that the MCP / Trust / Attestation
  * specifications and validators live in this repo, and that their runtime
  * implementation has shipped to `wasmagent-js` as the npm packages

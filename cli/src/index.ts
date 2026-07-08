@@ -29,7 +29,7 @@ const USAGE = [
   "  compliance-check <bom.json> --profile <name>  Validate AgentBOM against compliance profile",
 ].join("\n");
 
-export function runCommand(args: string[]): number {
+export function runCommand(args: string[]): number | Promise<number> {
   if (args.length === 0 || args[0] === "--help" || args[0] === "-h") {
     console.log(USAGE);
     return 0;
@@ -126,5 +126,10 @@ export function runCommand(args: string[]): number {
 const isDirectRun = process.argv[1]?.endsWith("index.ts") || process.argv[1]?.endsWith("index.js");
 if (isDirectRun) {
   const args = process.argv.slice(2);
-  process.exit(runCommand(args));
+  const result = runCommand(args);
+  if (result instanceof Promise) {
+    result.then(code => process.exit(code)).catch(err => { console.error(err); process.exit(1); });
+  } else {
+    process.exit(result);
+  }
 }

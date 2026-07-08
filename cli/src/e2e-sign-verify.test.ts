@@ -59,7 +59,7 @@ function writeKeyPairFiles(tempDir: string): { privateKeyPath: string; publicKey
 describe("E2E: sign → verify flow", () => {
   let tempDir: string;
 
-  test("full flow: generate keypair, sign passport, verify signature", () => {
+  test("full flow: generate keypair, sign passport, verify signature", async () => {
     tempDir = createTempDir();
     try {
       // Step 1: Generate Ed25519 keypair
@@ -71,7 +71,7 @@ describe("E2E: sign → verify flow", () => {
       writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
 
       // Step 3: Sign the passport
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
       });
@@ -97,7 +97,7 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("sign adds default expiry when not present", () => {
+  test("sign adds default expiry when not present", async () => {
     tempDir = createTempDir();
     try {
       const { privateKeyPath, publicKeyPath } = writeKeyPairFiles(tempDir);
@@ -112,7 +112,7 @@ describe("E2E: sign → verify flow", () => {
       const passportPath = join(tempDir, "passport-no-expiry.json");
       writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
 
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
       });
@@ -131,7 +131,7 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("sign with custom --expires duration", () => {
+  test("sign with custom --expires duration", async () => {
     tempDir = createTempDir();
     try {
       const { privateKeyPath, publicKeyPath } = writeKeyPairFiles(tempDir);
@@ -144,7 +144,7 @@ describe("E2E: sign → verify flow", () => {
       const passportPath = join(tempDir, "passport-custom-expiry.json");
       writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
 
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
         expires: "90d",
@@ -164,7 +164,7 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("verify fails with wrong public key", () => {
+  test("verify fails with wrong public key", async () => {
     tempDir = createTempDir();
     try {
       const { privateKeyPath } = writeKeyPairFiles(tempDir);
@@ -179,7 +179,7 @@ describe("E2E: sign → verify flow", () => {
       const passportPath = join(tempDir, "passport.json");
       writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
 
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
       });
@@ -197,7 +197,7 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("verify fails for expired passport (revocation proxy)", () => {
+  test("verify fails for expired passport (revocation proxy)", async () => {
     tempDir = createTempDir();
     try {
       const { privateKeyPath, publicKeyPath } = writeKeyPairFiles(tempDir);
@@ -212,7 +212,7 @@ describe("E2E: sign → verify flow", () => {
       const passportPath = join(tempDir, "passport-expired.json");
       writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
 
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
       });
@@ -231,7 +231,7 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("verify fails for malformed JWT", () => {
+  test("verify fails for malformed JWT", async () => {
     const result = verifySignedPassport({
       jwtString: "not.a.valid-jwt",
     });
@@ -240,7 +240,7 @@ describe("E2E: sign → verify flow", () => {
     expect(result.valid).toBe(false);
   });
 
-  test("verify with hex key format", () => {
+  test("verify with hex key format", async () => {
     tempDir = createTempDir();
     try {
       // Generate keypair
@@ -265,7 +265,7 @@ describe("E2E: sign → verify flow", () => {
       writeFileSync(passportPath, JSON.stringify(passport, null, 2), "utf-8");
 
       // Sign with hex private key
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateHexPath,
       });
@@ -285,7 +285,7 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("invalid passport structure is detected during verification", () => {
+  test("invalid passport structure is detected during verification", async () => {
     tempDir = createTempDir();
     try {
       const { privateKeyPath, publicKeyPath } = writeKeyPairFiles(tempDir);
@@ -299,7 +299,7 @@ describe("E2E: sign → verify flow", () => {
       const passportPath = join(tempDir, "passport-invalid.json");
       writeFileSync(passportPath, JSON.stringify(invalidPassport, null, 2), "utf-8");
 
-      const jwt = signPassport({
+      const jwt = await signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
       });

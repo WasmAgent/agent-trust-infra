@@ -39,7 +39,7 @@ The following capabilities are not captured by SBOM, AIBOM, or OWASP LLM Top 10 
 - **Tool registry and permissions**: A complete inventory of tools (MCP servers, built-in functions, plugins) alongside the permission scopes each tool requires.
 - **Prompt provenance**: Cryptographic hashes of system prompts and template references, enabling integrity verification of the instructions governing agent behavior.
 - **Permission boundaries**: Declared data access scopes, credential type references, and granted authority — the "blast radius" if the agent behaves unexpectedly.
-- **Runtime evidence links**: References to AEP (Agent Event Protocol) events and evidence hashes that ground the AgentBOM in observed runtime behavior rather than declared intent alone.
+- **Runtime evidence links**: References to AEP (Agent Evidence Protocol) events and evidence hashes that ground the AgentBOM in observed runtime behavior rather than declared intent alone.
 - **Composability**: AgentBOM is designed to be diffed between versions, making it suitable for change-review workflows and continuous compliance monitoring.
 
 ### AgentBOM as input to audit

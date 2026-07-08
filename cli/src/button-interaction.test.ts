@@ -94,9 +94,9 @@ function writeTmpFile(name: string, content: string): string {
 // ============================================================================
 
 describe("Button: --help", () => {
-  it("shows usage info when help flag is clicked", () => {
+  it("shows usage info when help flag is clicked", async () => {
     const spy = spyOn(console, "log");
-    const result = runCommand(["--help"]);
+    const result = await runCommand(["--help"]);
 
     expect(result).toBe(0);
     expect(spy).toHaveBeenCalled();
@@ -109,9 +109,9 @@ describe("Button: --help", () => {
     expect(output).toContain("mcp-posture inspect");
   });
 
-  it("shows usage info when -h flag is clicked", () => {
+  it("shows usage info when -h flag is clicked", async () => {
     const spy = spyOn(console, "log");
-    const result = runCommand(["-h"]);
+    const result = await runCommand(["-h"]);
 
     expect(result).toBe(0);
     expect(spy).toHaveBeenCalled();
@@ -119,9 +119,9 @@ describe("Button: --help", () => {
     expect(output).toContain("Usage:");
   });
 
-  it("shows usage info when no arguments are given", () => {
+  it("shows usage info when no arguments are given", async () => {
     const spy = spyOn(console, "log");
-    const result = runCommand([]);
+    const result = await runCommand([]);
 
     expect(result).toBe(0);
     expect(spy).toHaveBeenCalled();
@@ -135,9 +135,9 @@ describe("Button: --help", () => {
 // ============================================================================
 
 describe("Button: unknown command", () => {
-  it("returns error for unknown command", () => {
+  it("returns error for unknown command", async () => {
     const spy = spyOn(console, "error");
-    const result = runCommand(["nonexistent"]);
+    const result = await runCommand(["nonexistent"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -152,11 +152,11 @@ describe("Button: unknown command", () => {
 // ============================================================================
 
 describe("Button: passport validate", () => {
-  it("clicking validate on valid passport returns success", () => {
+  it("clicking validate on valid passport returns success", async () => {
     const path = writeTmpFile("valid-passport.json", JSON.stringify(VALID_PASSPORT));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["passport", "validate", path]);
+    const result = await runCommand(["passport", "validate", path]);
 
     expect(result).toBe(0);
 
@@ -166,10 +166,10 @@ describe("Button: passport validate", () => {
     expect(output).toContain("Passport is valid");
   });
 
-  it("clicking validate on missing file returns error", () => {
+  it("clicking validate on missing file returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "validate", "/nonexistent/btn-passport.json"]);
+    const result = await runCommand(["passport", "validate", "/nonexistent/btn-passport.json"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -177,11 +177,11 @@ describe("Button: passport validate", () => {
     expect(output).toContain("cannot read file");
   });
 
-  it("clicking validate on invalid JSON returns error", () => {
+  it("clicking validate on invalid JSON returns error", async () => {
     const path = writeTmpFile("bad-passport.json", "{ broken json");
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "validate", path]);
+    const result = await runCommand(["passport", "validate", path]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -189,10 +189,10 @@ describe("Button: passport validate", () => {
     expect(output).toContain("not valid JSON");
   });
 
-  it("clicking validate without path argument returns error", () => {
+  it("clicking validate without path argument returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "validate"]);
+    const result = await runCommand(["passport", "validate"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -200,7 +200,7 @@ describe("Button: passport validate", () => {
     expect(output).toContain("requires a <path> argument");
   });
 
-  it("clicking validate on expired passport returns error with expiry message", () => {
+  it("clicking validate on expired passport returns error with expiry message", async () => {
     const expired = {
       ...VALID_PASSPORT,
       validity: {
@@ -212,7 +212,7 @@ describe("Button: passport validate", () => {
     const logSpy = spyOn(console, "log");
     const errSpy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "validate", path]);
+    const result = await runCommand(["passport", "validate", path]);
 
     expect(result).toBe(1);
     const errOutput = errSpy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -228,11 +228,11 @@ describe("Button: passport validate", () => {
 // ============================================================================
 
 describe("Button: passport inspect", () => {
-  it("clicking inspect displays passport details", () => {
+  it("clicking inspect displays passport details", async () => {
     const path = writeTmpFile("inspect-passport.json", JSON.stringify(VALID_PASSPORT));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["passport", "inspect", path]);
+    const result = await runCommand(["passport", "inspect", path]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -243,7 +243,7 @@ describe("Button: passport inspect", () => {
     expect(output).toContain("Active");
   });
 
-  it("clicking inspect on expired passport shows EXPIRED status", () => {
+  it("clicking inspect on expired passport shows EXPIRED status", async () => {
     const expired = {
       ...VALID_PASSPORT,
       validity: {
@@ -254,17 +254,17 @@ describe("Button: passport inspect", () => {
     const path = writeTmpFile("inspect-expired.json", JSON.stringify(expired));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["passport", "inspect", path]);
+    const result = await runCommand(["passport", "inspect", path]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("EXPIRED");
   });
 
-  it("clicking inspect on non-existent file returns error", () => {
+  it("clicking inspect on non-existent file returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "inspect", "/nonexistent/btn-inspect.json"]);
+    const result = await runCommand(["passport", "inspect", "/nonexistent/btn-inspect.json"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -272,10 +272,10 @@ describe("Button: passport inspect", () => {
     expect(output).toContain("cannot read file");
   });
 
-  it("clicking inspect without path argument returns error", () => {
+  it("clicking inspect without path argument returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "inspect"]);
+    const result = await runCommand(["passport", "inspect"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -289,11 +289,11 @@ describe("Button: passport inspect", () => {
 // ============================================================================
 
 describe("Button: agentbom inspect", () => {
-  it("clicking inspect displays AgentBOM details", () => {
+  it("clicking inspect displays AgentBOM details", async () => {
     const path = writeTmpFile("inspect-bom.json", JSON.stringify(VALID_AGENTBOM));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["agentbom", "inspect", path]);
+    const result = await runCommand(["agentbom", "inspect", path]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -304,30 +304,30 @@ describe("Button: agentbom inspect", () => {
     expect(output).toContain("Tools:");
   });
 
-  it("clicking inspect on non-existent file returns error", () => {
+  it("clicking inspect on non-existent file returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "inspect", "/nonexistent/btn-bom.json"]);
+    const result = await runCommand(["agentbom", "inspect", "/nonexistent/btn-bom.json"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
   });
 
-  it("clicking inspect on invalid JSON returns error", () => {
+  it("clicking inspect on invalid JSON returns error", async () => {
     const path = writeTmpFile("bad-bom.json", "{ broken");
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "inspect", path]);
+    const result = await runCommand(["agentbom", "inspect", path]);
 
     expect(result).toBe(1);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("not valid JSON");
   });
 
-  it("clicking inspect without path argument returns error", () => {
+  it("clicking inspect without path argument returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "inspect"]);
+    const result = await runCommand(["agentbom", "inspect"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -341,19 +341,19 @@ describe("Button: agentbom inspect", () => {
 // ============================================================================
 
 describe("Button: agentbom diff", () => {
-  it("clicking diff on identical AgentBOMs returns clean", () => {
+  it("clicking diff on identical AgentBOMs returns clean", async () => {
     const oldPath = writeTmpFile("old-bom.json", JSON.stringify(VALID_AGENTBOM));
     const newPath = writeTmpFile("new-bom.json", JSON.stringify(VALID_AGENTBOM));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["agentbom", "diff", oldPath, newPath]);
+    const result = await runCommand(["agentbom", "diff", oldPath, newPath]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("No differences found");
   });
 
-  it("clicking diff on changed AgentBOMs shows changes", () => {
+  it("clicking diff on changed AgentBOMs shows changes", async () => {
     const changedBom = {
       ...VALID_AGENTBOM,
       tool_layer: [
@@ -365,7 +365,7 @@ describe("Button: agentbom diff", () => {
     const newPath = writeTmpFile("new-diff.json", JSON.stringify(changedBom));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["agentbom", "diff", oldPath, newPath]);
+    const result = await runCommand(["agentbom", "diff", oldPath, newPath]);
 
     expect(result).toBe(1);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -373,30 +373,30 @@ describe("Button: agentbom diff", () => {
     expect(output).toContain("write_file");
   });
 
-  it("clicking diff on non-existent old file returns error", () => {
+  it("clicking diff on non-existent old file returns error", async () => {
     const newPath = writeTmpFile("new-only.json", JSON.stringify(VALID_AGENTBOM));
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "diff", "/nonexistent/old.json", newPath]);
+    const result = await runCommand(["agentbom", "diff", "/nonexistent/old.json", newPath]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
   });
 
-  it("clicking diff on non-existent new file returns error", () => {
+  it("clicking diff on non-existent new file returns error", async () => {
     const oldPath = writeTmpFile("old-only.json", JSON.stringify(VALID_AGENTBOM));
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "diff", oldPath, "/nonexistent/new.json"]);
+    const result = await runCommand(["agentbom", "diff", oldPath, "/nonexistent/new.json"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
   });
 
-  it("clicking diff without enough arguments returns error", () => {
+  it("clicking diff without enough arguments returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "diff", "/tmp/a.json"]);
+    const result = await runCommand(["agentbom", "diff", "/tmp/a.json"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -410,11 +410,11 @@ describe("Button: agentbom diff", () => {
 // ============================================================================
 
 describe("Button: mcp-posture inspect", () => {
-  it("clicking inspect displays posture details", () => {
+  it("clicking inspect displays posture details", async () => {
     const path = writeTmpFile("inspect-posture.json", JSON.stringify(VALID_POSTURE));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["mcp-posture", "inspect", path]);
+    const result = await runCommand(["mcp-posture", "inspect", path]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -425,30 +425,30 @@ describe("Button: mcp-posture inspect", () => {
     expect(output).toContain("Tools:");
   });
 
-  it("clicking inspect on non-existent file returns error", () => {
+  it("clicking inspect on non-existent file returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["mcp-posture", "inspect", "/nonexistent/btn-posture.json"]);
+    const result = await runCommand(["mcp-posture", "inspect", "/nonexistent/btn-posture.json"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
   });
 
-  it("clicking inspect on invalid JSON returns error", () => {
+  it("clicking inspect on invalid JSON returns error", async () => {
     const path = writeTmpFile("bad-posture.json", "{ broken");
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["mcp-posture", "inspect", path]);
+    const result = await runCommand(["mcp-posture", "inspect", path]);
 
     expect(result).toBe(1);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
     expect(output).toContain("not valid JSON");
   });
 
-  it("clicking inspect without path argument returns error", () => {
+  it("clicking inspect without path argument returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["mcp-posture", "inspect"]);
+    const result = await runCommand(["mcp-posture", "inspect"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -456,7 +456,7 @@ describe("Button: mcp-posture inspect", () => {
     expect(output).toContain("requires a <path> argument");
   });
 
-  it("clicking inspect on posture with critical findings shows findings", () => {
+  it("clicking inspect on posture with critical findings shows findings", async () => {
     const riskyPosture = {
       ...VALID_POSTURE,
       risk_summary: [
@@ -481,7 +481,7 @@ describe("Button: mcp-posture inspect", () => {
     const path = writeTmpFile("risky-posture.json", JSON.stringify(riskyPosture));
     const spy = spyOn(console, "log");
 
-    const result = runCommand(["mcp-posture", "inspect", path]);
+    const result = await runCommand(["mcp-posture", "inspect", path]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
@@ -496,10 +496,10 @@ describe("Button: mcp-posture inspect", () => {
 // ============================================================================
 
 describe("Button: unknown subcommands", () => {
-  it("clicking unknown passport subcommand returns error", () => {
+  it("clicking unknown passport subcommand returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["passport", "nonexistent"]);
+    const result = await runCommand(["passport", "nonexistent"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -507,10 +507,10 @@ describe("Button: unknown subcommands", () => {
     expect(output).toContain("unknown passport subcommand");
   });
 
-  it("clicking unknown agentbom subcommand returns error", () => {
+  it("clicking unknown agentbom subcommand returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["agentbom", "nonexistent"]);
+    const result = await runCommand(["agentbom", "nonexistent"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -518,10 +518,10 @@ describe("Button: unknown subcommands", () => {
     expect(output).toContain("unknown agentbom subcommand");
   });
 
-  it("clicking unknown mcp-posture subcommand returns error", () => {
+  it("clicking unknown mcp-posture subcommand returns error", async () => {
     const spy = spyOn(console, "error");
 
-    const result = runCommand(["mcp-posture", "nonexistent"]);
+    const result = await runCommand(["mcp-posture", "nonexistent"]);
 
     expect(result).toBe(1);
     expect(spy).toHaveBeenCalled();
@@ -535,7 +535,7 @@ describe("Button: unknown subcommands", () => {
 // ============================================================================
 
 describe("Button: cross-command interaction", () => {
-  it("validates then inspects the same passport successfully", () => {
+  it("validates then inspects the same passport successfully", async () => {
     const path = writeTmpFile("cross-passport.json", JSON.stringify(VALID_PASSPORT));
 
     // Click validate button
@@ -552,7 +552,7 @@ describe("Button: cross-command interaction", () => {
     expect(inspectOutput).toContain("passport-btn-001");
   });
 
-  it("diffs AgentBOMs then inspects the new one", () => {
+  it("diffs AgentBOMs then inspects the new one", async () => {
     const oldBom = { ...VALID_AGENTBOM };
     const newBom = {
       ...VALID_AGENTBOM,
@@ -575,7 +575,7 @@ describe("Button: cross-command interaction", () => {
     expect(inspectResult).toBe(0);
   });
 
-  it("inspects posture and validates passport for the same agent", () => {
+  it("inspects posture and validates passport for the same agent", async () => {
     const passportPath = writeTmpFile("agent-passport.json", JSON.stringify(VALID_PASSPORT));
     const posturePath = writeTmpFile("agent-posture.json", JSON.stringify(VALID_POSTURE));
 
