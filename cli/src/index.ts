@@ -10,6 +10,7 @@ import { inspectMCPPostureCommand } from "./mcp-posture-inspect.js";
 import { chainCommand } from "./chain.js";
 import { complianceCheckCommand } from "./compliance-check.js";
 import { auditReportCommand } from "./audit-report.js";
+import { exportDashboardCommand } from "./export-dashboard.js";
 
 const USAGE = [
   "Usage: agent-trust <command> [args]",
@@ -27,6 +28,7 @@ const USAGE = [
   "  mcp-posture inspect <path> Inspect an MCP posture file",
   "  audit-report <bom.json>    Generate human-readable audit summary with evidence citations",
   "  compliance-check <bom.json> --profile <name>  Validate AgentBOM against compliance profile",
+  "  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard",
 ].join("\n");
 
 export function runCommand(args: string[]): number | Promise<number> {
@@ -116,6 +118,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === "compliance-check") {
     return complianceCheckCommand(args.slice(1));
+  }
+
+  if (args[0] === "export-dashboard") {
+    return exportDashboardCommand(args.slice(1));
   }
 
   console.error(`Error: unknown command "${args[0]}"`);
