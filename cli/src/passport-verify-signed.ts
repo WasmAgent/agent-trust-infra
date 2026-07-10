@@ -7,17 +7,13 @@
 import { createPublicKey, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateTrustPassport, isExpired } from "../../packages/trust-passport-core/src/index.js";
+import { validateTrustPassport, isExpired, isRecord } from "../../packages/trust-passport-core/src/index.js";
 
 /** Decode a base64url string to a Buffer. */
 function base64urlDecode(input: string): Buffer {
   // Add padding if needed
   const padded = input + "=".repeat((4 - (input.length % 4)) % 4);
   return Buffer.from(padded, "base64url");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /** Read an Ed25519 public key from PEM or raw hex format. */

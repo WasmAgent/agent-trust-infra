@@ -8,11 +8,7 @@
 import { LocalEd25519Signer } from "@wasmagent/aep";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { validateTrustPassport } from "../../packages/trust-passport-core/src/index.js";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+import { validateTrustPassport, isRecord } from "../../packages/trust-passport-core/src/index.js";
 
 /** Base64url encode a Buffer or Uint8Array or string. */
 function base64url(input: Buffer | Uint8Array | string): string {
@@ -85,8 +81,15 @@ export async function signPassport(options: SignOptions): Promise<string> {
   if (!isRecord(parsedPassport)) {
     throw new Error("Invalid passport format: root must be an object");
   }
-  const passport = parsedPassport;
 
+  // Validate structure before any mutation
+  const structureResult = validateTrustPassport(parsedPassport);
+  if (!structureResult.valid) {
+    throw new Error(`Invalid passport format: ${structureResult.errors.join("; ")}`);
+  }
+
+  // Now safely mutate after validation confirms correct shape
+  const passport = parsedPassport;
   const existingValidity = passport.validity;
   if (existingValidity !== undefined && !isRecord(existingValidity)) {
     throw new Error("Invalid passport format: validity must be an object");
@@ -96,11 +99,6 @@ export async function signPassport(options: SignOptions): Promise<string> {
     const expiryMs = expires ? parseDuration(expires) : 365 * 24 * 60 * 60 * 1000;
     validity.expires_at = new Date(Date.now() + expiryMs).toISOString();
     passport.validity = validity;
-  }
-
-  const structureResult = validateTrustPassport(passport);
-  if (!structureResult.valid) {
-    throw new Error(`Invalid passport format: ${structureResult.errors.join("; ")}`);
   }
 
   const seed = readKeySeed(resolve(keyPath));
