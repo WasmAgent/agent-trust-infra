@@ -285,10 +285,10 @@ describe("E2E: sign → verify flow", () => {
     }
   });
 
-  test("invalid passport structure is detected during verification", async () => {
+  test("sign rejects invalid passport structure", async () => {
     tempDir = createTempDir();
     try {
-      const { privateKeyPath, publicKeyPath } = writeKeyPairFiles(tempDir);
+      const { privateKeyPath } = writeKeyPairFiles(tempDir);
 
       // Create an invalid passport (missing required fields)
       const invalidPassport = {
@@ -299,21 +299,39 @@ describe("E2E: sign → verify flow", () => {
       const passportPath = join(tempDir, "passport-invalid.json");
       writeFileSync(passportPath, JSON.stringify(invalidPassport, null, 2), "utf-8");
 
-      const jwt = await signPassport({
+      await expect(signPassport({
         artifactPath: passportPath,
         keyPath: privateKeyPath,
-      });
-
-      const result = verifySignedPassport({
-        jwtString: jwt,
-        publicKeyPath,
-      });
-
-      expect(result.valid).toBe(false);
-      expect(result.structureValid).toBe(false);
-      expect(result.structureErrors.length).toBeGreaterThan(0);
+      })).rejects.toThrow("Invalid passport format");
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }
+  });
+
+  test("verify detects invalid passport structure in JWT payload", () => {
+    const headerB64 = Buffer.from(JSON.stringify({ alg: "EdDSA", typ: "JWT" }), "utf-8").toString("base64url");
+    const payloadB64 = Buffer.from(JSON.stringify({
+      passport_version: "0.1",
+      identity: { passport_id: "test" },
+    }), "utf-8").toString("base64url");
+    const jwt = `${headerB64}.${payloadB64}.invalid-signature`;
+
+    const result = verifySignedPassport({ jwtString: jwt });
+
+    expect(result.valid).toBe(false);
+    expect(result.structureValid).toBe(false);
+    expect(result.structureErrors.length).toBeGreaterThan(0);
+  });
+
+  test("verify rejects JWT payloads that are not JSON objects", () => {
+    const headerB64 = Buffer.from(JSON.stringify({ alg: "EdDSA", typ: "JWT" }), "utf-8").toString("base64url");
+    const payloadB64 = Buffer.from(JSON.stringify(["not", "a", "passport"]), "utf-8").toString("base64url");
+    const jwt = `${headerB64}.${payloadB64}.invalid-signature`;
+
+    const result = verifySignedPassport({ jwtString: jwt });
+
+    expect(result.valid).toBe(false);
+    expect(result.structureValid).toBe(false);
+    expect(result.errors).toContain("Failed to decode JWT payload");
   });
 });

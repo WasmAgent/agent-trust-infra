@@ -7,6 +7,72 @@ const PASSPORT_REQUIRED = ["passport_version", "identity", "validity", "revocati
 
 const VALID_COVERAGE_VALUES = ["selected_technical_evidence", "partial", "none"] as const;
 
+/** Check that a value is a plain object (not null, not array). */
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Collect errors if a required field is missing or not an object. */
+function expectObject(
+  d: Record<string, unknown>,
+  key: string,
+  errors: string[],
+): Record<string, unknown> | undefined {
+  if (!(key in d)) {
+    // already handled by required-field check
+    return undefined;
+  }
+  if (!isObject(d[key])) {
+    errors.push(`${key} must be an object`);
+    return undefined;
+  }
+  return d[key] as Record<string, unknown>;
+}
+
+/** Collect errors if a required string field is missing or not a string. */
+function expectString(
+  obj: Record<string, unknown>,
+  key: string,
+  path: string,
+  errors: string[],
+): string | undefined {
+  if (!(key in obj)) {
+    errors.push(`${path}: missing ${key}`);
+    return undefined;
+  }
+  if (typeof obj[key] !== "string") {
+    errors.push(`${path}.${key} must be a string`);
+    return undefined;
+  }
+  return obj[key] as string;
+}
+
+/**
+ * Collect errors if a required string field is missing, not a string,
+ * or does not match the optional date-time regex.
+ * The regex /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/ enforces
+ * ISO 8601 UTC ending in Z (no fractional seconds required, but allowed).
+ */
+function expectDateTimeString(
+  obj: Record<string, unknown>,
+  key: string,
+  path: string,
+  errors: string[],
+): void {
+  const raw = obj[key];
+  if (raw === undefined) {
+    errors.push(`${path}: missing ${key}`);
+    return;
+  }
+  if (typeof raw !== "string") {
+    errors.push(`${path}.${key} must be a string`);
+    return;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(raw)) {
+    errors.push(`${path}.${key} must be an ISO 8601 UTC date string (ending in Z)`);
+  }
+}
+
 export function validateTrustPassport(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return { valid: false, errors: ["root must be an object"] };
@@ -14,19 +80,57 @@ export function validateTrustPassport(data: unknown): ValidationResult {
   const d = data as Record<string, unknown>;
   const errors: string[] = [];
 
+  // --- Required top-level fields ---
   errors.push(...PASSPORT_REQUIRED.filter((k) => !(k in d)).map((k) => `missing required: ${k}`));
 
-  if ("passport_version" in d && d.passport_version !== "0.1") {
-    errors.push(`passport_version must be "0.1"`);
+  // --- passport_version ---
+  if ("passport_version" in d) {
+    if (typeof d.passport_version !== "string") {
+      errors.push('passport_version must be a string');
+    } else if (d.passport_version !== "0.1") {
+      errors.push(`passport_version must be "0.1"`);
+    }
   }
 
-  if (d.validity && typeof d.validity === "object") {
-    const v = d.validity as Record<string, unknown>;
-    ["issued_at", "expires_at"].forEach((k) => {
-      if (!(k in v)) errors.push(`validity: missing ${k}`);
-    });
+  // --- identity ---
+  const identity = expectObject(d, "identity", errors);
+  if (identity) {
+    expectString(identity, "passport_id", "identity", errors);
+    expectString(identity, "agent_id", "identity", errors);
+    expectString(identity, "agent_name", "identity", errors);
+    expectString(identity, "issuer", "identity", errors);
+    expectString(identity, "issuance_context", "identity", errors);
   }
 
+  // --- validity ---
+  const validity = expectObject(d, "validity", errors);
+  if (validity) {
+    expectDateTimeString(validity, "issued_at", "validity", errors);
+    expectDateTimeString(validity, "expires_at", "validity", errors);
+  }
+
+  // --- revocation ---
+  const revocation = expectObject(d, "revocation", errors);
+  if (revocation) {
+    if (!("revoked" in revocation)) {
+      errors.push("revocation: missing revoked");
+    } else if (typeof revocation.revoked !== "boolean") {
+      errors.push("revocation.revoked must be a boolean");
+    }
+    if (!("revocation_triggers" in revocation)) {
+      errors.push("revocation: missing revocation_triggers");
+    } else if (!Array.isArray(revocation.revocation_triggers)) {
+      errors.push("revocation.revocation_triggers must be an array");
+    }
+  }
+
+  // --- attestation ---
+  const attestation = expectObject(d, "attestation", errors);
+  if (attestation) {
+    expectString(attestation, "issuer", "attestation", errors);
+  }
+
+  // --- evidence_summary.framework_mappings coverage enum ---
   if (d.evidence_summary && typeof d.evidence_summary === "object") {
     const es = d.evidence_summary as Record<string, unknown>;
     if (Array.isArray(es.framework_mappings)) {

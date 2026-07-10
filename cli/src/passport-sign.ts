@@ -8,6 +8,11 @@
 import { LocalEd25519Signer } from "@wasmagent/aep";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { validateTrustPassport } from "../../packages/trust-passport-core/src/index.js";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 /** Base64url encode a Buffer or Uint8Array or string. */
 function base64url(input: Buffer | Uint8Array | string): string {
@@ -76,13 +81,26 @@ export async function signPassport(options: SignOptions): Promise<string> {
   const { artifactPath, keyPath, expires } = options;
 
   const passportRaw = readFileSync(resolve(artifactPath), "utf-8");
-  const passport = JSON.parse(passportRaw) as Record<string, unknown>;
+  const parsedPassport = JSON.parse(passportRaw) as unknown;
+  if (!isRecord(parsedPassport)) {
+    throw new Error("Invalid passport format: root must be an object");
+  }
+  const passport = parsedPassport;
 
-  const validity = (passport.validity ?? {}) as Record<string, unknown>;
-  if (!validity.expires_at) {
+  const existingValidity = passport.validity;
+  if (existingValidity !== undefined && !isRecord(existingValidity)) {
+    throw new Error("Invalid passport format: validity must be an object");
+  }
+  const validity = existingValidity ?? {};
+  if (!("expires_at" in validity)) {
     const expiryMs = expires ? parseDuration(expires) : 365 * 24 * 60 * 60 * 1000;
     validity.expires_at = new Date(Date.now() + expiryMs).toISOString();
     passport.validity = validity;
+  }
+
+  const structureResult = validateTrustPassport(passport);
+  if (!structureResult.valid) {
+    throw new Error(`Invalid passport format: ${structureResult.errors.join("; ")}`);
   }
 
   const seed = readKeySeed(resolve(keyPath));
@@ -90,7 +108,7 @@ export async function signPassport(options: SignOptions): Promise<string> {
 
   const header = { alg: "EdDSA", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
-  const expiresAtStr = (passport.validity as Record<string, unknown>)?.expires_at as string;
+  const expiresAtStr = typeof validity.expires_at === "string" ? validity.expires_at : undefined;
   const exp = expiresAtStr
     ? Math.floor(new Date(expiresAtStr).getTime() / 1000)
     : now + 365 * 24 * 60 * 60;
