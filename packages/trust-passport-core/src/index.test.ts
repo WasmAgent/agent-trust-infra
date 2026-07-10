@@ -84,6 +84,78 @@ describe("validateTrustPassport", () => {
     expect(result.errors).toContain('passport_version must be "0.1"');
   });
 
+  describe("passport_version type validation", () => {
+    it("rejects passport_version that is not a string", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, passport_version: 42 });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("passport_version must be a string");
+    });
+  });
+
+  describe("identity object validation", () => {
+    it("rejects identity that is not an object (string)", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: "not-an-object" });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity must be an object");
+    });
+
+    it("rejects identity that is an array", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: ["passport"] });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity must be an object");
+    });
+
+    it("rejects identity that is null", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: null });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity must be an object");
+    });
+
+    it("reports missing identity.passport_id", () => {
+      const { passport_id, ...identityRest } = VALID_PASSPORT.identity;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: identityRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity: missing passport_id");
+    });
+
+    it("reports missing identity.agent_id", () => {
+      const { agent_id, ...identityRest } = VALID_PASSPORT.identity;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: identityRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity: missing agent_id");
+    });
+
+    it("reports missing identity.agent_name", () => {
+      const { agent_name, ...identityRest } = VALID_PASSPORT.identity;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: identityRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity: missing agent_name");
+    });
+
+    it("reports missing identity.issuer", () => {
+      const { issuer, ...identityRest } = VALID_PASSPORT.identity;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: identityRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity: missing issuer");
+    });
+
+    it("reports missing identity.issuance_context", () => {
+      const { issuance_context, ...identityRest } = VALID_PASSPORT.identity;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, identity: identityRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity: missing issuance_context");
+    });
+
+    it("rejects non-string identity.passport_id", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        identity: { ...VALID_PASSPORT.identity, passport_id: 123 },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("identity.passport_id must be a string");
+    });
+  });
+
   describe("validity object", () => {
     it("requires issued_at", () => {
       const passport = {
@@ -103,6 +175,107 @@ describe("validateTrustPassport", () => {
       const result = validateTrustPassport(passport);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain("validity: missing expires_at");
+    });
+
+    it("rejects validity that is not an object", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, validity: "invalid" });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("validity must be an object");
+    });
+
+    it("rejects non-string issued_at", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        validity: { issued_at: 123, expires_at: "2026-09-26T00:00:00Z" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("validity.issued_at must be a string");
+    });
+
+    it("rejects malformed issued_at date string (no Z suffix)", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        validity: { issued_at: "2026-06-28", expires_at: "2026-09-26T00:00:00Z" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.includes("validity.issued_at must be an ISO 8601 UTC date string"))).toBe(true);
+    });
+
+    it("accepts ISO 8601 UTC dates with fractional seconds", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        validity: {
+          issued_at: "2026-06-28T00:00:00.000Z",
+          expires_at: "2026-09-26T00:00:00.500Z",
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe("revocation object validation", () => {
+    it("rejects revocation that is not an object", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, revocation: "invalid" });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("revocation must be an object");
+    });
+
+    it("reports missing revocation.revoked", () => {
+      const { revoked, ...revocationRest } = VALID_PASSPORT.revocation;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, revocation: revocationRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("revocation: missing revoked");
+    });
+
+    it("rejects non-boolean revocation.revoked", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: { revoked: "yes", revocation_triggers: [] },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("revocation.revoked must be a boolean");
+    });
+
+    it("reports missing revocation.revocation_triggers", () => {
+      const { revocation_triggers, ...revocationRest } = VALID_PASSPORT.revocation;
+      const result = validateTrustPassport({ ...VALID_PASSPORT, revocation: revocationRest });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("revocation: missing revocation_triggers");
+    });
+
+    it("rejects non-array revocation.revocation_triggers", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: { revoked: false, revocation_triggers: "not-array" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("revocation.revocation_triggers must be an array");
+    });
+  });
+
+  describe("attestation object validation", () => {
+    it("rejects attestation that is not an object", () => {
+      const result = validateTrustPassport({ ...VALID_PASSPORT, attestation: "invalid" });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("attestation must be an object");
+    });
+
+    it("reports missing attestation.issuer", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        attestation: {},
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("attestation: missing issuer");
+    });
+
+    it("rejects non-string attestation.issuer", () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        attestation: { issuer: 42 },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain("attestation.issuer must be a string");
     });
   });
 

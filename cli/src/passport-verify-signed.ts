@@ -16,6 +16,10 @@ function base64urlDecode(input: string): Buffer {
   return Buffer.from(padded, "base64url");
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 /** Read an Ed25519 public key from PEM or raw hex format. */
 export function readPublicKey(keyPath: string): ReturnType<typeof createPublicKey> {
   const raw = readFileSync(keyPath, "utf-8").trim();
@@ -100,7 +104,11 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
   // Decode header
   let header: Record<string, unknown>;
   try {
-    header = JSON.parse(base64urlDecode(headerB64).toString("utf-8"));
+    const decodedHeader = JSON.parse(base64urlDecode(headerB64).toString("utf-8")) as unknown;
+    if (!isRecord(decodedHeader)) {
+      throw new Error("header root is not an object");
+    }
+    header = decodedHeader;
   } catch {
     return {
       valid: false,
@@ -120,7 +128,11 @@ export function verifySignedPassport(options: VerifyOptions): VerifyResult {
   // Decode payload
   let payload: Record<string, unknown>;
   try {
-    payload = JSON.parse(base64urlDecode(payloadB64).toString("utf-8"));
+    const decodedPayload = JSON.parse(base64urlDecode(payloadB64).toString("utf-8")) as unknown;
+    if (!isRecord(decodedPayload)) {
+      throw new Error("payload root is not an object");
+    }
+    payload = decodedPayload;
   } catch {
     return {
       valid: false,
