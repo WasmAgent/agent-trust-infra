@@ -314,10 +314,16 @@ describe("generate bom command", () => {
   it("supports writing generated AgentBOM JSON to --out", () => {
     const agentDir = join(tmpDir, "out-agent");
     const outPath = join(tmpDir, "agentbom.json");
+    const previousCwd = process.cwd();
     mkdirSync(agentDir, { recursive: true });
     writeFileSync(join(agentDir, "package.json"), JSON.stringify({ name: "out-agent" }), "utf-8");
 
-    expect(runCommand(["generate", "bom", "--agent", agentDir, "--out", outPath])).toBe(0);
+    try {
+      process.chdir(tmpDir);
+      expect(runCommand(["generate", "bom", "--agent", agentDir, "--out", "agentbom.json"])).toBe(0);
+    } finally {
+      process.chdir(previousCwd);
+    }
 
     const bom = JSON.parse(readFileSync(outPath, "utf-8"));
     expect(validateAgentBOM(bom).valid).toBe(true);
@@ -326,6 +332,19 @@ describe("generate bom command", () => {
     expect(bom.permission_layer.granted_scopes).toEqual(
       expect.arrayContaining(["fs:read", "fs:write", "process:exec"]),
     );
+  });
+
+  it("rejects path traversal in generated AgentBOM --out filenames", () => {
+    const agentDir = join(tmpDir, "traversal-agent");
+    mkdirSync(agentDir, { recursive: true });
+    writeFileSync(join(agentDir, "package.json"), JSON.stringify({ name: "traversal-agent" }), "utf-8");
+
+    const spy = spyOn(console, "error");
+    expect(runCommand(["generate", "bom", "--agent", agentDir, "--out", "../agentbom.json"])).toBe(1);
+
+    const output = spy.mock.calls.map((c) => c.join(" ")).join("\n");
+    expect(output).toContain("unsafe output filename");
+    expect(existsSync(join(dirname(tmpDir), "agentbom.json"))).toBe(false);
   });
 
   it("rejects missing agent directories", () => {

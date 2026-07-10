@@ -29,6 +29,7 @@ interface ParsedGenerateArgs {
 }
 
 const USAGE = "Usage: agent-trust generate bom --agent <path> [--out <path>]";
+const SAFE_OUTPUT_FILENAME = /^[A-Za-z0-9._-]+$/;
 
 function parseGenerateArgs(args: string[]): ParsedGenerateArgs | null {
   let agentPath: string | undefined;
@@ -49,6 +50,23 @@ function parseGenerateArgs(args: string[]): ParsedGenerateArgs | null {
 
   if (!agentPath) return null;
   return { agentPath, outputPath };
+}
+
+function sanitizeOutputFilename(rawPath: string): string {
+  if (
+    rawPath.length === 0 ||
+    rawPath.includes("\0") ||
+    rawPath.includes("/") ||
+    rawPath.includes("\\") ||
+    rawPath === "." ||
+    rawPath === ".." ||
+    rawPath !== basename(rawPath) ||
+    !SAFE_OUTPUT_FILENAME.test(rawPath)
+  ) {
+    throw new Error(`unsafe output filename: ${rawPath}`);
+  }
+
+  return rawPath;
 }
 
 /**
@@ -342,7 +360,14 @@ export function generateAgentBOMCommand(args: string[]): number {
   // Output the AgentBOM JSON
   const output = `${JSON.stringify(agentbom, null, 2)}\n`;
   if (parsed.outputPath) {
-    writeFileSync(resolve(parsed.outputPath), output, "utf-8");
+    let outputFilename: string;
+    try {
+      outputFilename = sanitizeOutputFilename(parsed.outputPath);
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      return 1;
+    }
+    writeFileSync(resolve(outputFilename), output, "utf-8");
   } else {
     console.log(output.trimEnd());
   }
