@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateTrustPassport, isExpired, inspectTrustPassport } from "./index.js";
+import { validateTrustPassport, isExpired, inspectTrustPassport, isRecord } from "./index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -375,5 +375,67 @@ describe("inspectTrustPassport", () => {
     expect(output).toContain("2026-06-28T00:00:00Z");
     expect(output).toContain("2026-09-26T00:00:00Z");
     expect(output).toContain("Revoked:  false");
+  });
+});
+
+describe("isRecord", () => {
+  it("returns true for plain objects", () => {
+    expect(isRecord({})).toBe(true);
+    expect(isRecord({ a: 1 })).toBe(true);
+  });
+
+  it("returns false for non-objects", () => {
+    expect(isRecord(null)).toBe(false);
+    expect(isRecord(undefined)).toBe(false);
+    expect(isRecord("string")).toBe(false);
+    expect(isRecord(42)).toBe(false);
+    expect(isRecord(true)).toBe(false);
+  });
+
+  it("returns false for arrays", () => {
+    expect(isRecord([])).toBe(false);
+    expect(isRecord([1, 2, 3])).toBe(false);
+  });
+});
+
+describe("prototype pollution protection", () => {
+  it("rejects root __proto__ key via JSON.parse", () => {
+    // Object literal spread with __proto__ sets the prototype (not own property).
+    // JSON.parse makes it an own property — the real attack vector.
+    const base = JSON.stringify(VALID_PASSPORT);
+    const malicious = JSON.parse(base.slice(0, -1) + ',"__proto__":{"polluted":true}}');
+    const result = validateTrustPassport(malicious);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes("unsafe reserved keys"))).toBe(true);
+  });
+
+  it("rejects root constructor key", () => {
+    const result = validateTrustPassport({ ...VALID_PASSPORT, constructor: {} });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes("unsafe reserved keys"))).toBe(true);
+  });
+
+  it("rejects root prototype key", () => {
+    const result = validateTrustPassport({ ...VALID_PASSPORT, prototype: {} });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes("unsafe reserved keys"))).toBe(true);
+  });
+
+  it("rejects __proto__ in sub-objects (identity) via JSON.parse", () => {
+    const passport = JSON.parse(JSON.stringify(VALID_PASSPORT));
+    const identityJson = JSON.stringify(passport.identity);
+    passport.identity = JSON.parse(identityJson.slice(0, -1) + ',"__proto__":{"polluted":true}}');
+    const result = validateTrustPassport(passport);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes("identity contains unsafe reserved keys"))).toBe(true);
+  });
+
+  it("rejects constructor in sub-objects (validity)", () => {
+    const result = validateTrustPassport({
+      ...VALID_PASSPORT,
+      validity: { ...VALID_PASSPORT.validity, constructor: {} },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes("validity contains unsafe reserved keys"))).toBe(true);
   });
 });

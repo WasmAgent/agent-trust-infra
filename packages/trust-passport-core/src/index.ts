@@ -7,8 +7,10 @@ const PASSPORT_REQUIRED = ["passport_version", "identity", "validity", "revocati
 
 const VALID_COVERAGE_VALUES = ["selected_technical_evidence", "partial", "none"] as const;
 
+const hasOwn = Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
+
 /** Check that a value is a plain object (not null, not array). */
-function isObject(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -22,11 +24,16 @@ function expectObject(
     // already handled by required-field check
     return undefined;
   }
-  if (!isObject(d[key])) {
+  if (!isRecord(d[key])) {
     errors.push(`${key} must be an object`);
     return undefined;
   }
-  return d[key] as Record<string, unknown>;
+  const obj = d[key] as Record<string, unknown>;
+  if (hasOwn(obj, "__proto__") || hasOwn(obj, "constructor") || hasOwn(obj, "prototype")) {
+    errors.push(`${key} contains unsafe reserved keys (__proto__, constructor, or prototype)`);
+    return undefined;
+  }
+  return obj;
 }
 
 /** Collect errors if a required string field is missing or not a string. */
@@ -79,6 +86,11 @@ export function validateTrustPassport(data: unknown): ValidationResult {
   }
   const d = data as Record<string, unknown>;
   const errors: string[] = [];
+
+  // Guard against prototype pollution keys (own properties only)
+  if (hasOwn(d, "__proto__") || hasOwn(d, "constructor") || hasOwn(d, "prototype")) {
+    return { valid: false, errors: ["root contains unsafe reserved keys (__proto__, constructor, or prototype)"] };
+  }
 
   // --- Required top-level fields ---
   errors.push(...PASSPORT_REQUIRED.filter((k) => !(k in d)).map((k) => `missing required: ${k}`));
