@@ -29,7 +29,15 @@ interface ParsedGenerateArgs {
 }
 
 const USAGE = "Usage: agent-trust generate bom --agent <path> [--out <path>]";
-const SAFE_OUTPUT_FILENAME = /^[A-Za-z0-9._-]+$/;
+
+/**
+ * Safe output filename regex.
+ *
+ * Must start with an alphanumeric character to prevent filesystem-confusing
+ * names like `.`, `..`, `...`, or hidden dotfiles.  Dots in the body are
+ * allowed (e.g. `bom.json`) but consecutive dots are not.
+ */
+const SAFE_OUTPUT_FILENAME = /^[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/;
 
 function parseGenerateArgs(args: string[]): ParsedGenerateArgs | null {
   let agentPath: string | undefined;
@@ -53,16 +61,38 @@ function parseGenerateArgs(args: string[]): ParsedGenerateArgs | null {
 }
 
 function sanitizeOutputFilename(rawPath: string): string {
-  if (
-    rawPath.length === 0 ||
-    rawPath.includes("\0") ||
-    rawPath.includes("/") ||
-    rawPath.includes("\\") ||
-    rawPath === "." ||
-    rawPath === ".." ||
-    rawPath !== basename(rawPath) ||
-    !SAFE_OUTPUT_FILENAME.test(rawPath)
-  ) {
+  if (rawPath.length === 0) {
+    throw new Error("output filename must not be empty");
+  }
+
+  if (rawPath.includes("\0")) {
+    throw new Error("output filename contains null byte");
+  }
+
+  if (rawPath.includes("/") || rawPath.includes("\\")) {
+    throw new Error("output filename must not contain path separators");
+  }
+
+  // Guard against Windows drive-relative paths (e.g. C:file) that can bypass
+  // basename checks on non-Windows systems where colon is not a separator.
+  if (/^[A-Za-z]:[^\\/]/.test(rawPath)) {
+    throw new Error("output filename must not contain drive-relative prefix");
+  }
+
+  let name: string;
+  try {
+    name = basename(rawPath);
+  } catch (err) {
+    throw new Error(
+      `system error resolving filename: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  if (rawPath !== name) {
+    throw new Error(`unsafe output filename: ${rawPath}`);
+  }
+
+  if (!SAFE_OUTPUT_FILENAME.test(rawPath)) {
     throw new Error(`unsafe output filename: ${rawPath}`);
   }
 
@@ -367,7 +397,12 @@ export function generateAgentBOMCommand(args: string[]): number {
       console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
       return 1;
     }
-    writeFileSync(resolve(outputFilename), output, "utf-8");
+    // Write the safe filename to the current working directory explicitly.
+    // Using resolve() with a single argument would prepend process.cwd()
+    // implicitly, which is ambiguous on platforms with drive-relative paths.
+    // We make the CWD base explicit so the dependency is clear and
+    // platform-specific quirks cannot bypass the sanitization checks above.
+    writeFileSync(resolve(process.cwd(), outputFilename), output, "utf-8");
   } else {
     console.log(output.trimEnd());
   }
