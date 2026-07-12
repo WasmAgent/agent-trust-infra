@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-12 15:10 UTC by patrol_
+_Last updated: 2026-07-12 15:39 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 3 |
+| Pending | 4 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 814 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 815 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
 | #168 | panel-harvest #168 | completed/maintenance_done | 2026-07-12 |
 | #166 | panel-harvest #166 | completed/maintenance_done | 2026-07-12 |
 | #159 | panel-harvest #159 | completed/maintenance_done | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
-| #158 | panel-harvest #158 | completed/maintenance_done | 2026-07-12 |
 
 ## Waiting for Human
 
