@@ -1,23 +1,23 @@
 # Bot State
 
-_Last updated: 2026-07-12 18:10 UTC by patrol_
+_Last updated: 2026-07-12 18:39 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 3 |
+| Pending | 4 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 821 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 822 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
-| #161 | CLI: adaptive compliance rule weighting not implemented | completed/complexity_gate_split | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
+| #161 | CLI: adaptive compliance rule weighting not implemented | completed/complexity_gate_split | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
 
