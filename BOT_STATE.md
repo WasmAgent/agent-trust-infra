@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-12 18:39 UTC by patrol_
+_Last updated: 2026-07-12 19:08 UTC by patrol_
 
 ## Queue
 
@@ -9,7 +9,7 @@ _Last updated: 2026-07-12 18:39 UTC by patrol_
 | Pending | 4 |
 | Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 822 |
+| Completed/Merged (all time) | 823 |
 
 ## Recent Activity (last 5)
 
@@ -17,8 +17,8 @@ _Last updated: 2026-07-12 18:39 UTC by patrol_
 |---|---|---|---|
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
-| #161 | CLI: adaptive compliance rule weighting not implemented | completed/complexity_gate_split | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
+| #161 | CLI: adaptive compliance rule weighting not implemented | completed/complexity_gate_split | 2026-07-12 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-12 |
 
 ## Waiting for Human
