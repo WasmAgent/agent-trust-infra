@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateAgentBOM } from "../../packages/agentbom-core/src/index.js";
@@ -51,6 +51,119 @@ interface ComplianceProfile {
     updated_at?: string;
     documentation_url?: string;
   };
+}
+
+/**
+ * Entry in the violation history file used for adaptive weighting.
+ * Tracks repeat occurrences of the same violation across compliance check runs.
+ */
+export interface ViolationHistoryEntry {
+  /** Normalized key identifying the violation */
+  violationKey: string;
+  /** ISO timestamp of first occurrence */
+  firstSeen: string;
+  /** ISO timestamp of most recent occurrence */
+  lastSeen: string;
+  /** Total number of times this violation has been observed */
+  count: number;
+}
+
+/** Directory name for CLI state files (relative to CWD) */
+const HISTORY_DIR_NAME = ".trust-cli";
+/** File name for violation history persistence */
+const HISTORY_FILE_NAME = "history.json";
+
+/**
+ * Resolve the absolute path to the violation history file.
+ */
+export function getHistoryPath(): string {
+  return resolve(process.cwd(), HISTORY_DIR_NAME, HISTORY_FILE_NAME);
+}
+
+/**
+ * Load violation history from disk. Returns an empty record if the file
+ * does not exist or cannot be parsed.
+ */
+export function loadViolationHistory(): Record<string, ViolationHistoryEntry> {
+  try {
+    const raw = readFileSync(getHistoryPath(), "utf-8");
+    return JSON.parse(raw) as Record<string, ViolationHistoryEntry>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Persist violation history to disk. Creates the parent directory if needed.
+ */
+export function saveViolationHistory(history: Record<string, ViolationHistoryEntry>): void {
+  const path = getHistoryPath();
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(history, null, 2), "utf-8");
+}
+
+/**
+ * Produce a deterministic, normalized key for a violation message so that
+ * identical messages are tracked across runs.
+ */
+export function violationKey(message: string): string {
+  return message.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Apply adaptive weighting to a set of errors and warnings based on
+ * violation history.
+ *
+ * **Severity boosting**: warnings that have been observed in a previous run
+ * (count >= 2 after increment) are promoted to errors with a `[REPEAT]` prefix.
+ *
+ * The history record is **updated in place** — the caller is responsible for
+ * persisting it via {@link saveViolationHistory} when appropriate.
+ *
+ * @param errors   – Violations already classified as errors.
+ * @param warnings – Violations currently classified as warnings.
+ * @param history  – Mutable map of historical violation entries.
+ * @param now      – ISO-8601 timestamp for this run.
+ * @returns A new pair of error/warning arrays with boosting applied.
+ */
+export function applyAdaptiveWeighting(
+  errors: string[],
+  warnings: string[],
+  history: Record<string, ViolationHistoryEntry>,
+  now: string,
+): { errors: string[]; warnings: string[] } {
+  const boostedErrors: string[] = [...errors];
+  const remainingWarnings: string[] = [];
+
+  for (const warning of warnings) {
+    const key = violationKey(warning);
+    const existing = history[key];
+    if (existing) {
+      existing.count += 1;
+      existing.lastSeen = now;
+      if (existing.count >= 2) {
+        // Promote repeat warning to error
+        boostedErrors.push(`[REPEAT] ${warning}`);
+        continue;
+      }
+    } else {
+      history[key] = { violationKey: key, firstSeen: now, lastSeen: now, count: 1 };
+    }
+    remainingWarnings.push(warning);
+  }
+
+  for (const error of errors) {
+    const key = violationKey(error);
+    const existing = history[key];
+    if (existing) {
+      existing.count += 1;
+      existing.lastSeen = now;
+    } else {
+      history[key] = { violationKey: key, firstSeen: now, lastSeen: now, count: 1 };
+    }
+  }
+
+  return { errors: boostedErrors, warnings: remainingWarnings };
 }
 
 const SEVERITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
@@ -376,25 +489,35 @@ function checkAttestation(
 }
 
 export function complianceCheckCommand(args: string[]): number {
-  if (args.length < 3) {
-    console.error("Usage: agent-trust compliance-check <bom.json> --profile <name>");
+  // Extract optional --adaptive flag
+  const adaptiveIndex = args.indexOf("--adaptive");
+  const isAdaptive = adaptiveIndex !== -1;
+  const cleanArgs = isAdaptive
+    ? [...args.slice(0, adaptiveIndex), ...args.slice(adaptiveIndex + 1)]
+    : args;
+
+  if (cleanArgs.length < 3) {
+    console.error("Usage: agent-trust compliance-check <bom.json> --profile <name> [--adaptive]");
     console.error("");
     console.error("Available profiles:");
     console.error("  soc2-2024       SOC 2 Type II compliance (2024)");
     console.error("  iso27001-2022   ISO/IEC 27001:2022 compliance");
     console.error("  eidas-controlled eIDAS controlled digital identity services");
+    console.error("");
+    console.error("Options:");
+    console.error("  --adaptive      Enable adaptive compliance rule weighting based on violation history");
     return 1;
   }
 
-  const bomPath = args[0];
-  const profileArg = args[1];
+  const bomPath = cleanArgs[0];
+  const profileArg = cleanArgs[1];
 
   if (profileArg !== "--profile") {
     console.error(`Error: expected "--profile" argument, got "${profileArg}"`);
     return 1;
   }
 
-  const profileId = args[2];
+  const profileId = cleanArgs[2];
 
   // Load AgentBOM
   const resolvedBomPath = resolve(bomPath);
@@ -458,10 +581,24 @@ export function complianceCheckCommand(args: string[]): number {
 
   result.compliant = result.errors.length === 0;
 
+  // Apply adaptive compliance rule weighting if enabled
+  if (isAdaptive) {
+    const now = new Date().toISOString();
+    const history = loadViolationHistory();
+    const weighted = applyAdaptiveWeighting(result.errors, result.warnings, history, now);
+    result.errors = weighted.errors;
+    result.warnings = weighted.warnings;
+    saveViolationHistory(history);
+    result.compliant = result.errors.length === 0;
+  }
+
   // Output results
   console.log(`Compliance Check: ${profile.framework.name} ${profile.framework.version}`);
   console.log(`Profile: ${profile.profile_id}`);
   console.log(`AgentBOM: ${resolvedBomPath}`);
+  if (isAdaptive) {
+    console.log("Adaptive weighting: enabled");
+  }
   console.log("");
 
   if (result.passed_checks.length > 0) {

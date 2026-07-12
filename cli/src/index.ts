@@ -27,7 +27,7 @@ const USAGE = [
   "  generate bom --agent <path>  Generate AgentBOM JSON from agent directory (alias)",
   "  mcp-posture inspect <path> Inspect an MCP posture file",
   "  audit-report <bom.json>    Generate human-readable audit summary with evidence citations",
-  "  compliance-check <bom.json> --profile <name>  Validate AgentBOM against compliance profile",
+  "  compliance-check <bom.json> --profile <name> [--adaptive]  Validate AgentBOM against compliance profile",
   "  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard",
 ].join("\n");
 
