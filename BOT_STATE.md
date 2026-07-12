@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-12 10:09 UTC by patrol_
+_Last updated: 2026-07-12 10:40 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 9 |
+| Pending | 4 |
 | Active (running/reviewing) | 1 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 640 |
+| Blocked | 3 |
+| Completed/Merged (all time) | 659 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
-| #136 | [discussion] code-review: infra: undefined patrol instruc... | completed/panel_synthesized | 2026-07-12 |
-| #152 | [discussion] code-review: Incorrect import path breaks ap... | completed/panel_synthesized | 2026-07-12 |
-| #153 | [discussion] docs: Outdated signing dependency reference ... | completed/panel_synthesized | 2026-07-12 |
-| #157 | [discussion] explore: Machine-readable output mode in age... | completed/panel_synthesized | 2026-07-12 |
-| #155 | [discussion] docs: CLI command examples outdated in archi... | completed/panel_synthesized | 2026-07-12 |
+| #153 | panel-harvest #153 | completed/maintenance_done | 2026-07-12 |
+| #152 | panel-harvest #152 | completed/maintenance_done | 2026-07-12 |
+| #136 | panel-harvest #136 | completed/maintenance_done | 2026-07-12 |
+| #136 | [discussion] code-review: infra: undefined patrol instruc... | completed/panel_promoted | 2026-07-12 |
+| #152 | [discussion] code-review: Incorrect import path breaks ap... | completed/panel_promoted | 2026-07-12 |
 
 ## Waiting for Human
 
