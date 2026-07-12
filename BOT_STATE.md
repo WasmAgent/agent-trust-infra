@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-12 17:37 UTC by patrol_
+_Last updated: 2026-07-12 18:10 UTC by patrol_
 
 ## Queue
 
@@ -8,7 +8,7 @@ _Last updated: 2026-07-12 17:37 UTC by patrol_
 |---|---|
 | Pending | 3 |
 | Active (running/reviewing) | 0 |
-| Blocked | 0 |
+| Blocked | 1 |
 | Completed/Merged (all time) | 821 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-12 17:37 UTC by patrol_
 
 ## Waiting for Human
 
+- #169: Fix WasmAgent/agent-trust-infra#161 (CLI: adaptive compliance rule weighting not implemented): implement changes in src 
 - #168: [discussion] docs: docs: project-boundaries.md may misstate AEP scope
 - #166: [discussion] docs: docs: architecture.md signing dependency outdated
 - #162: trust-passport-core: content-addressable evidence storage API (hashEvidence/addFact) missing
@@ -32,7 +33,6 @@ _Last updated: 2026-07-12 17:37 UTC by patrol_
 - #157: [discussion] explore: Machine-readable output mode in agent-trust CLI
 - #156: [discussion] explore: Add Zod schema validation for all trust artifacts
 - #155: [discussion] docs: CLI command examples outdated in architecture.md
-- #153: [discussion] docs: Outdated signing dependency reference in architecture.md
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
