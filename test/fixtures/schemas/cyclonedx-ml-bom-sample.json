@@ -1,0 +1,226 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "serialNumber": "urn:uuid:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "metadata": {
+    "timestamp": "2026-06-29T00:00:00Z",
+    "tools": [
+      {
+        "vendor": "WasmAgent",
+        "name": "agent-trust-cli",
+        "version": "0.0.0-research"
+      }
+    ],
+    "component": {
+      "type": "ai-agent",
+      "name": "bscode agent",
+      "version": "0.1.0",
+      "bom-ref": "bscode-agent-demo-001",
+      "purl": "pkg:wasmagent/bscode-agent@0.1.0",
+      "properties": [
+        {
+          "name": "agent_id",
+          "value": "bscode-agent-demo-001"
+        },
+        {
+          "name": "deployment_context",
+          "value": "development"
+        },
+        {
+          "name": "generated_at",
+          "value": "2026-06-29T00:00:00Z"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "Read",
+      "version": "1.0",
+      "bom-ref": "tool-file-read",
+      "description": "File read tool with fs:read permission",
+      "properties": [
+        { "name": "tool_id", "value": "file-read" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "fs:read" },
+        { "name": "risk_signals", "value": "" }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "Write",
+      "version": "1.0",
+      "bom-ref": "tool-file-write",
+      "description": "File write tool with fs:write permission",
+      "properties": [
+        { "name": "tool_id", "value": "file-write" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "fs:write" },
+        { "name": "risk_signals", "value": "" }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "Edit",
+      "version": "1.0",
+      "bom-ref": "tool-file-edit",
+      "description": "File edit tool with fs:read and fs:write permissions",
+      "properties": [
+        { "name": "tool_id", "value": "file-edit" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "fs:read, fs:write" },
+        { "name": "risk_signals", "value": "" }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "Bash",
+      "version": "1.0",
+      "bom-ref": "tool-bash-exec",
+      "description": "Bash execution tool with process:exec, fs:read, fs:write permissions",
+      "properties": [
+        { "name": "tool_id", "value": "bash-exec" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "process:exec, fs:read, fs:write" },
+        { "name": "risk_signals", "value": "command_execution" }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "Grep",
+      "version": "1.0",
+      "bom-ref": "tool-content-grep",
+      "description": "Content search tool with fs:read permission",
+      "properties": [
+        { "name": "tool_id", "value": "content-grep" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "fs:read" },
+        { "name": "risk_signals", "value": "" }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "Glob",
+      "version": "1.0",
+      "bom-ref": "tool-file-glob",
+      "description": "File glob tool with fs:read permission",
+      "properties": [
+        { "name": "tool_id", "value": "file-glob" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "fs:read" },
+        { "name": "risk_signals", "value": "" }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "search_cloudflare_documentation",
+      "version": "1.0",
+      "bom-ref": "mcp-cloudflare-docs",
+      "description": "Cloudflare Docs MCP server for documentation search",
+      "properties": [
+        { "name": "tool_id", "value": "cloudflare-docs-mcp" },
+        { "name": "source", "value": "mcp" },
+        { "name": "mcp_server_id", "value": "cloudflare-docs" },
+        { "name": "permissions", "value": "network:outbound" },
+        { "name": "risk_signals", "value": "ssrf" }
+      ]
+    },
+    {
+      "type": "application",
+      "name": "create_or_update_pull_request",
+      "version": "1.0",
+      "bom-ref": "mcp-github",
+      "description": "GitHub MCP server for PR management",
+      "properties": [
+        { "name": "tool_id", "value": "github-mcp" },
+        { "name": "source", "value": "mcp" },
+        { "name": "mcp_server_id", "value": "github" },
+        { "name": "permissions", "value": "network:outbound, api:github" },
+        { "name": "risk_signals", "value": "exfiltration, privilege_escalation" }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "get_diagnostics",
+      "version": "1.0",
+      "bom-ref": "plugin-lsp-diagnostics",
+      "description": "LSP diagnostics plugin with fs:read permission",
+      "properties": [
+        { "name": "tool_id", "value": "lsp-diagnostics" },
+        { "name": "source", "value": "plugin" },
+        { "name": "permissions", "value": "fs:read" },
+        { "name": "risk_signals", "value": "" }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "name": "claude-sonnet-4-6",
+      "version": "2025-06",
+      "bom-ref": "model-claude-sonnet",
+      "description": "Anthropic Claude Sonnet 4-6 model used by the agent",
+      "properties": [
+        { "name": "provider", "value": "anthropic" },
+        { "name": "capabilities", "value": "tool_use, code_generation, code_review, file_editing" }
+      ]
+    },
+    {
+      "type": "file",
+      "name": "system_prompt",
+      "version": "1.0",
+      "bom-ref": "prompt-system",
+      "description": "System prompt used for agent configuration",
+      "properties": [
+        { "name": "system_prompt_hash", "value": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2" },
+        { "name": "template_ids", "value": "bscode-system-v1, bscode-implementer-v1" }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "bscode-agent-demo-001",
+      "dependsOn": ["model-claude-sonnet", "tool-file-read", "tool-file-write", "tool-file-edit", "tool-bash-exec", "tool-content-grep", "tool-file-glob", "mcp-cloudflare-docs", "mcp-github", "plugin-lsp-diagnostics"]
+    },
+    {
+      "ref": "mcp-cloudflare-docs",
+      "dependsOn": []
+    },
+    {
+      "ref": "mcp-github",
+      "dependsOn": []
+    }
+  ],
+  "compositions": [
+    {
+      "aggregate": "complete",
+      "assemblies": ["bscode-agent-demo-001"]
+    }
+  ],
+  "properties": [
+    {
+      "name": "granted_scopes",
+      "value": "fs:read, fs:write, process:exec, network:outbound, api:github"
+    },
+    {
+      "name": "data_access",
+      "value": "local_workspace, github_api"
+    },
+    {
+      "name": "credential_references",
+      "value": "github_token"
+    },
+    {
+      "name": "risk_summary",
+      "value": "4 risks: 1 high, 2 medium, 1 low"
+    },
+    {
+      "name": "generator",
+      "value": "agent-trust-infra/examples"
+    },
+    {
+      "name": "generator_version",
+      "value": "0.0.0-research"
+    }
+  ]
+}

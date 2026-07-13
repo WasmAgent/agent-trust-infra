@@ -1,0 +1,179 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyclonedx.org/schema/bom-1.5-ml-bom.schema.json",
+  "title": "CycloneDX ML-BOM Extension",
+  "description": "CycloneDX Bill of Materials v1.5 with Machine Learning Bill of Materials (ML-BOM) extension. This schema covers standard BOM fields plus ML-specific properties for model metadata, dataset references, and agent tool inventories.",
+  "type": "object",
+  "required": ["bomFormat", "specVersion", "version"],
+  "additionalProperties": true,
+  "properties": {
+    "bomFormat": {
+      "type": "string",
+      "enum": ["CycloneDX"],
+      "description": "Must be 'CycloneDX'"
+    },
+    "specVersion": {
+      "type": "string",
+      "enum": ["1.4", "1.5", "1.6"],
+      "description": "CycloneDX specification version"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "BOM version (monotonically increasing integer)"
+    },
+    "serialNumber": {
+      "type": "string",
+      "pattern": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "BOM serial number (urn:uuid format)"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "BOM creation timestamp in ISO 8601 format"
+        },
+        "tools": {
+          "type": "array",
+          "description": "Tools used to create the BOM",
+          "items": {
+            "type": "object",
+            "properties": {
+              "vendor": { "type": "string" },
+              "name": { "type": "string" },
+              "version": { "type": "string" }
+            }
+          }
+        },
+        "component": {
+          "type": "object",
+          "description": "The component that this BOM describes (the agent)",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["application", "library", "framework", "container", "operating-system", "device", "firmware", "file", "machine-learning-model", "data", "ai-agent"],
+              "description": "Component type"
+            },
+            "name": { "type": "string" },
+            "version": { "type": "string" },
+            "bom-ref": { "type": "string" },
+            "purl": { "type": "string" },
+            "properties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "value": { "type": "string" }
+                }
+              }
+            }
+          },
+          "required": ["type", "name"]
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "description": "List of components (tools, libraries, models, datasets)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["application", "library", "framework", "container", "operating-system", "device", "firmware", "file", "machine-learning-model", "data", "ai-agent"],
+            "description": "Component type (use 'machine-learning-model' for ML models, 'data' for datasets, 'ai-agent' for AI agents)"
+          },
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "bom-ref": { "type": "string" },
+          "purl": { "type": "string" },
+          "description": { "type": "string" },
+          "licenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "license": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "properties": {
+            "type": "array",
+            "description": "ML-BOM extension: custom properties for model metadata, agent identity, tool inventory, permissions, and risk assessment",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          },
+          "externalReferences": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": { "type": "string" },
+                "type": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["type", "name"]
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Dependency graph between components",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": { "type": "string" },
+          "dependsOn": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["ref"]
+      }
+    },
+    "compositions": {
+      "type": "array",
+      "description": "Aggregate or compositions of components",
+      "items": {
+        "type": "object",
+        "properties": {
+          "aggregate": {
+            "type": "string",
+            "enum": ["complete", "incomplete", "complete_first_party_only", "incomplete_first_party_only", "complete_third_party_only", "incomplete_third_party_only", "unknown"]
+          },
+          "assemblies": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "properties": {
+      "type": "array",
+      "description": "ML-BOM extension: top-level properties for the entire BOM (agent_id, deployment context, risk summary)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "value": { "type": "string" }
+        }
+      }
+    }
+  }
+}

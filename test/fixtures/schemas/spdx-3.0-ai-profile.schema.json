@@ -1,0 +1,290 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spdx.org/schema/3.0/spdx-3.0-ai-profile.schema.json",
+  "title": "SPDX 3.0 AI and Dataset Profile",
+  "description": "SPDX 3.0 with AI and Dataset profile extensions. Covers software, AI model, and dataset packages as defined in the SPDX 3.0 specification (AI & Dataset Profiles).",
+  "type": "object",
+  "required": ["spdxVersion", "dataLicense", "creationInfo", "name"],
+  "additionalProperties": true,
+  "properties": {
+    "spdxVersion": {
+      "type": "string",
+      "enum": ["SPDX-3.0", "SPDX-2.3"],
+      "description": "SPDX specification version (SPDX-3.0 for AI profile)"
+    },
+    "dataLicense": {
+      "type": "string",
+      "description": "License under which the SPDX data is published (typically 'CC0-1.0')"
+    },
+    "name": {
+      "type": "string",
+      "description": "SPDX document name"
+    },
+    "documentNamespace": {
+      "type": "string",
+      "description": "Unique namespace for the SPDX document (URI)"
+    },
+    "creationInfo": {
+      "type": "object",
+      "required": ["created"],
+      "additionalProperties": true,
+      "properties": {
+        "created": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "Document creation timestamp in ISO 8601 format"
+        },
+        "creators": {
+          "type": "array",
+          "description": "Entities that created the SPDX document",
+          "items": {
+            "type": "string",
+            "description": "Tool: vendor-name or Person: name or Organization: name"
+          }
+        },
+        "comment": {
+          "type": "string",
+          "description": "Comment about the document creation"
+        }
+      }
+    },
+    "packages": {
+      "type": "array",
+      "description": "List of software, AI model, and dataset packages",
+      "items": {
+        "type": "object",
+        "required": ["name", "SPDXID"],
+        "additionalProperties": true,
+        "properties": {
+          "SPDXID": {
+            "type": "string",
+            "pattern": "^SPDXRef-[A-Za-z0-9.-]+$",
+            "description": "Unique SPDX identifier for the package (SPDXRef- prefix)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Package name"
+          },
+          "versionInfo": {
+            "type": "string",
+            "description": "Package version"
+          },
+          "packageFileName": {
+            "type": "string",
+            "description": "Package file name"
+          },
+          "supplier": {
+            "type": "string",
+            "description": "Supplier of the package"
+          },
+          "originator": {
+            "type": "string",
+            "description": "Originator of the package"
+          },
+          "downloadLocation": {
+            "type": "string",
+            "description": "Download location URL"
+          },
+          "filesAnalyzed": {
+            "type": "boolean",
+            "description": "Whether files were analyzed"
+          },
+          "packageVerificationCode": {
+            "type": "object",
+            "properties": {
+              "packageVerificationCodeValue": {
+                "type": "string"
+              }
+            }
+          },
+          "checksums": {
+            "type": "array",
+            "description": "Checksums for the package",
+            "items": {
+              "type": "object",
+              "properties": {
+                "algorithm": {
+                  "type": "string",
+                  "enum": ["SHA1", "SHA256", "SHA512", "MD5", "SHA3-256", "SHA3-512", "BLAKE2b-256", "BLAKE2b-512", "BLAKE3"]
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": ["algorithm", "value"]
+            }
+          },
+          "licenseConcluded": {
+            "type": "string",
+            "description": "Concluded license for the package (SPDX license expression)"
+          },
+          "licenseDeclared": {
+            "type": "string",
+            "description": "Declared license for the package"
+          },
+          "description": {
+            "type": "string",
+            "description": "Package description"
+          },
+          "externalRefs": {
+            "type": "array",
+            "description": "External references (including AI profile-specific references)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "referenceCategory": {
+                  "type": "string",
+                  "enum": ["SECURITY", "PACKAGE-MANAGER", "PERSISTENT-ID", "OTHER", "AI-MODEL", "DATA-SET"],
+                  "description": "Reference category (AI-MODEL and DATA-SET are AI profile extensions)"
+                },
+                "referenceType": {
+                  "type": "string",
+                  "description": "Reference type (e.g., 'purl', 'cpe23', 'swid')"
+                },
+                "referenceLocator": {
+                  "type": "string",
+                  "description": "The actual reference locator"
+                }
+              }
+            }
+          },
+          "builtDate": {
+            "type": "string",
+            "description": "Date when the package was built"
+          },
+          "releaseDate": {
+            "type": "string",
+            "description": "Date when the package was released"
+          },
+          "validUntilDate": {
+            "type": "string",
+            "description": "Date until which the package is valid"
+          },
+          "attributionTexts": {
+            "type": "array",
+            "description": "Attribution text entries",
+            "items": { "type": "string" }
+          },
+          "primaryPackagePurpose": {
+            "type": "string",
+            "enum": ["APPLICATION", "FRAMEWORK", "LIBRARY", "CONTAINER", "OPERATING-SYSTEM", "DEVICE", "FIRMWARE", "SOURCE", "FILE", "INSTALL", "ARCHIVE", "AI-MODEL", "DATA-SET", "AI-AGENT"],
+            "description": "Primary purpose of the package (AI-MODEL, DATA-SET, AI-AGENT are AI profile extensions)"
+          },
+          "properties": {
+            "type": "array",
+            "description": "Arbitrary key-value properties for extensibility (used for agent identity, tool inventory, permissions, risk assessment)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "description": "Relationships between packages and/or files",
+      "items": {
+        "type": "object",
+        "required": ["spdxElementId", "relationshipType", "relatedSpdxElement"],
+        "properties": {
+          "spdxElementId": {
+            "type": "string",
+            "description": "Source SPDX element ID"
+          },
+          "relationshipType": {
+            "type": "string",
+            "enum": ["DESCRIBES", "DESCRIBED_BY", "CONTAINS", "CONTAINED_BY", "DEPENDS_ON", "DEPENDENCY_OF", "DEPENDENCY_MANIFEST_OF", "BUILD_DEPENDENCY_OF", "DEV_DEPENDENCY_OF", "OPTIONAL_DEPENDENCY_OF", "PROVIDED_DEPENDENCY_OF", "TEST_DEPENDENCY_OF", "RUNTIME_DEPENDENCY_OF", "EXAMPLE_OF", "GENERATES", "GENERATED_FROM", "ANCESTOR_OF", "DESCENDANT_OF", "VARIANT_OF", "DISTRIBUTION_ARTIFACT", "PATCH_FOR", "PATCH_APPLIED", "COPY_OF", "FILE_ADDED", "FILE_DELETED", "FILE_MODIFIED", "EXPANDED_FROM_ARCHIVE", "DYNAMIC_LINK", "STATIC_LINK", "DATA_FILE_OF", "TEST_CASE_OF", "BUILD_TOOL_OF", "DEV_TOOL_OF", "TEST_OF", "HAS_PREREQUISITE", "METAFILE_OF", "PACKAGE_OF", "AMENDS", "PREREQUISITE_FOR", "HAS_DEPENDENCY", "DEPENDENCY_GRAPH_ROOT"],
+            "description": "Type of relationship"
+          },
+          "relatedSpdxElement": {
+            "type": "string",
+            "description": "Target SPDX element ID"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment about the relationship"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Files included in the SPDX document",
+      "items": {
+        "type": "object",
+        "required": ["fileName", "SPDXID"],
+        "properties": {
+          "SPDXID": { "type": "string" },
+          "fileName": { "type": "string" },
+          "fileTypes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "checksums": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "algorithm": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          },
+          "licenseConcluded": { "type": "string" },
+          "licenseInfoInFiles": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "hasExtractedLicensingInfos": {
+      "type": "array",
+      "description": "Extracted licensing information",
+      "items": {
+        "type": "object",
+        "properties": {
+          "licenseId": { "type": "string" },
+          "extractedText": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "description": "Annotations on the SPDX document or elements",
+      "items": {
+        "type": "object",
+        "properties": {
+          "annotationDate": { "type": "string" },
+          "annotationType": {
+            "type": "string",
+            "enum": ["OTHER", "REVIEW", "AI_TRAINING_DATA", "AI_MODEL_CARD"]
+          },
+          "annotator": { "type": "string" },
+          "comment": { "type": "string" }
+        }
+      }
+    },
+    "snippets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "SPDXID": { "type": "string" },
+          "snippetFromFile": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "documentDescribes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SPDX element IDs that this document describes"
+    }
+  }
+}
