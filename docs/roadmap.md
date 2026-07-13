@@ -44,13 +44,54 @@ checklist.
 The following items are **not yet shipped**. They are tracked as follow-up
 issues and listed here as the active roadmap.
 
+### Phase 5 — Regulatory alignment (time-sensitive)
+
+External deadlines drive this phase. Items with issue numbers are already tracked.
+
+- [ ] **#171** docs: `specs/agentbom/ai-act-annex-iv-mapping.md` — AgentBOM field ↔
+      EU AI Act Annex IV technical documentation requirements table. Citable by
+      compliance teams before 2026-08-02 deadline.
+- [ ] **#170** feat: AgentBOM schema — add "action pathway" fields
+      (`tool_skills`, `prompt_version`, `policy_definitions`, `workflow_definitions`)
+      per Oxford/Cisco arXiv 2026-03 proposal. Positions AgentBOM ahead of
+      CycloneDX ML-BOM standardization. (PR #179 open)
+- [ ] **#173** feat: MCP Posture schema adaption for MCP 2026-07-28 stateless
+      model, audience-bound token field, MCP-Method/MCP-Name header risk entries.
+      (PR #174 open)
+- [ ] **#172** test: replace doc-string coherence tests with CycloneDX/SPDX 3.0
+      schema conformance tests. (PRs #176, #178 open)
+- [ ] docs: `specs/mcp-posture/owasp-alignment.md` — cross-reference MCP Posture
+      risk taxonomy with OWASP Agentic Top 10 2026 (ASI01–ASI10). Required for
+      security teams to evaluate the posture model.
+- [ ] feat: compliance profile — `eu-ai-act-annex-iv.json` for high-risk AI systems
+      mapping AgentBOM fields to Annex IV requirements.
+
+### In-flight (previously listed)
+
 - [ ] Federation with `open-agent-audit` / `trace-pipeline` for shared evidence
       and audit-report plumbing
 - [ ] Cryptographic Trust Passport signing (signed, revocable, expiring trust
-      state beyond the current reference validity model)
+      state beyond the current reference validity model; consider Sigstore/in-toto
+      rather than self-rolled PKI)
 - [ ] Static site for [`papers/`](../papers) so the technical reports are
       browseable on the web
 - [ ] Apply split criteria (see below) once individual artifacts stabilize
+
+### Phase 6 — Production hardening (when research preview graduates)
+
+- [ ] `@wasmagent/trust-cli` npm publish with binary builds (Linux/macOS/Windows)
+- [ ] `@wasmagent/trust-runtime` npm publish with TypeScript definitions
+- [ ] Renewal and revocation model for Trust Passport (triggers, revocation list)
+- [ ] Trust Passport integration with `open-agent-audit` audit report pipeline
+- [ ] Compliance profile registry — `soc2-2024`, `iso27001-2022`, `eidas-controlled`
+      with verified mapping to actual regulatory text (not just names)
+
+### Phase 7 — Ecosystem
+
+- [ ] AgentBOM as standalone specification repo (if external adoption warrants)
+- [ ] MCP Posture as standalone MCP security product (if demand appears)
+- [ ] Trust Passport as product module under Trustavo (trustavo.com/passport)
+- [ ] Cross-org standard: propose AgentBOM to OpenSSF or similar body
 
 ## Future: split criteria
 
