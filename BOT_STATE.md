@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-13 04:17 UTC by patrol_
+_Last updated: 2026-07-13 04:47 UTC by patrol_
 
 ## Queue
 
@@ -8,18 +8,18 @@ _Last updated: 2026-07-13 04:17 UTC by patrol_
 |---|---|
 | Pending | 5 |
 | Active (running/reviewing) | 0 |
-| Blocked | 2 |
-| Completed/Merged (all time) | 845 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 848 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
+| #177 | Fix WasmAgent/agent-trust-infra#173 ([URGENT] mcp-posture... | merged/auto_closed_resolved | 2026-07-13 |
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
 | #171 | docs: produce AgentBOM to EU AI Act Annex IV technical do... | merged/merged | 2026-07-13 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
-| #170 | feat: extend AgentBOM schema with action-pathway fields (... | completed/complexity_gate_split | 2026-07-13 |
-| #172 | test: replace doc-string coherence tests with CycloneDX/S... | completed/complexity_gate_split | 2026-07-13 |
-| #173 | [URGENT] mcp-posture: adapt schema for MCP 2026-07-28 sta... | completed/complexity_gate_split | 2026-07-13 |
 
 ## Waiting for Human
 
