@@ -1,15 +1,15 @@
 # Bot State
 
-_Last updated: 2026-07-13 06:16 UTC by patrol_
+_Last updated: 2026-07-13 06:41 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
 | Pending | 4 |
-| Active (running/reviewing) | 1 |
-| Blocked | 0 |
-| Completed/Merged (all time) | 851 |
+| Active (running/reviewing) | 0 |
+| Blocked | 1 |
+| Completed/Merged (all time) | 852 |
 
 ## Recent Activity (last 5)
 
@@ -19,7 +19,7 @@ _Last updated: 2026-07-13 06:16 UTC by patrol_
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
-| #177 | Fix WasmAgent/agent-trust-infra#173 ([URGENT] mcp-posture... | merged/auto_closed_resolved | 2026-07-13 |
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
 
 ## Waiting for Human
 
