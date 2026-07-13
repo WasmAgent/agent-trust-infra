@@ -12,7 +12,8 @@ lives in `wasmagent-js`:
 | AEP evidence emission + signing | `@wasmagent/aep` | ✗ |
 | AgentBOM / MCP Posture / Trust Passport schemas + validators | **this repo** | — |
 | Compliance profile definitions | **this repo** | — |
-| `agent-trust` CLI (validate, sign, audit-report) | **this repo** | — |
+| `agent-trust` CLI (validate, sign, compliance audit-report) | **this repo** | — |
+| AEP evidence quality audit-report (evidence health / training eligibility) | `trace-pipeline` / `evomerge audit-report` | ✗ |
 
 If a feature can be expressed as a schema, validator, CLI command, or
 specification document, it belongs here. If it requires runtime hooks into
@@ -85,6 +86,12 @@ concerns:
 - **Competing with MS Agent Governance Toolkit on control-plane features**:
   they decide "should"; we document "what the agent is made of." The
   complementary framing is more credible.
+- **Re-implementing trace-pipeline capabilities**: `evomerge audit-report`
+  produces AEP evidence quality reports (evidence health, policy risk,
+  training eligibility). `trust-cli audit-report` produces compliance
+  framework mapping reports (AgentBOM vs SOC2/ISO27001/EU AI Act).
+  Different outputs, similar command names — never conflate them or
+  duplicate trace-pipeline's evidence scoring logic here.
 
 ## Priority order
 1. AI Act Annex IV mapping table — citable today, before the deadline
