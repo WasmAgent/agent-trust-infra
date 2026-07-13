@@ -566,4 +566,67 @@ describe("addFact", () => {
     };
     expect(fact.recorded_at.length).toBeGreaterThan(0);
   });
+
+  it("overwrites evidence_facts when it is an Array", () => {
+    const passport = { ...VALID_PASSPORT, evidence_facts: ["unsafe", "data"] };
+    addFact(passport, "fact-001", "content");
+    expect(Array.isArray(passport.evidence_facts)).toBe(false);
+    expect(passport.evidence_facts).not.toEqual(["unsafe", "data"]);
+    const fact = (passport.evidence_facts as Record<string, unknown>)["fact-001"] as {
+      content_hash: string;
+    };
+    expect(fact).toBeDefined();
+    expect(fact.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it("overwrites evidence_facts when it has an unsafe __proto__ key", () => {
+    const passport = {
+      ...VALID_PASSPORT,
+      evidence_facts: JSON.parse(
+        JSON.stringify({ existing: { content_hash: "sha256:old", recorded_at: "2025-01-01T00:00:00Z" } }).slice(0, -1) +
+          ',"__proto__":{"polluted":true}}',
+      ),
+    };
+    addFact(passport, "fact-001", "content");
+    expect(passport.evidence_facts).not.toHaveProperty("__proto__");
+    const fact = (passport.evidence_facts as Record<string, unknown>)["fact-001"] as {
+      content_hash: string;
+    };
+    expect(fact).toBeDefined();
+    expect(fact.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it("overwrites evidence_facts when it has a constructor key", () => {
+    const passport = {
+      ...VALID_PASSPORT,
+      evidence_facts: {
+        existing: { content_hash: "sha256:old", recorded_at: "2025-01-01T00:00:00Z" },
+        constructor: {},
+      },
+    };
+    addFact(passport, "fact-001", "content");
+    expect(passport.evidence_facts).not.toHaveProperty("constructor");
+    const fact = (passport.evidence_facts as Record<string, unknown>)["fact-001"] as {
+      content_hash: string;
+    };
+    expect(fact).toBeDefined();
+    expect(fact.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
+
+  it("overwrites evidence_facts when it has a prototype key", () => {
+    const passport = {
+      ...VALID_PASSPORT,
+      evidence_facts: {
+        existing: { content_hash: "sha256:old", recorded_at: "2025-01-01T00:00:00Z" },
+        prototype: {},
+      },
+    };
+    addFact(passport, "fact-001", "content");
+    expect(passport.evidence_facts).not.toHaveProperty("prototype");
+    const fact = (passport.evidence_facts as Record<string, unknown>)["fact-001"] as {
+      content_hash: string;
+    };
+    expect(fact).toBeDefined();
+    expect(fact.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  });
 });
