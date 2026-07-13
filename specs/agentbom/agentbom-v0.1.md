@@ -8,7 +8,7 @@
 
 AgentBOM is a bill of materials for AI agents.
 
-It describes the deployed composition of an agent, including model dependencies, MCP servers, tool surfaces, prompt references, permission scopes, data access boundaries, evidence references, and known risk signals.
+It describes the deployed composition of an agent, including model dependencies, MCP servers, tool surfaces, prompt references, permission scopes, data access boundaries, evidence references, known risk signals, and action pathway definitions (tool skills, prompt versions, workflow definitions).
 
 AgentBOM is not an audit report. It is an input artifact for audit, posture analysis, procurement review, and trust passport issuance.
 
@@ -40,6 +40,7 @@ The following capabilities are not captured by SBOM, AIBOM, or OWASP LLM Top 10 
 - **Prompt provenance**: Cryptographic hashes of system prompts and template references, enabling integrity verification of the instructions governing agent behavior.
 - **Permission boundaries**: Declared data access scopes, credential type references, and granted authority — the "blast radius" if the agent behaves unexpectedly.
 - **Runtime evidence links**: References to AEP (Agent Evidence Protocol) events and evidence hashes that ground the AgentBOM in observed runtime behavior rather than declared intent alone.
+- **Action pathway definitions**: Structured descriptions of tool skills, versioned prompt definitions, and workflow sequences that define how the agent orchestrates its capabilities to accomplish tasks.
 - **Composability**: AgentBOM is designed to be diffed between versions, making it suitable for change-review workflows and continuous compliance monitoring.
 
 ### AgentBOM as input to audit
@@ -73,6 +74,7 @@ AgentBOM v0.1
 ├── evidence_layer   — AEP event references, runtime evidence hashes
 ├── audit_log        — structured audit trail entries
 ├── risk_layer       — known risk signals, open findings
+├── action_pathway   — tool skills, prompt versions, workflow definitions
 └── attestation      — generator, timestamp, hash
 ```
 
@@ -155,6 +157,54 @@ Array of risk entries:
 | `category` | string | yes | Risk category |
 | `description` | string | yes | Risk description |
 | `status` | string | yes | `open`, `mitigated`, `accepted` |
+
+## action_pathway
+
+Action pathway definitions describe how the agent orchestrates its capabilities — which skills its tools fulfill, what versioned prompts guide behavior, and what workflows define multi-step action sequences.
+
+### action_pathway.tool_skills
+
+Array of skill entries:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `skill_id` | string | yes | Unique skill identifier |
+| `skill_name` | string | yes | Human-readable skill name |
+| `description` | string | yes | Skill description |
+| `tool_ids` | string[] | no | Tool IDs that fulfill this skill |
+
+### action_pathway.prompt_versions
+
+Array of versioned prompt definitions:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `prompt_id` | string | yes | Unique prompt identifier |
+| `version` | string | yes | Semantic version of this prompt |
+| `hash` | string | yes | SHA-256 hash of the prompt content |
+| `description` | string | no | Prompt purpose or description |
+
+### action_pathway.workflow_definitions
+
+Array of workflow definitions:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `workflow_id` | string | yes | Unique workflow identifier |
+| `workflow_name` | string | yes | Human-readable workflow name |
+| `description` | string | no | Workflow description |
+| `steps` | object[] | yes | Ordered steps in the workflow |
+
+Each step in a workflow:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `step_id` | string | yes | Unique step identifier within the workflow |
+| `action` | string | yes | Action to perform (e.g., `tool_call`, `prompt`, `sub_workflow`) |
+| `tool_id` | string | no | Tool ID if action is `tool_call` |
+| `prompt_id` | string | no | Prompt ID if action references a prompt |
+| `condition` | string | no | Optional condition for executing this step |
+| `description` | string | no | Step description |
 
 ## attestation
 

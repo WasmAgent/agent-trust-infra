@@ -278,6 +278,126 @@
           "description": "Attestation timestamp in ISO 8601 format"
         }
       }
+    },
+    "action_pathway": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Action pathway definitions — tool skills, prompt versions, and workflow definitions that describe how the agent executes actions",
+      "properties": {
+        "tool_skills": {
+          "type": "array",
+          "description": "Declared skills or capabilities that tools can fulfill",
+          "items": {
+            "type": "object",
+            "required": ["skill_id", "skill_name", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "skill_id": {
+                "type": "string",
+                "description": "Unique skill identifier"
+              },
+              "skill_name": {
+                "type": "string",
+                "description": "Human-readable skill name"
+              },
+              "description": {
+                "type": "string",
+                "description": "Skill description"
+              },
+              "tool_ids": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Tool IDs that fulfill this skill"
+              }
+            }
+          }
+        },
+        "prompt_versions": {
+          "type": "array",
+          "description": "Versioned prompt definitions with content hashes",
+          "items": {
+            "type": "object",
+            "required": ["prompt_id", "version", "hash"],
+            "additionalProperties": false,
+            "properties": {
+              "prompt_id": {
+                "type": "string",
+                "description": "Unique prompt identifier"
+              },
+              "version": {
+                "type": "string",
+                "description": "Semantic version of this prompt"
+              },
+              "hash": {
+                "type": "string",
+                "description": "SHA-256 hash of the prompt content"
+              },
+              "description": {
+                "type": "string",
+                "description": "Prompt purpose or description"
+              }
+            }
+          }
+        },
+        "workflow_definitions": {
+          "type": "array",
+          "description": "Defined workflows or action sequences the agent can execute",
+          "items": {
+            "type": "object",
+            "required": ["workflow_id", "workflow_name", "steps"],
+            "additionalProperties": false,
+            "properties": {
+              "workflow_id": {
+                "type": "string",
+                "description": "Unique workflow identifier"
+              },
+              "workflow_name": {
+                "type": "string",
+                "description": "Human-readable workflow name"
+              },
+              "description": {
+                "type": "string",
+                "description": "Workflow description"
+              },
+              "steps": {
+                "type": "array",
+                "description": "Ordered steps in the workflow",
+                "items": {
+                  "type": "object",
+                  "required": ["step_id", "action"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "step_id": {
+                      "type": "string",
+                      "description": "Unique step identifier within the workflow"
+                    },
+                    "action": {
+                      "type": "string",
+                      "description": "Action to perform (e.g., tool_call, prompt, sub_workflow)"
+                    },
+                    "tool_id": {
+                      "type": "string",
+                      "description": "Tool ID if action is tool_call"
+                    },
+                    "prompt_id": {
+                      "type": "string",
+                      "description": "Prompt ID if action references a prompt"
+                    },
+                    "condition": {
+                      "type": "string",
+                      "description": "Optional condition for executing this step"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Step description"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
