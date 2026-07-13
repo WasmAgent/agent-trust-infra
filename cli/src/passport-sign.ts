@@ -82,13 +82,9 @@ export async function signPassport(options: SignOptions): Promise<string> {
     throw new Error("Invalid passport format: root must be an object");
   }
 
-  // Validate structure before any mutation
-  const structureResult = validateTrustPassport(parsedPassport);
-  if (!structureResult.valid) {
-    throw new Error(`Invalid passport format: ${structureResult.errors.join("; ")}`);
-  }
-
-  // Now safely mutate after validation confirms correct shape
+  // Pre-fill expires_at before validation so signPassport can accept passports
+  // without an explicit expiry and add a default (the test contract: "sign adds
+  // default expiry when not present").
   const passport = parsedPassport;
   const existingValidity = passport.validity;
   if (existingValidity !== undefined && !isRecord(existingValidity)) {
@@ -99,6 +95,12 @@ export async function signPassport(options: SignOptions): Promise<string> {
     const expiryMs = expires ? parseDuration(expires) : 365 * 24 * 60 * 60 * 1000;
     validity.expires_at = new Date(Date.now() + expiryMs).toISOString();
     passport.validity = validity;
+  }
+
+  // Validate structure after default expiry is applied
+  const structureResult = validateTrustPassport(passport);
+  if (!structureResult.valid) {
+    throw new Error(`Invalid passport format: ${structureResult.errors.join("; ")}`);
   }
 
   const seed = readKeySeed(resolve(keyPath));
