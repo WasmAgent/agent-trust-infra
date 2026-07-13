@@ -18,6 +18,7 @@
       "tool_id": "file-read",
       "tool_name": "Read",
       "source": "builtin",
+      "skills": ["file_reading", "code_analysis"],
       "permissions": ["fs:read"],
       "risk_signals": []
     },
@@ -25,6 +26,7 @@
       "tool_id": "file-write",
       "tool_name": "Write",
       "source": "builtin",
+      "skills": ["file_writing", "code_generation"],
       "permissions": ["fs:write"],
       "risk_signals": []
     },
@@ -32,6 +34,7 @@
       "tool_id": "file-edit",
       "tool_name": "Edit",
       "source": "builtin",
+      "skills": ["file_editing", "code_modification"],
       "permissions": ["fs:read", "fs:write"],
       "risk_signals": []
     },
@@ -39,6 +42,7 @@
       "tool_id": "bash-exec",
       "tool_name": "Bash",
       "source": "builtin",
+      "skills": ["shell_execution", "process_management"],
       "permissions": ["process:exec", "fs:read", "fs:write"],
       "risk_signals": ["command_execution"]
     },
@@ -46,6 +50,7 @@
       "tool_id": "content-grep",
       "tool_name": "Grep",
       "source": "builtin",
+      "skills": ["search", "code_analysis"],
       "permissions": ["fs:read"],
       "risk_signals": []
     },
@@ -53,6 +58,7 @@
       "tool_id": "file-glob",
       "tool_name": "Glob",
       "source": "builtin",
+      "skills": ["file_discovery", "code_analysis"],
       "permissions": ["fs:read"],
       "risk_signals": []
     },
@@ -61,6 +67,7 @@
       "tool_name": "search_cloudflare_documentation",
       "source": "mcp",
       "mcp_server_id": "cloudflare-docs",
+      "skills": ["documentation_search", "web_search"],
       "permissions": ["network:outbound"],
       "risk_signals": ["ssrf"]
     },
@@ -69,6 +76,7 @@
       "tool_name": "create_or_update_pull_request",
       "source": "mcp",
       "mcp_server_id": "github",
+      "skills": ["pr_management", "code_review", "repository_management"],
       "permissions": ["network:outbound", "api:github"],
       "risk_signals": ["exfiltration", "privilege_escalation"]
     },
@@ -76,13 +84,27 @@
       "tool_id": "lsp-diagnostics",
       "tool_name": "get_diagnostics",
       "source": "plugin",
+      "skills": ["code_analysis", "linting"],
       "permissions": ["fs:read"],
       "risk_signals": []
     }
   ],
   "prompt_layer": {
     "system_prompt_hash": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
-    "template_ids": ["bscode-system-v1", "bscode-implementer-v1"]
+    "prompt_version": "1.2.0",
+    "template_ids": ["bscode-system-v1", "bscode-implementer-v1"],
+    "templates": [
+      {
+        "template_id": "bscode-system-v1",
+        "version": "1.2.0",
+        "hash": "sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2"
+      },
+      {
+        "template_id": "bscode-implementer-v1",
+        "version": "1.1.0",
+        "hash": "sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3"
+      }
+    ]
   },
   "permission_layer": {
     "granted_scopes": [
@@ -105,6 +127,71 @@
       }
     ]
   },
+  "workflow_layer": [
+    {
+      "workflow_id": "wf-implement-feature",
+      "workflow_name": "Implement Feature",
+      "description": "End-to-end workflow for implementing a new feature: analyze requirements, write code, run tests, create PR",
+      "version": "1.0.0",
+      "steps": [
+        {
+          "step_id": "analyze-requirements",
+          "action": "bscode-system-v1",
+          "description": "Analyze feature requirements and plan implementation",
+          "allowed_tools": ["file-read", "content-grep", "file-glob"]
+        },
+        {
+          "step_id": "implement-code",
+          "action": "file-edit",
+          "description": "Write implementation code",
+          "depends_on": ["analyze-requirements"],
+          "allowed_tools": ["file-read", "file-write", "file-edit", "content-grep", "file-glob"]
+        },
+        {
+          "step_id": "run-tests",
+          "action": "bash-exec",
+          "description": "Run test suite to verify implementation",
+          "depends_on": ["implement-code"],
+          "allowed_tools": ["bash-exec"]
+        },
+        {
+          "step_id": "create-pr",
+          "action": "github-mcp",
+          "description": "Create pull request with the implementation",
+          "depends_on": ["run-tests"],
+          "allowed_tools": ["github-mcp"]
+        }
+      ]
+    },
+    {
+      "workflow_id": "wf-code-review",
+      "workflow_name": "Code Review",
+      "description": "Review code changes, check for issues, and provide feedback",
+      "version": "1.0.0",
+      "steps": [
+        {
+          "step_id": "read-changes",
+          "action": "file-read",
+          "description": "Read the code changes to review",
+          "allowed_tools": ["file-read", "content-grep", "file-glob"]
+        },
+        {
+          "step_id": "run-linter",
+          "action": "lsp-diagnostics",
+          "description": "Run linter on changed files",
+          "depends_on": ["read-changes"],
+          "allowed_tools": ["lsp-diagnostics"]
+        },
+        {
+          "step_id": "review-docs",
+          "action": "cloudflare-docs-mcp",
+          "description": "Check relevant documentation for best practices",
+          "depends_on": ["read-changes"],
+          "allowed_tools": ["cloudflare-docs-mcp"]
+        }
+      ]
+    }
+  ],
   "risk_layer": [
     {
       "risk_id": "risk-bash-001",

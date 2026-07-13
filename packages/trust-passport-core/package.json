@@ -8,5 +8,8 @@
     "build": "echo 'build: stub'",
     "test": "bun test src/",
     "typecheck": "echo 'typecheck: stub'"
+  },
+  "dependencies": {
+    "@wasmagent/aep": "^1.8.0"
   }
 }

@@ -260,9 +260,14 @@ export function addFact(
   const contentHash = hashEvidence(contentStr);
   const recordedAt = new Date().toISOString();
 
-  // Ensure evidence_facts map exists
+  // Ensure evidence_facts map exists and is safe
   if (!passport.evidence_facts || !isRecord(passport.evidence_facts)) {
     passport.evidence_facts = {};
+  } else {
+    const ef = passport.evidence_facts as Record<string, unknown>;
+    if (hasOwn(ef, "__proto__") || hasOwn(ef, "constructor") || hasOwn(ef, "prototype")) {
+      passport.evidence_facts = {};
+    }
   }
 
   (passport.evidence_facts as Record<string, unknown>)[factId] = {
