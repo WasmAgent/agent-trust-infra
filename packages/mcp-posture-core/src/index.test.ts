@@ -2,19 +2,9 @@ import { describe, it, expect } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateMCPPosture, inspectMCPPosture } from "./index.js";
+import { validateMCPPosture, inspectMCPPosture, RISK_CATEGORIES } from "./index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const RISK_CATEGORIES = [
-  "ssrf",
-  "exfiltration",
-  "command_execution",
-  "privilege_escalation",
-  "prompt_injection",
-  "credential_access",
-  "supply_chain",
-] as const;
 
 const VALID_POSTURE = {
   posture_version: "0.1",
@@ -120,8 +110,7 @@ describe("validateMCPPosture", () => {
 });
 
 describe("schema risk categories", () => {
-  it("includes all 7 risk categories from the taxonomy", () => {
-    // Verify the schema file contains all 7 risk category enums
+  it("includes all 8 risk categories from the taxonomy (7 original + mcp_header_leakage)", () => {
     const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
     const raw = readFileSync(schemaPath, "utf-8");
     const schema = JSON.parse(raw);
@@ -131,10 +120,10 @@ describe("schema risk categories", () => {
     for (const cat of RISK_CATEGORIES) {
       expect(toolRiskCategories).toContain(cat);
     }
-    expect(toolRiskCategories).toHaveLength(7);
+    expect(toolRiskCategories).toHaveLength(8);
   });
 
-  it("risk_summary.category also has all 7 risk categories in the enum", () => {
+  it("risk_summary.category also has all 8 risk categories in the enum", () => {
     const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
     const raw = readFileSync(schemaPath, "utf-8");
     const schema = JSON.parse(raw);
@@ -144,7 +133,76 @@ describe("schema risk categories", () => {
     for (const cat of RISK_CATEGORIES) {
       expect(summaryCategoryEnum).toContain(cat);
     }
-    expect(summaryCategoryEnum).toHaveLength(7);
+    expect(summaryCategoryEnum).toHaveLength(8);
+  });
+
+  it("RISK_CATEGORIES export includes mcp_header_leakage", () => {
+    expect(RISK_CATEGORIES).toContain("mcp_header_leakage");
+  });
+});
+
+describe("schema covers MCP 2026-07-28 fields", () => {
+  it("schema has protocol_version field", () => {
+    const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+    expect(schema.properties).toHaveProperty("protocol_version");
+  });
+
+  it("schema has session_model on servers items", () => {
+    const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+    const serverProps = schema.properties?.servers?.items?.properties;
+    expect(serverProps).toHaveProperty("session_model");
+    expect(serverProps.session_model.enum).toContain("stateless-handle");
+  });
+
+  it("schema has handle_expiry_policy on servers items", () => {
+    const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+    const serverProps = schema.properties?.servers?.items?.properties;
+    expect(serverProps).toHaveProperty("handle_expiry_policy");
+  });
+
+  it("schema has attestation.auth with OAuth fields", () => {
+    const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+    const authProps = schema.properties?.attestation?.properties?.auth?.properties;
+    expect(authProps).toHaveProperty("audience_bound_token_validated");
+    expect(authProps).toHaveProperty("pkce_used");
+    expect(authProps).toHaveProperty("per_client_consent_verified");
+  });
+
+  it("schema has owasp_agentic_ref on risk_summary items", () => {
+    const schemaPath = join(__dirname, "../../../specs/mcp-posture/schema.json");
+    const schema = JSON.parse(readFileSync(schemaPath, "utf-8"));
+    const riskProps = schema.properties?.risk_summary?.items?.properties;
+    expect(riskProps).toHaveProperty("owasp_agentic_ref");
+  });
+
+  it("posture with stateless-handle session_model is still valid", () => {
+    const posture = {
+      ...VALID_POSTURE,
+      protocol_version: "2026-07-28",
+      servers: [
+        {
+          server_id: "stateless-server",
+          server_name: "Stateless MCP Server",
+          session_model: "stateless-handle",
+          handle_expiry_policy: "short-lived",
+          tools: [{ tool_id: "t1", tool_name: "tool_one" }],
+        },
+      ],
+      attestation: {
+        generator: "test",
+        auth: {
+          audience_bound_token_validated: true,
+          pkce_used: true,
+          per_client_consent_verified: false,
+        },
+      },
+    };
+    const result = validateMCPPosture(posture);
+    expect(result.valid).toBe(true);
   });
 });
 
@@ -224,5 +282,28 @@ describe("inspectMCPPosture", () => {
     expect(output).toContain("posture-test-001");
     expect(output).toContain("test-agent-001");
     expect(output).toContain("Servers:");
+  });
+
+  it("shows protocol_version in output", () => {
+    const posture = { ...VALID_POSTURE, protocol_version: "2026-07-28" };
+    const output = inspectMCPPosture(posture);
+    expect(output).toContain("2026-07-28");
+  });
+
+  it("shows owasp_agentic_ref in critical finding output", () => {
+    const posture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        {
+          finding_id: "f-001",
+          severity: "critical",
+          category: "prompt_injection",
+          description: "Tool poisoning detected",
+          owasp_agentic_ref: "ASI01",
+        },
+      ],
+    };
+    const output = inspectMCPPosture(posture);
+    expect(output).toContain("ASI01");
   });
 });
