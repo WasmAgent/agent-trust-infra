@@ -14,10 +14,15 @@ lives in `wasmagent-js`:
 | Compliance profile definitions | **this repo** | — |
 | `agent-trust` CLI (validate, sign, compliance audit-report) | **this repo** | — |
 | AEP evidence quality audit-report (evidence health / training eligibility) | `trace-pipeline` / `evomerge audit-report` | ✗ |
+| Runtime AEP → regulatory control mapping engine (OWASP/EU AI Act/NIST/ISO) | `open-agent-audit` / `@openagentaudit/core` | ✗ |
+| Trust Passport product module (issuance, verification, renewal, Trustavo) | `open-agent-audit` (planned) | ✗ |
 
 If a feature can be expressed as a schema, validator, CLI command, or
 specification document, it belongs here. If it requires runtime hooks into
 MCP traffic or AEP evidence streams, it belongs in `wasmagent-js`.
+If it requires mapping live AEP evidence to regulatory controls (OWASP,
+EU AI Act, NIST AI RMF, ISO 42001) or hosting a Trust Passport product,
+it belongs in `open-agent-audit`.
 
 ## Why this project exists (external drivers)
 
@@ -31,6 +36,13 @@ something they can point to.
 The highest-value near-term output is a direct mapping table:
 
 > "AgentBOM field X satisfies Annex IV requirement Y"
+
+This is **schema-level** documentation mapping — distinct from what
+`open-agent-audit` does (mapping live runtime AEP evidence to Annex IV
+controls at 40.6% breadth). The two are complementary: `open-agent-audit`
+proves what an agent *did*; this mapping table proves what an AgentBOM
+*declares*, which is what Annex IV technical documentation requirements
+ask for (design specifications, not execution logs).
 
 This turns a research prototype into something a compliance team can cite
 in an RFP response today — without waiting for formal standardization.
@@ -58,6 +70,12 @@ the OWASP doc.
 
 Current risk taxonomy in `specs/mcp-posture/risk-taxonomy.md` uses
 internal categorization. It needs a cross-reference column to ASI IDs.
+
+Note: `open-agent-audit` has a **runtime mapping engine** that maps live
+AEP evidence to OWASP controls (10/10 breadth, 75% depth). Our work here
+is different: adding OWASP ASI IDs as taxonomy labels in the MCP Posture
+*schema* so that posture assessments speak the same vocabulary — not
+re-implementing open-agent-audit's evidence-to-control mapping logic.
 
 ### MCP 2026-07-28 — stateless handle model
 
@@ -92,6 +110,13 @@ concerns:
   framework mapping reports (AgentBOM vs SOC2/ISO27001/EU AI Act).
   Different outputs, similar command names — never conflate them or
   duplicate trace-pipeline's evidence scoring logic here.
+- **Re-implementing open-agent-audit capabilities**: `open-agent-audit`
+  (`@openagentaudit/core`) already maps runtime AEP evidence to OWASP
+  Agentic Top 10, EU AI Act, NIST AI RMF, and ISO 42001 controls with a
+  complete engine and Cloudflare-hosted deployment. Do not duplicate this.
+  Trust Passport as a product (issuance, renewal, revocation, Trustavo
+  integration) will live in `open-agent-audit` — incubate the schema here,
+  hand off product functionality there.
 
 ## Priority order
 1. AI Act Annex IV mapping table — citable today, before the deadline
