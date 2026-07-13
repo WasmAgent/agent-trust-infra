@@ -6,6 +6,28 @@ export interface ValidationResult {
 const POSTURE_REQUIRED = ["posture_version", "identity", "servers", "attestation"] as const;
 const IDENTITY_REQUIRED = ["snapshot_id", "agent_id", "captured_at"] as const;
 
+export const RISK_CATEGORIES = [
+  "ssrf",
+  "exfiltration",
+  "command_execution",
+  "privilege_escalation",
+  "prompt_injection",
+  "credential_access",
+  "supply_chain",
+  "mcp_header_leakage",
+] as const;
+
+export type RiskCategory = (typeof RISK_CATEGORIES)[number];
+
+export type SessionModel = "stateful" | "stateless-handle" | "unknown";
+export type HandleExpiryPolicy = "short-lived" | "long-lived" | "unset";
+
+export interface McpPostureAuth {
+  audience_bound_token_validated?: boolean;
+  pkce_used?: boolean;
+  per_client_consent_verified?: boolean;
+}
+
 export function validateMCPPosture(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return { valid: false, errors: ["root must be an object"] };
@@ -32,6 +54,7 @@ export function inspectMCPPosture(data: Record<string, unknown>): string {
   const servers = (data.servers as Record<string, unknown>[]) ?? [];
   const risks = (data.risk_summary as Record<string, string>[]) ?? [];
   const permissionGraph = data.permission_graph as Record<string, unknown> | undefined;
+  const protocolVersion = (data.protocol_version as string | undefined) ?? "pre-2026-07-28";
 
   const totalTools = servers.reduce(
     (sum, s) => sum + ((s.tools as unknown[]) ?? []).length,
@@ -50,7 +73,7 @@ export function inspectMCPPosture(data: Record<string, unknown>): string {
     );
 
   const lines: string[] = [
-    `MCP Posture v${data.posture_version}`,
+    `MCP Posture v${data.posture_version} (protocol: ${protocolVersion})`,
     `  Snapshot:        ${identity?.snapshot_id ?? "?"}`,
     `  Agent:           ${identity?.agent_id ?? "?"}`,
     `  Servers:         ${servers.length}`,
@@ -67,7 +90,8 @@ export function inspectMCPPosture(data: Record<string, unknown>): string {
     lines.push("");
     lines.push(`  ⚠  ${criticalOrHigh.length} critical/high finding(s):`);
     for (const r of criticalOrHigh) {
-      lines.push(`    [${r.severity.toUpperCase()}] ${r.finding_id}: ${r.description}`);
+      const agenticRef = r.owasp_agentic_ref ? ` [${r.owasp_agentic_ref}]` : "";
+      lines.push(`    [${r.severity.toUpperCase()}] ${r.finding_id}: ${r.description}${agenticRef}`);
     }
   }
 
