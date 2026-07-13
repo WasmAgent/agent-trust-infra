@@ -7,6 +7,11 @@
   "required": ["posture_version", "identity", "servers", "attestation"],
   "properties": {
     "posture_version": { "type": "string", "enum": ["0.1"] },
+    "protocol_version": {
+      "type": "string",
+      "description": "MCP protocol version the snapshot targets. Pre-2026-07-28 snapshots omit this field; new-spec snapshots use '2026-07-28' or later.",
+      "enum": ["2026-07-28", "2025-03-26"]
+    },
     "identity": {
       "type": "object",
       "required": ["snapshot_id", "agent_id", "captured_at"],
@@ -27,6 +32,16 @@
           "server_name": { "type": "string" },
           "version": { "type": "string" },
           "provenance": { "type": "string", "enum": ["verified", "unverified", "unknown"] },
+          "session_model": {
+            "type": "string",
+            "description": "MCP session architecture model. New spec (2026-07-28) replaces stateful sessions with portable handles.",
+            "enum": ["stateful", "stateless-handle", "unknown"]
+          },
+          "handle_expiry_policy": {
+            "type": "string",
+            "description": "Handle expiry semantics for stateless-handle session_model servers.",
+            "enum": ["short-lived", "long-lived", "unset"]
+          },
           "tools": {
             "type": "array",
             "items": {
@@ -40,7 +55,7 @@
                   "type": "array",
                   "items": {
                     "type": "string",
-                    "enum": ["ssrf", "exfiltration", "command_execution", "privilege_escalation", "prompt_injection", "credential_access", "supply_chain"]
+                    "enum": ["ssrf", "exfiltration", "command_execution", "privilege_escalation", "prompt_injection", "credential_access", "supply_chain", "mcp_header_leakage"]
                   }
                 },
                 "risk_severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info"] }
@@ -69,11 +84,12 @@
           "severity": { "type": "string", "enum": ["critical", "high", "medium", "low", "info"] },
           "category": {
             "type": "string",
-            "enum": ["ssrf", "exfiltration", "command_execution", "privilege_escalation", "prompt_injection", "credential_access", "supply_chain"]
+            "enum": ["ssrf", "exfiltration", "command_execution", "privilege_escalation", "prompt_injection", "credential_access", "supply_chain", "mcp_header_leakage"]
           },
           "description": { "type": "string" },
           "tool_id": { "type": "string" },
-          "owasp_mcp_ref": { "type": "string" }
+          "owasp_mcp_ref": { "type": "string" },
+          "owasp_agentic_ref": { "type": "string", "description": "OWASP Agentic Applications Top 10 (2026) reference ID, e.g. ASI01-ASI10." }
         }
       }
     },
@@ -93,7 +109,16 @@
       "required": ["generator"],
       "properties": {
         "generator": { "type": "string" },
-        "snapshot_hash": { "type": "string" }
+        "snapshot_hash": { "type": "string" },
+        "auth": {
+          "type": "object",
+          "description": "OAuth 2.0 audience-bound token validation fields per MCP 2026-07-28 security guidance.",
+          "properties": {
+            "audience_bound_token_validated": { "type": "boolean", "description": "Whether the posture-capture token was validated as audience-bound." },
+            "pkce_used": { "type": "boolean", "description": "Whether PKCE was used during the OAuth flow." },
+            "per_client_consent_verified": { "type": "boolean", "description": "Whether per-client consent was explicitly verified." }
+          }
+        }
       }
     }
   }

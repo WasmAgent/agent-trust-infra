@@ -39,26 +39,32 @@ Audit evidence integration
 
 ```
 MCPPosture v0.1
-├── identity         — snapshot ID, agent ID, timestamp
-├── servers          — connected MCP servers
-│   └── tools        — tools per server with permissions and risk classification
-├── permission_graph — aggregate permission surface
-├── risk_summary     — taxonomy-mapped risk findings
-├── drift            — changes since previous snapshot
-└── attestation      — generator and snapshot hash
+├── identity              — snapshot ID, agent ID, timestamp
+├── servers               — connected MCP servers
+│   ├── session_model     — stateful | stateless-handle | unknown (MCP 2026-07-28)
+│   ├── handle_expiry_policy — short-lived | long-lived | unset (stateless-handle only)
+│   └── tools             — tools per server with permissions and risk classification
+├── permission_graph      — aggregate permission surface
+├── risk_summary          — taxonomy-mapped risk findings
+│   └── owasp_agentic_ref — OWASP Agentic Top 10 (2026) ID (ASI01–ASI10)
+├── drift                 — changes since previous snapshot
+├── attestation            — generator and snapshot hash
+│   └── auth              — audience-bound token validation (MCP 2026-07-28)
+└── protocol_version      — MCP spec version (2025-03-26 | 2026-07-28)
 ```
 
 ## Risk taxonomy
 
-| Category | Description | OWASP MCP reference |
-|---|---|---|
-| `ssrf` | Server-side request forgery via network tools | MCP-02 |
-| `exfiltration` | Data exfiltration via output or storage tools | MCP-04 |
-| `command_execution` | Arbitrary command or code execution | MCP-01 |
-| `privilege_escalation` | Permission scope expansion | MCP-03 |
-| `prompt_injection` | Tool input that can manipulate agent behavior | MCP-05 |
-| `credential_access` | Access to secrets or credentials | MCP-06 |
-| `supply_chain` | Unverified MCP server provenance | MCP-07 |
+| Category | Description | OWASP MCP reference | OWASP Agentic Top 10 (2026) |
+|---|---|---|---|
+| `ssrf` | Server-side request forgery via network tools | MCP-02 | ASI04 |
+| `exfiltration` | Data exfiltration via output or storage tools | MCP-04 | ASI04 |
+| `command_execution` | Arbitrary command or code execution | MCP-01 | ASI03 |
+| `privilege_escalation` | Permission scope expansion | MCP-03 | ASI03 |
+| `prompt_injection` | Tool input that can manipulate agent behavior | MCP-05 | ASI02 |
+| `credential_access` | Access to secrets or credentials | MCP-06 | ASI04 |
+| `supply_chain` | Unverified MCP server provenance | MCP-07 | ASI09 |
+| `mcp_header_leakage` | Secrets or PII accidentally mapped into MCP-Method/MCP-Name HTTP headers | — | ASI04 |
 
 ## CLI commands
 

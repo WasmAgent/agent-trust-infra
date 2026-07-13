@@ -1,0 +1,141 @@
+{
+  "posture_version": "0.1",
+  "protocol_version": "2026-07-28",
+  "identity": {
+    "snapshot_id": "posture-2026-07-28-fixture-001",
+    "agent_id": "test-agent-mcp-newspec",
+    "captured_at": "2026-07-13T00:00:00Z",
+    "previous_snapshot_id": "posture-2025-03-26-fixture-001"
+  },
+  "servers": [
+    {
+      "server_id": "cloudflare-docs",
+      "server_name": "Cloudflare Docs MCP",
+      "version": "2.0.0",
+      "provenance": "verified",
+      "session_model": "stateless-handle",
+      "handle_expiry_policy": "short-lived",
+      "tools": [
+        {
+          "tool_id": "search-cf-docs",
+          "tool_name": "search_cloudflare_documentation",
+          "permissions": ["network:outbound"],
+          "risk_categories": ["ssrf", "mcp_header_leakage"],
+          "risk_severity": "medium"
+        }
+      ]
+    },
+    {
+      "server_id": "github-actions",
+      "server_name": "GitHub Actions MCP",
+      "version": "3.0.0",
+      "provenance": "unverified",
+      "session_model": "stateful",
+      "tools": [
+        {
+          "tool_id": "run-workflow",
+          "tool_name": "run_workflow_dispatch",
+          "permissions": ["network:outbound", "workflow:trigger"],
+          "risk_categories": ["command_execution", "privilege_escalation"],
+          "risk_severity": "high"
+        },
+        {
+          "tool_id": "create-issue",
+          "tool_name": "create_repository_issue",
+          "permissions": ["network:outbound"],
+          "risk_categories": ["exfiltration", "mcp_header_leakage"],
+          "risk_severity": "medium"
+        }
+      ]
+    },
+    {
+      "server_id": "local-filesystem",
+      "server_name": "Local Filesystem MCP",
+      "version": "1.0.0",
+      "provenance": "verified",
+      "session_model": "unknown",
+      "tools": [
+        {
+          "tool_id": "read-file",
+          "tool_name": "read_file",
+          "permissions": ["fs:read"],
+          "risk_categories": ["credential_access"],
+          "risk_severity": "medium"
+        },
+        {
+          "tool_id": "write-file",
+          "tool_name": "write_file",
+          "permissions": ["fs:write"],
+          "risk_categories": ["command_execution"],
+          "risk_severity": "high"
+        }
+      ]
+    }
+  ],
+  "permission_graph": {
+    "total_tools": 5,
+    "total_permissions": 5,
+    "high_risk_tools": 2,
+    "permission_scopes": ["network:outbound", "workflow:trigger", "fs:read", "fs:write"]
+  },
+  "risk_summary": [
+    {
+      "finding_id": "finding-2026-001",
+      "severity": "medium",
+      "category": "ssrf",
+      "description": "search_cloudflare_documentation makes outbound HTTP requests. Under MCP 2026-07-28, MCP-Method and MCP-Name headers may leak query context.",
+      "tool_id": "search-cf-docs",
+      "owasp_mcp_ref": "MCP-02",
+      "owasp_agentic_ref": "ASI04"
+    },
+    {
+      "finding_id": "finding-2026-002",
+      "severity": "medium",
+      "category": "mcp_header_leakage",
+      "description": "Tool may pass user-controlled input through MCP-Method/MCP-Name HTTP headers, risking secret or PII leakage.",
+      "tool_id": "create-issue",
+      "owasp_mcp_ref": "MCP-04",
+      "owasp_agentic_ref": "ASI04"
+    },
+    {
+      "finding_id": "finding-2026-003",
+      "severity": "high",
+      "category": "command_execution",
+      "description": "run_workflow_dispatch can trigger arbitrary GitHub Actions workflows in stateful session mode.",
+      "tool_id": "run-workflow",
+      "owasp_mcp_ref": "MCP-01",
+      "owasp_agentic_ref": "ASI03"
+    },
+    {
+      "finding_id": "finding-2026-004",
+      "severity": "high",
+      "category": "command_execution",
+      "description": "write_file allows arbitrary file creation on the local filesystem.",
+      "tool_id": "write-file",
+      "owasp_mcp_ref": "MCP-04",
+      "owasp_agentic_ref": "ASI03"
+    },
+    {
+      "finding_id": "finding-2026-005",
+      "severity": "medium",
+      "category": "credential_access",
+      "description": "read_file can access credential files, SSH keys, and environment configuration.",
+      "tool_id": "read-file",
+      "owasp_mcp_ref": "MCP-03",
+      "owasp_agentic_ref": "ASI04"
+    }
+  ],
+  "drift": {
+    "tools_added": ["search-cf-docs-v2"],
+    "permissions_expanded": ["network:outbound"]
+  },
+  "attestation": {
+    "generator": "agent-trust-infra/test-fixtures",
+    "snapshot_hash": "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+    "auth": {
+      "audience_bound_token_validated": true,
+      "pkce_used": true,
+      "per_client_consent_verified": true
+    }
+  }
+}
