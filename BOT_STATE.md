@@ -1,23 +1,23 @@
 # Bot State
 
-_Last updated: 2026-07-13 03:10 UTC by patrol_
+_Last updated: 2026-07-13 03:42 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 7 |
-| Active (running/reviewing) | 1 |
+| Pending | 8 |
+| Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 839 |
+| Completed/Merged (all time) | 843 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
-| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
-| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
-| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
+| #170 | feat: extend AgentBOM schema with action-pathway fields (... | completed/complexity_gate_split | 2026-07-13 |
+| #172 | test: replace doc-string coherence tests with CycloneDX/S... | completed/complexity_gate_split | 2026-07-13 |
+| #173 | [URGENT] mcp-posture: adapt schema for MCP 2026-07-28 sta... | completed/complexity_gate_split | 2026-07-13 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-13 |
 
