@@ -8,6 +8,8 @@ interface ComplianceResult {
   profile_id: string;
   framework_name: string;
   framework_version: string;
+  score: number;
+  threshold: number;
   errors: string[];
   warnings: string[];
   passed_checks: string[];
@@ -23,17 +25,20 @@ interface ComplianceProfile {
   };
   rules: {
     identity?: {
+      weight?: number;
       required_fields?: string[];
       allowed_contexts?: string[];
       requires_version?: boolean;
     };
     tool_layer?: {
+      weight?: number;
       max_severity?: "low" | "medium" | "high" | "critical";
       requires_tool_inventory?: boolean;
       blocked_permissions?: string[];
       blocked_sources?: string[];
     };
     risk_layer?: {
+      weight?: number;
       requires_risk_assessment?: boolean;
       max_unmitigated_critical?: number;
       max_unmitigated_high?: number;
@@ -41,6 +46,7 @@ interface ComplianceProfile {
       requires_mitigation_for?: ("critical" | "high" | "medium" | "low")[];
     };
     attestation?: {
+      weight?: number;
       requires_signature?: boolean;
       requires_timestamp?: boolean;
     };
@@ -52,6 +58,8 @@ interface ComplianceProfile {
     documentation_url?: string;
   };
 }
+
+const DEFAULT_RULE_WEIGHT = 1;
 
 const SEVERITY_ORDER = { critical: 4, high: 3, medium: 2, low: 1 };
 
@@ -375,9 +383,48 @@ function checkAttestation(
   return { errors, warnings, passed };
 }
 
+/**
+ * Compute a weighted compliance score from check results.
+ *
+ * Each rule section (identity, tool_layer, risk_layer, attestation) can carry
+ * an optional `weight` (float ≥ 0).  The default weight for any section is 1.
+ *
+ * A section is considered *passing* if it produced no errors.
+ * The score is the fraction:
+ *
+ *   score = Σ(weight_i for passing sections) / Σ(weight_i for all sections)
+ *
+ * Returns a value in [0, 1] where 1 means every enabled rule section passed.
+ */
+function computeWeightedScore(
+  checkResults: { errors: string[]; warnings: string[]; passed: string[] }[],
+  profile: ComplianceProfile,
+): number {
+  const ruleKeys: (keyof typeof profile.rules)[] = ["identity", "tool_layer", "risk_layer", "attestation"];
+  let totalWeight = 0;
+  let passedWeight = 0;
+
+  for (let i = 0; i < ruleKeys.length; i++) {
+    const key = ruleKeys[i];
+    const section = profile.rules[key];
+    const weight = (section && typeof section === "object" && "weight" in section)
+      ? (section as { weight?: number }).weight ?? DEFAULT_RULE_WEIGHT
+      : DEFAULT_RULE_WEIGHT;
+
+    if (weight <= 0) continue; // Skip zero-weight sections
+
+    totalWeight += weight;
+    if (checkResults[i].errors.length === 0) {
+      passedWeight += weight;
+    }
+  }
+
+  return totalWeight > 0 ? passedWeight / totalWeight : 1;
+}
+
 export function complianceCheckCommand(args: string[]): number {
   if (args.length < 3) {
-    console.error("Usage: agent-trust compliance-check <bom.json> --profile <name>");
+    console.error("Usage: agent-trust compliance-check <bom.json> --profile <name> [--min-score <score>]");
     console.error("");
     console.error("Available profiles:");
     console.error("  soc2-2024       SOC 2 Type II compliance (2024)");
@@ -395,6 +442,21 @@ export function complianceCheckCommand(args: string[]): number {
   }
 
   const profileId = args[2];
+
+  // Parse --min-score if present
+  let minScore = 1.0;
+  for (let i = 3; i < args.length; i++) {
+    if (args[i] === "--min-score" && i + 1 < args.length) {
+      const parsed = parseFloat(args[i + 1]);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+        minScore = parsed;
+      } else {
+        console.error(`Error: --min-score must be a number between 0 and 1, got "${args[i + 1]}"`);
+        return 1;
+      }
+      break;
+    }
+  }
 
   // Load AgentBOM
   const resolvedBomPath = resolve(bomPath);
@@ -433,16 +495,6 @@ export function complianceCheckCommand(args: string[]): number {
   }
 
   // Run compliance checks
-  const result: ComplianceResult = {
-    compliant: true,
-    profile_id: profile.profile_id,
-    framework_name: profile.framework.name,
-    framework_version: profile.framework.version,
-    errors: [],
-    warnings: [],
-    passed_checks: [],
-  };
-
   const checks = [
     checkIdentity(bomData as Record<string, unknown>, profile),
     checkToolLayer(bomData as Record<string, unknown>, profile),
@@ -450,18 +502,32 @@ export function complianceCheckCommand(args: string[]): number {
     checkAttestation(bomData as Record<string, unknown>, profile),
   ];
 
+  // Compute weighted score
+  const score = computeWeightedScore(checks, profile);
+
+  const result: ComplianceResult = {
+    compliant: score >= minScore,
+    profile_id: profile.profile_id,
+    framework_name: profile.framework.name,
+    framework_version: profile.framework.version,
+    score,
+    threshold: minScore,
+    errors: [],
+    warnings: [],
+    passed_checks: [],
+  };
+
   for (const check of checks) {
     result.errors.push(...check.errors);
     result.warnings.push(...check.warnings);
     result.passed_checks.push(...check.passed);
   }
 
-  result.compliant = result.errors.length === 0;
-
   // Output results
   console.log(`Compliance Check: ${profile.framework.name} ${profile.framework.version}`);
   console.log(`Profile: ${profile.profile_id}`);
   console.log(`AgentBOM: ${resolvedBomPath}`);
+  console.log(`Score: ${(score * 100).toFixed(1)}% (threshold: ${(minScore * 100).toFixed(0)}%)`);
   console.log("");
 
   if (result.passed_checks.length > 0) {
@@ -489,10 +555,10 @@ export function complianceCheckCommand(args: string[]): number {
   }
 
   if (result.compliant) {
-    console.log("✓ COMPLIANT: All checks passed");
+    console.log(`✓ COMPLIANT (score ${(score * 100).toFixed(1)}% ≥ ${(minScore * 100).toFixed(0)}%)`);
     return 0;
   } else {
-    console.log("✗ NON-COMPLIANT: Some checks failed");
+    console.log(`✗ NON-COMPLIANT (score ${(score * 100).toFixed(1)}% < ${(minScore * 100).toFixed(0)}%)`);
     return 1;
   }
 }

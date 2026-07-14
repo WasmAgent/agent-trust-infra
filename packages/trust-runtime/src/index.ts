@@ -196,7 +196,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
 export function createRuntimeValidator(
   agentBOM: Record<string, unknown>
 ): RuntimeValidator | null {
-  const bomValidation = validateAgentBOM(agentBOM);
+  const bomValidation = validateAgentBOMCore(agentBOM);
   if (!bomValidation.valid) {
     // AgentBOM is invalid - cannot create validator
     return null;
