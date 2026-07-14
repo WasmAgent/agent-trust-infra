@@ -569,10 +569,12 @@ describe("hashEvidence", () => {
 });
 
 describe("addFact", () => {
-	it("adds a string evidence fact to the passport", () => {
+	it("adds a string evidence fact to a new passport object", () => {
 		const passport = { ...VALID_PASSPORT };
 		const result = addFact(passport, "fact-001", "some evidence content");
-		expect(result).toBe(passport); // mutates in place
+		// Immutable: returns a NEW object and leaves the input untouched.
+		expect(result).not.toBe(passport);
+		expect(passport.evidence_facts).toBeUndefined();
 		expect(result.evidence_facts).toBeDefined();
 		expect(
 			(result.evidence_facts as Record<string, unknown>)["fact-001"],
@@ -628,46 +630,59 @@ describe("addFact", () => {
 		expect(fact1.content_hash).toBe(fact2.content_hash);
 	});
 
-	it("creates evidence_facts map when it does not exist", () => {
+	it("creates an evidence_facts map when none exists (without mutating input)", () => {
 		const passport = { ...VALID_PASSPORT };
 		expect(passport.evidence_facts).toBeUndefined();
-		addFact(passport, "fact-001", "content");
-		expect(passport.evidence_facts).toBeDefined();
+		const result = addFact(passport, "fact-001", "content");
+		// Input remains untouched; the new map lives only on the result.
+		expect(passport.evidence_facts).toBeUndefined();
+		expect(result.evidence_facts).toBeDefined();
 	});
 
-	it("merges into existing evidence_facts map", () => {
-		const passport = {
-			...VALID_PASSPORT,
-			evidence_facts: {
-				existing: {
-					content_hash: "sha256:old",
-					recorded_at: new Date().toISOString(),
-				},
+	it("merges into an existing evidence_facts map without aliasing it", () => {
+		const existing = {
+			existing: {
+				content_hash: "sha256:old",
+				recorded_at: "2026-01-01T00:00:00Z",
 			},
 		};
-		addFact(passport, "fact-001", "new content");
-		const facts = passport.evidence_facts as Record<string, unknown>;
+		const passport = { ...VALID_PASSPORT, evidence_facts: existing };
+		const result = addFact(passport, "fact-001", "new content");
+		const facts = result.evidence_facts as Record<string, unknown>;
 		expect(facts.existing).toBeDefined();
 		expect(facts["fact-001"]).toBeDefined();
+		// The input passport keeps its original map reference, unchanged.
+		expect(passport.evidence_facts).toBe(existing);
+		expect((existing as Record<string, unknown>)["fact-001"]).toBeUndefined();
+		expect(Object.keys(existing)).toEqual(["existing"]);
+		// The result uses a fresh map object, not the input's.
+		expect(result.evidence_facts).not.toBe(existing);
 	});
 
 	it("replaces an existing fact with the same factId", () => {
-		const passport = { ...VALID_PASSPORT };
-		addFact(passport, "fact-001", "original content");
+		const passport = addFact(
+			{ ...VALID_PASSPORT },
+			"fact-001",
+			"original content",
+		);
 		const originalFact = (passport.evidence_facts as Record<string, unknown>)[
 			"fact-001"
 		] as {
 			content_hash: string;
 			recorded_at: string;
 		};
-		addFact(passport, "fact-001", "updated content");
-		const updatedFact = (passport.evidence_facts as Record<string, unknown>)[
+		const updated = addFact(passport, "fact-001", "updated content");
+		const updatedFact = (updated.evidence_facts as Record<string, unknown>)[
 			"fact-001"
 		] as {
 			content_hash: string;
 			recorded_at: string;
 		};
 		expect(updatedFact.content_hash).not.toBe(originalFact.content_hash);
+		// The prior result is not mutated by the second call.
+		expect(
+			(passport.evidence_facts as Record<string, unknown>)["fact-001"],
+		).toBe(originalFact);
 	});
 
 	it("returns a non-empty recorded_at timestamp", () => {
@@ -681,11 +696,31 @@ describe("addFact", () => {
 		expect(fact.recorded_at.length).toBeGreaterThan(0);
 	});
 
+	it("does not mutate the input passport or its evidence_facts map", () => {
+		const existing = {
+			keep: {
+				content_hash: "sha256:keep",
+				recorded_at: "2026-01-01T00:00:00Z",
+			},
+		};
+		const passport = { ...VALID_PASSPORT, evidence_facts: existing };
+		const snapshot = JSON.stringify(passport);
+		const result = addFact(passport, "fact-001", "content");
+		// Input is structurally identical to before the call.
+		expect(JSON.stringify(passport)).toBe(snapshot);
+		expect(result).not.toBe(passport);
+		// The existing map object is not aliased into the result.
+		expect((existing as Record<string, unknown>)["fact-001"]).toBeUndefined();
+		expect(Object.keys(existing)).toEqual(["keep"]);
+	});
+
 	it("throws for __proto__ factId to prevent prototype pollution", () => {
 		const passport = { ...VALID_PASSPORT };
 		expect(() => addFact(passport, "__proto__", "malicious content")).toThrow(
 			'factId "__proto__" is a reserved key',
 		);
+		// Nothing was written before the throw.
+		expect(passport.evidence_facts).toBeUndefined();
 	});
 
 	it("throws for constructor factId to prevent prototype pollution", () => {
@@ -693,6 +728,7 @@ describe("addFact", () => {
 		expect(() => addFact(passport, "constructor", "malicious content")).toThrow(
 			'factId "constructor" is a reserved key',
 		);
+		expect(passport.evidence_facts).toBeUndefined();
 	});
 
 	it("throws for prototype factId to prevent prototype pollution", () => {
@@ -700,34 +736,31 @@ describe("addFact", () => {
 		expect(() => addFact(passport, "prototype", "malicious content")).toThrow(
 			'factId "prototype" is a reserved key',
 		);
+		expect(passport.evidence_facts).toBeUndefined();
 	});
 
-	it("replaces evidence_facts if it contains reserved keys", () => {
+	it("drops reserved keys from an existing evidence_facts map", () => {
 		const dirty = JSON.parse(
 			'{"__proto__":{"polluted":true},"safe":{"content_hash":"sha256:old","recorded_at":"2026-01-01T00:00:00Z"}}',
 		);
 		const passport = { ...VALID_PASSPORT, evidence_facts: dirty };
-		addFact(passport, "fact-001", "new content");
-		const facts = passport.evidence_facts as Record<string, unknown>;
-		// The dirty __proto__ entry should not be present as an own property
+		const result = addFact(passport, "fact-001", "new content");
+		const facts = result.evidence_facts as Record<string, unknown>;
+		// The dirty __proto__ entry is not carried over to the new map.
 		expect(Object.keys(facts)).not.toContain("__proto__");
+		expect(Object.getPrototypeOf(facts)).toBe(Object.prototype);
 		expect(facts["fact-001"]).toBeDefined();
+		expect(facts.safe).toBeDefined();
+		// The input map is unchanged (still carries its own __proto__ key).
+		expect(passport.evidence_facts).toBe(dirty);
 	});
 
 	it("does not pollute prototype when __proto__ factId is rejected", () => {
 		const passport = { ...VALID_PASSPORT } as Record<string, unknown>;
-		try {
-			addFact(passport, "__proto__", "malicious");
-		} catch {
-			// expected
-		}
-		// The evidence_facts map should not have __proto__ set
-		const facts = passport.evidence_facts as
-			| Record<string, unknown>
-			| undefined;
-		if (facts) {
-			const protoValue = Object.getPrototypeOf(facts);
-			expect(protoValue).toBe(Object.prototype);
-		}
+		expect(() => addFact(passport, "__proto__", "malicious")).toThrow();
+		// The throw happens before any map is created, so nothing is written.
+		expect(passport.evidence_facts).toBeUndefined();
+		// Global prototype must remain pristine.
+		expect(Object.getPrototypeOf({})).toBe(Object.prototype);
 	});
 });

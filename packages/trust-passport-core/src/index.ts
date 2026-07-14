@@ -269,24 +269,48 @@ export interface EvidenceFact {
 const RESERVED_KEYS = ["__proto__", "constructor", "prototype"];
 
 /**
+ * Build a safe, defensive copy of an existing `evidence_facts` map.
+ *
+ * Returns a brand-new object carrying over only the own enumerable keys of
+ * the input that are not reserved prototype-pollution vectors. Non-record
+ * inputs (primitives, `null`, or arrays) yield an empty map. Because the
+ * result is always a fresh object, the caller's input can never be aliased
+ * or mutated by subsequent writes to the returned map.
+ */
+function sanitizeEvidenceFacts(existing: unknown): Record<string, unknown> {
+	const next: Record<string, unknown> = {};
+	if (isRecord(existing)) {
+		for (const key of Object.keys(existing)) {
+			if (RESERVED_KEYS.includes(key)) continue;
+			next[key] = (existing as Record<string, unknown>)[key];
+		}
+	}
+	return next;
+}
+
+/**
  * Add a content-addressed evidence fact to a trust passport.
  *
  * Hashes the provided content using {@link hashEvidence} and stores the
  * resulting content hash together with a recording timestamp under
- * `passport.evidence_facts[factId]`. The passport is mutated in place and
- * also returned for chaining.
+ * `evidence_facts[factId]` of a NEW passport object.
  *
- * If the passport already has an `evidence_facts` map, the new fact is merged
- * into it; otherwise a new map is created.
+ * This function is pure with respect to its input: it never mutates the
+ * supplied `passport` and never aliases its existing `evidence_facts` map.
+ * It returns a new passport object whose `evidence_facts` map merges any
+ * pre-existing safe facts with the newly recorded one. This makes it safe to
+ * use with shared/immutable data structures and avoids reference-aliasing
+ * side effects.
  *
- * @param passport - A trust passport object (mutated in place).
+ * @param passport - A trust passport object (NOT mutated).
  * @param factId   - Unique identifier for the evidence fact (e.g.
  *                   `"tool-call-get-weather"`). Must not be a reserved key
  *                   (`__proto__`, `constructor`, or `prototype`).
  * @param content  - The evidence content to hash and reference. Strings are
  *                   hashed directly; all other values are JSON-stringified
  *                   before hashing.
- * @returns The same passport object, updated with the new evidence fact.
+ * @returns A new passport object with the evidence fact recorded. The input
+ *           passport is left unchanged.
  *
  * @throws {Error} If `factId` is a reserved JavaScript key that could enable
  *                  prototype pollution.
@@ -294,8 +318,8 @@ const RESERVED_KEYS = ["__proto__", "constructor", "prototype"];
  * @example
  * ```ts
  * const passport = { passport_version: "0.1", ... };
- * addFact(passport, "tool-call-001", "get_weather(location='NYC')");
- * passport.evidence_facts["tool-call-001"].content_hash
+ * const updated = addFact(passport, "tool-call-001", "get_weather(location='NYC')");
+ * updated.evidence_facts["tool-call-001"].content_hash;
  * // => "sha256:abc123..."
  * ```
  */
@@ -317,22 +341,15 @@ export function addFact(
 	const contentHash = hashEvidence(contentStr);
 	const recordedAt = new Date().toISOString();
 
-	// Ensure evidence_facts map exists and is safe
-	const existing = passport.evidence_facts;
-	if (!existing || !isRecord(existing)) {
-		passport.evidence_facts = {};
-	} else {
-		// Reject existing objects that carry prototype-pollution keys
-		const obj = existing as Record<string, unknown>;
-		if (RESERVED_KEYS.some((k) => hasOwn(obj, k))) {
-			passport.evidence_facts = {};
-		}
-	}
-
-	(passport.evidence_facts as Record<string, unknown>)[factId] = {
+	// Build a fresh evidence_facts map from any safe pre-existing facts WITHOUT
+	// mutating the input passport or aliasing its existing map. Reserved keys
+	// and non-record shapes are discarded defensively.
+	const nextFacts = sanitizeEvidenceFacts(passport.evidence_facts);
+	nextFacts[factId] = {
 		content_hash: contentHash,
 		recorded_at: recordedAt,
 	};
 
-	return passport;
+	// Return a new passport object; the input is left untouched.
+	return { ...passport, evidence_facts: nextFacts };
 }
