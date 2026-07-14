@@ -74,6 +74,7 @@ agent-trust-infra/
 ├── specs/         — AgentBOM, MCP Posture, Trust Passport specifications
 ├── packages/      — TypeScript reference implementations (no CLI dependency)
 ├── cli/           — agent-trust unified CLI
+├── test/          — schema conformance fixtures (CycloneDX ML-BOM, SPDX 3.0)
 ├── examples/      — demo fixtures and end-to-end demos
 └── papers/        — technical reports
 ```
