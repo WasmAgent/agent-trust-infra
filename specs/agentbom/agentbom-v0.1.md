@@ -72,6 +72,7 @@ AgentBOM v0.1
 ├── tool_layer       — registered tools, MCP servers, tool permissions, skills
 ├── prompt_layer     — system prompt references, template IDs, prompt version tracking
 ├── permission_layer — granted scopes, data access boundaries, credential references
+├── policy_definitions — governance policies, constraints, and compliance rules
 ├── evidence_layer   — AEP event references, runtime evidence hashes
 ├── audit_log        — structured audit trail entries
 ├── risk_layer       — known risk signals, open findings
@@ -149,6 +150,21 @@ The `templates` array supplements the simpler `template_ids` array; both may be 
 | `granted_scopes` | string[] | no | All granted permission scopes |
 | `data_access` | string[] | no | Data sources the agent can access |
 | `credential_references` | string[] | no | Credential type references (no secrets) |
+
+## policy_definitions
+
+Array of policy definition entries:
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `policy_id` | string | yes | Unique policy identifier |
+| `policy_name` | string | yes | Human-readable policy name |
+| `policy_type` | string | yes | Policy type or category (e.g., `content_filter`, `rate_limit`, `data_handling`, `compliance`) |
+| `version` | string | no | Policy version (semver) |
+| `description` | string | no | Description of what the policy governs |
+| `rules` | string[] | no | Declarative policy rules or constraint expressions |
+
+The `policy_definitions` field captures governance policies and compliance rules that constrain or govern the agent's behavior. This is distinct from `permission_layer` (which declares what the agent *can* access) — `policy_definitions` describe the *rules* that govern *how* the agent uses those permissions, such as content filtering policies, rate limits, data handling constraints, and regulatory compliance requirements. Each policy has a type classification enabling automated policy enforcement and compliance checking.
 
 ## evidence_layer
 

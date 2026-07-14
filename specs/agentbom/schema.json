@@ -175,6 +175,42 @@
         }
       }
     },
+    "policy_definitions": {
+      "type": "array",
+      "description": "Governance policies, constraints, and compliance rules that govern agent behavior",
+      "items": {
+        "type": "object",
+        "required": ["policy_id", "policy_name", "policy_type"],
+        "additionalProperties": false,
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "Unique policy identifier"
+          },
+          "policy_name": {
+            "type": "string",
+            "description": "Human-readable policy name"
+          },
+          "policy_type": {
+            "type": "string",
+            "description": "Policy type or category (e.g., content_filter, rate_limit, data_handling, compliance)"
+          },
+          "version": {
+            "type": "string",
+            "description": "Policy version (semver)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what the policy governs"
+          },
+          "rules": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Declarative policy rules or constraint expressions"
+          }
+        }
+      }
+    },
     "evidence_layer": {
       "type": "object",
       "additionalProperties": false,
