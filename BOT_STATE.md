@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-14 06:05 UTC by patrol_
+_Last updated: 2026-07-14 06:37 UTC by patrol_
 
 ## Queue
 
@@ -8,22 +8,21 @@ _Last updated: 2026-07-14 06:05 UTC by patrol_
 |---|---|
 | Pending | 1 |
 | Active (running/reviewing) | 0 |
-| Blocked | 2 |
-| Completed/Merged (all time) | 901 |
+| Blocked | 1 |
+| Completed/Merged (all time) | 903 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #178 | Fix WasmAgent/agent-trust-infra#172 (test: replace doc-st... | merged/auto_closed_resolved | 2026-07-14 |
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
 | #169 | Fix WasmAgent/agent-trust-infra#161 (CLI: adaptive compli... | merged/merged | 2026-07-14 |
 | #160 | features.go: indicatorWarmup returns hardcoded 25 (dead c... | merged/merged | 2026-07-14 |
 | #179 | Fix WasmAgent/agent-trust-infra#170 (feat: extend AgentBO... | merged/merged | 2026-07-14 |
-| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
-| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
 
 ## Waiting for Human
 
-- #178: Fix WasmAgent/agent-trust-infra#172 (test: replace doc-string coherence tests with CycloneDX/SPDX schema conformance tes
 - #168: [discussion] docs: docs: project-boundaries.md may misstate AEP scope
 - #166: [discussion] docs: docs: architecture.md signing dependency outdated
 - #162: trust-passport-core: content-addressable evidence storage API (hashEvidence/addFact) missing
@@ -33,6 +32,7 @@ _Last updated: 2026-07-14 06:05 UTC by patrol_
 - #156: [discussion] explore: Add Zod schema validation for all trust artifacts
 - #155: [discussion] docs: CLI command examples outdated in architecture.md
 - #153: [discussion] docs: Outdated signing dependency reference in architecture.md
+- #152: [discussion] code-review: Incorrect import path breaks application builds
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
