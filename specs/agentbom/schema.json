@@ -69,7 +69,7 @@
     },
     "tool_layer": {
       "type": "array",
-      "description": "Registered tools, MCP servers, tool permissions",
+      "description": "Registered tools, MCP servers, tool permissions, skills",
       "items": {
         "type": "object",
         "required": ["tool_id", "tool_name", "source"],
@@ -92,6 +92,11 @@
             "type": "string",
             "description": "MCP server identifier if source is mcp"
           },
+          "skills": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Skills or capabilities this tool contributes to the agent"
+          },
           "permissions": {
             "type": "array",
             "items": { "type": "string" },
@@ -108,16 +113,43 @@
     "prompt_layer": {
       "type": "object",
       "additionalProperties": false,
-      "description": "System prompt references, template IDs",
+      "description": "System prompt references, template IDs, prompt version tracking",
       "properties": {
         "system_prompt_hash": {
           "type": "string",
           "description": "SHA-256 of system prompt"
         },
+        "prompt_version": {
+          "type": "string",
+          "description": "Version identifier for the active prompt set"
+        },
         "template_ids": {
           "type": "array",
           "items": { "type": "string" },
           "description": "Referenced prompt template IDs"
+        },
+        "templates": {
+          "type": "array",
+          "description": "Versioned prompt template references",
+          "items": {
+            "type": "object",
+            "required": ["template_id"],
+            "additionalProperties": false,
+            "properties": {
+              "template_id": {
+                "type": "string",
+                "description": "Prompt template identifier"
+              },
+              "version": {
+                "type": "string",
+                "description": "Template version (semver or snapshot)"
+              },
+              "hash": {
+                "type": "string",
+                "description": "SHA-256 hash of the template content"
+              }
+            }
+          }
         }
       }
     },
@@ -140,6 +172,42 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Credential type references (no secrets)"
+        }
+      }
+    },
+    "policy_definitions": {
+      "type": "array",
+      "description": "Governance policies, constraints, and compliance rules that govern agent behavior",
+      "items": {
+        "type": "object",
+        "required": ["policy_id", "policy_name", "policy_type"],
+        "additionalProperties": false,
+        "properties": {
+          "policy_id": {
+            "type": "string",
+            "description": "Unique policy identifier"
+          },
+          "policy_name": {
+            "type": "string",
+            "description": "Human-readable policy name"
+          },
+          "policy_type": {
+            "type": "string",
+            "description": "Policy type or category (e.g., content_filter, rate_limit, data_handling, compliance)"
+          },
+          "version": {
+            "type": "string",
+            "description": "Policy version (semver)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what the policy governs"
+          },
+          "rules": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Declarative policy rules or constraint expressions"
+          }
         }
       }
     },
@@ -246,6 +314,74 @@
             "type": "string",
             "enum": ["open", "mitigated", "accepted"],
             "description": "Risk status"
+          }
+        }
+      }
+    },
+    "workflow_layer": {
+      "type": "array",
+      "description": "Action pathway definitions — workflows, pipelines, and decision sequences that define how the agent executes tasks",
+      "items": {
+        "type": "object",
+        "required": ["workflow_id", "workflow_name", "steps"],
+        "additionalProperties": false,
+        "properties": {
+          "workflow_id": {
+            "type": "string",
+            "description": "Unique workflow identifier"
+          },
+          "workflow_name": {
+            "type": "string",
+            "description": "Human-readable workflow name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Workflow description"
+          },
+          "version": {
+            "type": "string",
+            "description": "Workflow definition version (semver)"
+          },
+          "steps": {
+            "type": "array",
+            "description": "Ordered list of steps in this workflow",
+            "items": {
+              "type": "object",
+              "required": ["step_id", "action"],
+              "additionalProperties": false,
+              "properties": {
+                "step_id": {
+                  "type": "string",
+                  "description": "Unique step identifier within the workflow"
+                },
+                "action": {
+                  "type": "string",
+                  "description": "Action to perform (tool_id, prompt, sub_workflow, decision)"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Step description"
+                },
+                "input": {
+                  "type": "string",
+                  "description": "Input reference or template"
+                },
+                "output": {
+                  "type": "string",
+                  "description": "Expected output reference"
+                },
+                "depends_on": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Step IDs this step depends on"
+                },
+                "allowed_tools": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Tool IDs allowed at this step"
+                }
+              }
+            }
           }
         }
       }
