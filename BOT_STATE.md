@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-14 12:35 UTC by patrol_
+_Last updated: 2026-07-14 13:06 UTC by patrol_
 
 ## Queue
 
@@ -8,8 +8,8 @@ _Last updated: 2026-07-14 12:35 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 916 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 917 |
 
 ## Recent Activity (last 5)
 
@@ -25,7 +25,6 @@ _Last updated: 2026-07-14 12:35 UTC by patrol_
 
 - #168: [discussion] docs: docs: project-boundaries.md may misstate AEP scope
 - #166: [discussion] docs: docs: architecture.md signing dependency outdated
-- #162: trust-passport-core: content-addressable evidence storage API (hashEvidence/addFact) missing
 - #159: [discussion] explore: Instrument trust chain with OpenTelemetry traces
 - #158: [discussion] explore: Migrate to modern elliptic curve library for signing
 - #157: [discussion] explore: Machine-readable output mode in agent-trust CLI
@@ -33,6 +32,7 @@ _Last updated: 2026-07-14 12:35 UTC by patrol_
 - #155: [discussion] docs: CLI command examples outdated in architecture.md
 - #153: [discussion] docs: Outdated signing dependency reference in architecture.md
 - #152: [discussion] code-review: Incorrect import path breaks application builds
+- #136: [discussion] code-review: infra: undefined patrol instructions create operational risk
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
