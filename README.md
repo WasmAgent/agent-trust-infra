@@ -75,6 +75,7 @@ agent-trust-infra/
 ├── packages/      — TypeScript reference implementations (no CLI dependency)
 ├── cli/           — agent-trust unified CLI
 ├── examples/      — demo fixtures and end-to-end demos
+├── test/          — schema conformance fixtures (CycloneDX ML-BOM, SPDX 3.0)
 └── papers/        — technical reports
 ```
 
