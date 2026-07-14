@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-14 07:07 UTC by patrol_
+_Last updated: 2026-07-14 07:37 UTC by patrol_
 
 ## Queue
 
@@ -9,7 +9,7 @@ _Last updated: 2026-07-14 07:07 UTC by patrol_
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 1 |
-| Completed/Merged (all time) | 905 |
+| Completed/Merged (all time) | 906 |
 
 ## Recent Activity (last 5)
 
@@ -17,9 +17,9 @@ _Last updated: 2026-07-14 07:07 UTC by patrol_
 |---|---|---|---|
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
 | #178 | Fix WasmAgent/agent-trust-infra#172 (test: replace doc-st... | merged/auto_closed_resolved | 2026-07-14 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
-| #169 | Fix WasmAgent/agent-trust-infra#161 (CLI: adaptive compli... | merged/merged | 2026-07-14 |
 
 ## Waiting for Human
 
