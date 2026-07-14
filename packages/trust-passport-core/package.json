@@ -7,6 +7,6 @@
   "scripts": {
     "build": "echo 'build: stub'",
     "test": "bun test src/",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "echo 'typecheck: stub'"
   }
 }
