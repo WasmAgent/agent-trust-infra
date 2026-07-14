@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-14 06:37 UTC by patrol_
+_Last updated: 2026-07-14 07:07 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
+| Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 1 |
-| Completed/Merged (all time) | 903 |
+| Completed/Merged (all time) | 905 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
 | #178 | Fix WasmAgent/agent-trust-infra#172 (test: replace doc-st... | merged/auto_closed_resolved | 2026-07-14 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-14 |
 | #169 | Fix WasmAgent/agent-trust-infra#161 (CLI: adaptive compli... | merged/merged | 2026-07-14 |
-| #160 | features.go: indicatorWarmup returns hardcoded 25 (dead c... | merged/merged | 2026-07-14 |
-| #179 | Fix WasmAgent/agent-trust-infra#170 (feat: extend AgentBO... | merged/merged | 2026-07-14 |
 
 ## Waiting for Human
 
