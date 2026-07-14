@@ -2,6 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   MCPServerDecorator,
   createDecoratedServer,
+  createRuntimeValidator,
   decorateServerFromPosture,
   enforcePostureOnServers,
   checkToolAccessAcrossServers,
@@ -643,5 +644,218 @@ describe("Integration scenarios", () => {
 
     const execCheck = checkToolAccessAcrossServers(decorators, "run-command");
     expect(execCheck.allowed).toBe(false);
+  });
+});
+
+describe("AgentBOM Runtime Validation", () => {
+  const validAgentBOM = {
+    agentbom_version: "0.1",
+    identity: {
+      agent_id: "test-agent",
+      agent_name: "Test Agent",
+      generated_at: "2026-07-07T00:00:00Z",
+    },
+    tool_layer: [
+      {
+        tool_id: "read-file",
+        tool_name: "read_file",
+        source: "builtin",
+        permissions: ["filesystem.read"],
+      },
+      {
+        tool_id: "write-file",
+        tool_name: "write_file",
+        source: "builtin",
+        permissions: ["filesystem.write"],
+      },
+    ],
+    permission_layer: {
+      granted_scopes: ["filesystem.read", "filesystem.write", "network.connect"],
+    },
+    attestation: {
+      generator: "test",
+    },
+  };
+
+  const emptyAgentBOM = {
+    agentbom_version: "0.1",
+    identity: {
+      agent_id: "empty-agent",
+      agent_name: "Empty Agent",
+      generated_at: "2026-07-07T00:00:00Z",
+    },
+    attestation: {
+      generator: "test",
+    },
+  };
+
+  describe("createRuntimeValidator", () => {
+    it("returns a RuntimeValidator for a valid AgentBOM", () => {
+      const validator = createRuntimeValidator(validAgentBOM);
+      expect(validator).not.toBeNull();
+    });
+
+    it("returns null for an invalid AgentBOM", () => {
+      const validator = createRuntimeValidator({ invalid: "data" });
+      expect(validator).toBeNull();
+    });
+  });
+
+  describe("validateToolInvocation", () => {
+    it("returns valid for a known tool with all permissions granted", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateToolInvocation({
+        tool_id: "read-file",
+        tool_name: "read_file",
+        permissions: ["filesystem.read"],
+      });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("rejects an unknown tool with unknown_tool error", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateToolInvocation({
+        tool_id: "unknown-tool",
+        tool_name: "unknown_tool",
+        permissions: [],
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errorDetails[0].type).toBe("unknown_tool");
+    });
+
+    it("rejects a known tool with undeclared permission", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateToolInvocation({
+        tool_id: "read-file",
+        tool_name: "read_file",
+        permissions: ["network.admin"],
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errorDetails.some((e) => e.type === "undeclared_permission")).toBe(true);
+    });
+
+    it("validates against required permissions from AgentBOM even if request has no permissions", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      // read-file requires "filesystem.read" which is in granted_scopes
+      const result = validator.validateToolInvocation({
+        tool_id: "read-file",
+        tool_name: "read_file",
+      });
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe("validatePermissionScope", () => {
+    it("returns valid for a granted scope", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validatePermissionScope({ scope: "filesystem.read" });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("rejects a non-granted scope with undeclared_permission error", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validatePermissionScope({ scope: "admin.superuser" });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errorDetails[0].type).toBe("undeclared_permission");
+      expect(result.errorDetails[0].permission).toBe("admin.superuser");
+    });
+  });
+
+  describe("validateRuntimeRequest", () => {
+    it("returns valid for a fully valid request", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateRuntimeRequest({
+        tool_invocations: [
+          {
+            tool_id: "read-file",
+            tool_name: "read_file",
+            permissions: ["filesystem.read"],
+          },
+          {
+            tool_id: "write-file",
+            tool_name: "write_file",
+            permissions: ["filesystem.write"],
+          },
+        ],
+        permission_requests: [
+          { scope: "filesystem.read" },
+          { scope: "network.connect" },
+        ],
+      });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+
+    it("collects errors from multiple invalid invocations and permission requests", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateRuntimeRequest({
+        tool_invocations: [
+          {
+            tool_id: "unknown-tool",
+            tool_name: "unknown_tool",
+            permissions: [],
+          },
+          {
+            tool_id: "read-file",
+            tool_name: "read_file",
+            permissions: ["filesystem.read", "admin.superuser"],
+          },
+        ],
+        permission_requests: [
+          { scope: "admin.superuser" },
+        ],
+      });
+      expect(result.valid).toBe(false);
+      // unknown-tool: unknown_tool error
+      // read-file with admin.superuser: undeclared_permission error
+      // admin.superuser permission request: undeclared_permission error
+      expect(result.errors.length).toBeGreaterThanOrEqual(2);
+      expect(result.errorDetails.some((e) => e.type === "unknown_tool")).toBe(true);
+      expect(result.errorDetails.some((e) => e.type === "undeclared_permission")).toBe(true);
+    });
+
+    it("handles empty requests", () => {
+      const validator = createRuntimeValidator(validAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateRuntimeRequest({
+        tool_invocations: [],
+        permission_requests: [],
+      });
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
+  describe("empty AgentBOM (no tool_layer or permission_layer)", () => {
+    it("creates a validator that rejects all tools", () => {
+      const validator = createRuntimeValidator(emptyAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validateToolInvocation({
+        tool_id: "any-tool",
+        tool_name: "any_tool",
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errorDetails[0].type).toBe("unknown_tool");
+    });
+
+    it("creates a validator that rejects all permission scopes", () => {
+      const validator = createRuntimeValidator(emptyAgentBOM)!;
+      expect(validator).not.toBeNull();
+      const result = validator.validatePermissionScope({ scope: "anything" });
+      expect(result.valid).toBe(false);
+      expect(result.errorDetails[0].type).toBe("undeclared_permission");
+    });
   });
 });
