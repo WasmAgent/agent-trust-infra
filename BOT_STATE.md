@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-16 03:06 UTC by patrol_
+_Last updated: 2026-07-16 14:13 UTC by patrol_
 
 ## Queue
 
@@ -8,8 +8,8 @@ _Last updated: 2026-07-16 03:06 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
-| Blocked | 0 |
-| Completed/Merged (all time) | 993 |
+| Blocked | 1 |
+| Completed/Merged (all time) | 1016 |
 
 ## Recent Activity (last 5)
 
@@ -23,16 +23,7 @@ _Last updated: 2026-07-16 03:06 UTC by patrol_
 
 ## Waiting for Human
 
-- #168: [discussion] docs: docs: project-boundaries.md may misstate AEP scope
-- #166: [discussion] docs: docs: architecture.md signing dependency outdated
-- #159: [discussion] explore: Instrument trust chain with OpenTelemetry traces
-- #158: [discussion] explore: Migrate to modern elliptic curve library for signing
-- #157: [discussion] explore: Machine-readable output mode in agent-trust CLI
-- #156: [discussion] explore: Add Zod schema validation for all trust artifacts
-- #155: [discussion] docs: CLI command examples outdated in architecture.md
-- #153: [discussion] docs: Outdated signing dependency reference in architecture.md
-- #152: [discussion] code-review: Incorrect import path breaks application builds
-- #136: [discussion] code-review: infra: undefined patrol instructions create operational risk
+- #189: code-review: Partial credit scoring blocks critical commands on failure
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
