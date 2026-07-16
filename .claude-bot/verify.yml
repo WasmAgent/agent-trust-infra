@@ -3,9 +3,12 @@ commands:
   - name: install
     cmd: npm install --frozen-lockfile
     timeout: 3m
+    level: 1
   - name: build
     cmd: npm run build
     timeout: 3m
+    level: 1
   - name: test
     cmd: npm test
     timeout: 3m
+    level: 3
