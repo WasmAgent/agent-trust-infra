@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-17 15:39 UTC by patrol_
+_Last updated: 2026-07-17 16:14 UTC by patrol_
 
 ## Queue
 
@@ -8,8 +8,8 @@ _Last updated: 2026-07-17 15:39 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 1066 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 1067 |
 
 ## Recent Activity (last 5)
 
@@ -20,10 +20,6 @@ _Last updated: 2026-07-17 15:39 UTC by patrol_
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-17 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-17 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-17 |
-
-## Waiting for Human
-
-- #189: code-review: Partial credit scoring blocks critical commands on failure
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
