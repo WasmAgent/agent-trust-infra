@@ -290,6 +290,44 @@ An attacker could publish a malicious MCP server package that appears legitimate
 
 ---
 
+## 8. MCP Header Leakage (`mcp_header_leakage`)
+
+### Definition
+
+MCP header leakage occurs when sensitive information is exposed through custom MCP protocol headers. The MCP 2026-07-28 stateless/handle-based architecture introduced `MCP-Method` and `MCP-Name` headers that carry tool invocation metadata. When these headers appear in proxy logs, WAF telemetry, CDN access logs, or SIEM dashboards, they can expose internal tool names, server topology, and workflow patterns to unauthorized observers. Unlike traditional header-based leakage (e.g., `X-Forwarded-For`), MCP headers carry *semantic* information about agent-tool interactions that reveals behavioral patterns.
+
+### Example pattern
+
+An MCP gateway or reverse proxy logs all request headers for debugging. The `MCP-Method` and `MCP-Name` headers reveal which tools the agent is calling and in what sequence.
+
+```
+POST /mcp/v1/tools/call HTTP/1.1
+MCP-Method: tools/call
+MCP-Name: read_internal_config
+Host: internal-mcp-server.example.com
+```
+
+An attacker with access to proxy logs could reconstruct the agent's tool-calling patterns, identify high-value tools, and plan targeted prompt-injection or credential-access attacks.
+
+### Severity guidance
+
+| Condition | Severity |
+|---|---|
+| MCP-Method/MCP-Name headers logged to shared or third-party observability without redaction | **Critical** |
+| Headers visible in CDN/WAF logs accessible to broader team | **High** |
+| Headers visible only in controlled internal proxy logs with access restrictions | **Medium** |
+| Headers stripped or redacted before any logging or telemetry pipeline | **Low** |
+
+### OWASP MCP reference
+
+No direct MCP Top 10 entry (this risk was introduced by the MCP 2026-07-28 specification revision after the original MCP Top 10 was published). Maps conceptually to MCP-05 (information exposure through tool metadata) and MCP-07 (server trust boundary).
+
+### OWASP Agentic reference
+
+**ASI03** — Data Exfiltration (tool invocation patterns and server topology constitute exfiltratable intelligence).
+
+---
+
 ## OWASP MCP Top 10 Mapping
 
 > Each risk category in this taxonomy maps to at least one entry from the
@@ -304,3 +342,4 @@ An attacker could publish a malicious MCP server package that appears legitimate
 | Prompt Injection | `prompt_injection` | MCP-05 | Tool output contains content that can manipulate agent reasoning or behavior | Critical |
 | Credential Access | `credential_access` | MCP-06 | Tool provides access to secrets, credentials, or authentication material | Critical |
 | Supply Chain | `supply_chain` | MCP-07 | MCP server or plugin from unverified or untrusted provenance | Critical |
+| MCP Header Leakage | `mcp_header_leakage` | — (post-MCP Top 10) | Sensitive MCP-Method/MCP-Name headers exposed in logs or telemetry | Critical |

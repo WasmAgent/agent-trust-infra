@@ -6,7 +6,9 @@ import { generateAgentBOMCommand } from './bom-generate.js';
 import { chainCommand } from './chain.js';
 import { complianceCheckCommand } from './compliance-check.js';
 import { exportDashboardCommand } from './export-dashboard.js';
+import { diffMCPPostureCommand } from './mcp-posture-diff.js';
 import { inspectMCPPostureCommand } from './mcp-posture-inspect.js';
+import { validateMCPPostureCommand } from './mcp-posture-validate.js';
 import { inspectPassportCommand } from './passport-inspect.js';
 import { signPassportCommand } from './passport-sign.js';
 import { validatePassportCommand } from './passport-validate.js';
@@ -25,7 +27,9 @@ const USAGE = [
   '  agentbom diff <old> <new>  Diff two AgentBOM files',
   '  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory',
   '  generate bom --agent <path>  Generate AgentBOM JSON from agent directory (alias)',
-  '  mcp-posture inspect <path> Inspect an MCP posture file',
+  '  mcp-posture inspect <path>    Inspect an MCP posture file',
+  '  mcp-posture validate <path>  Validate an MCP posture file',
+  '  mcp-posture diff <old> <new> Diff two MCP posture snapshots',
   '  audit-report <bom.json>    Generate human-readable audit summary with evidence citations',
   '  compliance-check <bom.json> --profile <name> [--min-score <score>]  Validate AgentBOM against compliance profile with adaptive weighted scoring',
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
@@ -95,6 +99,20 @@ export function runCommand(args: string[]): number | Promise<number> {
         return 1;
       }
       return inspectMCPPostureCommand(args[2]);
+    }
+    if (args[1] === 'validate') {
+      if (args.length < 3) {
+        console.error('Error: mcp-posture validate requires a <path> argument');
+        return 1;
+      }
+      return validateMCPPostureCommand(args[2]);
+    }
+    if (args[1] === 'diff') {
+      if (args.length < 4) {
+        console.error('Error: mcp-posture diff requires <old> and <new> path arguments');
+        return 1;
+      }
+      return diffMCPPostureCommand(args[2], args[3]);
     }
     console.error(`Error: unknown mcp-posture subcommand "${args[1]}"`);
     return 1;

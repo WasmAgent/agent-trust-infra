@@ -84,3 +84,47 @@ agent-trust mcp-posture validate <path>    # Validate against schema
 agent-trust mcp-posture inspect <path>     # Human-readable summary
 agent-trust mcp-posture diff <old> <new>   # Show posture drift
 ```
+
+## Standalone product viability
+
+MCP Posture is designed to operate as an independent MCP security product. The
+package `@wasmagent/mcp-posture-core` ships a schema, validator, inspector, and
+diff engine with zero external runtime dependencies — it can be consumed outside
+the agent-trust-infra monorepo by any MCP security tooling.
+
+### What this package owns
+
+| Capability | Export | Purpose |
+|---|---|---|
+| Schema validation | `validateMCPPosture()` | Structural conformance check for posture snapshots |
+| Human-readable inspection | `inspectMCPPosture()` | Summarize servers, tools, risk findings, and permission surface |
+| Drift detection | `diffMCPPosture()` / `formatPostureDiff()` | Compare two posture snapshots and report server, tool, permission, and risk changes |
+| Risk taxonomy constants | `RISK_CATEGORIES` | Enum of 8 canonical risk categories for programmatic use |
+| Type definitions | `PostureDiff`, `RiskCategory`, `SessionModel`, etc. | TypeScript types for posture data structures |
+
+### Boundary with downstream packages
+
+- **Runtime MCP scanning** (server discovery, live traffic analysis) →
+  [`@wasmagent/mcp-attestation`](https://github.com/WasmAgent/wasmagent-js) in
+  `wasmagent-js`. This package validates *snapshots*; it does not perform live
+  scanning.
+- **Audit report generation** (framework mapping, evidence pipelining) →
+  [`open-agent-audit`](https://github.com/WasmAgent/open-agent-audit). Posture
+  snapshots feed into audit reports but report rendering is downstream.
+- **Trust Passport issuance / renewal** → `open-agent-audit` / Trustavo. The
+  posture snapshot is referenced by a Trust Passport but passport lifecycle is
+  managed separately.
+
+### Extraction criteria
+
+MCP Posture can be extracted into a standalone repository when:
+
+1. The schema version (`posture_version`) has stabilized and no breaking changes
+   are expected in the short term.
+2. External consumers (beyond the WasmAgent ecosystem) adopt the package
+   independently.
+3. The risk taxonomy has coverage across OWASP Agentic Top 10 (ASI01–ASI10).
+
+Until extraction, the canonical source is this repository. The JSON schema in
+`specs/mcp-posture/schema.json` and the reference implementation in
+`packages/mcp-posture-core/` are versioned together.

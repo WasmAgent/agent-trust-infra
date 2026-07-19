@@ -2,7 +2,13 @@ import { describe, expect, it } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { RISK_CATEGORIES, inspectMCPPosture, validateMCPPosture } from './index.js';
+import {
+  RISK_CATEGORIES,
+  diffMCPPosture,
+  formatPostureDiff,
+  inspectMCPPosture,
+  validateMCPPosture,
+} from './index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -312,5 +318,182 @@ describe('inspectMCPPosture', () => {
     };
     const output = inspectMCPPosture(posture);
     expect(output).toContain('ASI01');
+  });
+});
+
+describe('diffMCPPosture', () => {
+  it('returns empty diff for identical posture snapshots', () => {
+    const diff = diffMCPPosture(VALID_POSTURE, { ...VALID_POSTURE });
+    expect(diff.isEmpty()).toBe(true);
+  });
+
+  it('detects added servers', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        ...VALID_POSTURE.servers,
+        {
+          server_id: 'new-server',
+          server_name: 'New Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    expect(diff.isEmpty()).toBe(false);
+    expect(diff.servers.added).toContain('new-server');
+  });
+
+  it('detects removed servers', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    expect(diff.isEmpty()).toBe(false);
+    expect(diff.servers.removed).toContain('test-server');
+  });
+
+  it('detects added and removed tools', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'new-tool',
+              tool_name: 'new_tool',
+              permissions: ['fs:read'],
+              risk_categories: ['credential_access'],
+              risk_severity: 'medium',
+            },
+          ],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    expect(diff.tools.added).toHaveLength(1);
+    expect(diff.tools.added[0].tool.tool_id).toBe('new-tool');
+    expect(diff.tools.removed).toHaveLength(1);
+    expect(diff.tools.removed[0].tool.tool_id).toBe('test-tool');
+  });
+
+  it('detects permission changes', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      permission_graph: {
+        permission_scopes: ['network:outbound'],
+      },
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      permission_graph: {
+        permission_scopes: ['network:outbound', 'fs:read'],
+      },
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    expect(diff.permissions.added).toContain('fs:read');
+  });
+
+  it('detects risk findings added, removed, and modified', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'low', category: 'ssrf', description: 'Old finding' },
+      ],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'high', category: 'ssrf', description: 'Old finding' },
+        {
+          finding_id: 'f-002',
+          severity: 'medium',
+          category: 'exfiltration',
+          description: 'New finding',
+        },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    expect(diff.risks.modified).toHaveLength(1);
+    expect(diff.risks.modified[0].finding_id).toBe('f-001');
+    expect(diff.risks.modified[0].field).toBe('severity');
+    expect(diff.risks.modified[0].old).toBe('low');
+    expect(diff.risks.modified[0].new).toBe('high');
+    expect(diff.risks.added).toHaveLength(1);
+    expect(diff.risks.added[0].finding_id).toBe('f-002');
+  });
+});
+
+describe('formatPostureDiff', () => {
+  it('produces human-readable diff output', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'test-tool',
+              tool_name: 'test_tool',
+              permissions: ['network:outbound'],
+              risk_categories: ['ssrf'],
+              risk_severity: 'low',
+            },
+          ],
+        },
+        {
+          server_id: 'added-server',
+          server_name: 'Added Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const output = formatPostureDiff(diff);
+    expect(output).toContain('Servers added');
+    expect(output).toContain('added-server');
+  });
+
+  it('reports no differences for empty diff', () => {
+    const diff = diffMCPPosture(VALID_POSTURE, { ...VALID_POSTURE });
+    const output = formatPostureDiff(diff);
+    expect(output).toContain('No differences found');
+  });
+});
+
+describe('diff with example drift fixtures', () => {
+  const oldPath = join(__dirname, '../../../examples/mcp-risk-demo/posture-old.json');
+  const newPath = join(__dirname, '../../../examples/mcp-risk-demo/posture-new.json');
+  let oldData: Record<string, unknown>;
+  let newData: Record<string, unknown>;
+
+  it('diff detects server addition (local-filesystem)', () => {
+    oldData = JSON.parse(readFileSync(oldPath, 'utf-8'));
+    newData = JSON.parse(readFileSync(newPath, 'utf-8'));
+    const diff = diffMCPPosture(oldData, newData);
+    expect(diff.servers.added).toContain('local-filesystem');
+  });
+
+  it('diff detects tool additions', () => {
+    const diff = diffMCPPosture(oldData, newData);
+    const addedToolIds = diff.tools.added.map((t) => t.tool.tool_id);
+    expect(addedToolIds).toContain('create-issue');
+    expect(addedToolIds).toContain('read-file');
+    expect(addedToolIds).toContain('write-file');
+  });
+
+  it('diff detects permission expansion', () => {
+    const diff = diffMCPPosture(oldData, newData);
+    expect(diff.permissions.added).toContain('fs:read');
+    expect(diff.permissions.added).toContain('fs:write');
+  });
+
+  it('diff is not empty', () => {
+    const diff = diffMCPPosture(oldData, newData);
+    expect(diff.isEmpty()).toBe(false);
   });
 });
