@@ -27,6 +27,7 @@ import { signPassportCommand } from './passport-sign.js';
 import { validatePassportCommand } from './passport-validate.js';
 import { verifySignedPassportCommand } from './passport-verify-signed.js';
 import { verifySigstoreCommand } from './sigstore-verify.js';
+import { trustDiffCommand } from './trust-diff.js';
 import { publishCommand } from './trust-publish.js';
 import { subscribeCommand } from './trust-subscribe.js';
 
@@ -56,6 +57,7 @@ const USAGE = [
   '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
   '  subscribe <agent-id> --baseline <path> [--watch <dir>] [--callback <url>] [--interval <s>] [--once]  Monitor trust artifact drift for an agent',
   '  publish <artifact.json> [--registry <dir>] [--tag <tag>]  Publish trust artifact to registry with CAS identifier',
+  '  diff <artifact-a.json> <artifact-b.json> [--json]  Structured diff of trust artifacts (auto-detects type)',
 ].join('\n');
 
 /** Parse --target and --dry-run flags from a CLI arg slice. */
@@ -327,6 +329,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'publish') {
     return publishCommand(args.slice(1));
+  }
+
+  if (args[0] === 'diff') {
+    return trustDiffCommand(args.slice(1));
   }
 
   if (args[0] === 'subscribe') {
