@@ -20,18 +20,21 @@
  * not touch the network. Each step records a `verdict`, a `duration_ms`, and a
  * deterministic `output_hash` so the result is reproducible.
  */
-import { execSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import { inspectAgentBOM, validateAgentBOM } from "../../packages/agentbom-core/src/index.js";
-import { inspectMCPPosture, validateMCPPosture } from "../../packages/mcp-posture-core/src/index.js";
+import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { inspectAgentBOM, validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
+import {
+  inspectMCPPosture,
+  validateMCPPosture,
+} from '../../packages/mcp-posture-core/src/index.js';
 import {
   inspectTrustPassport,
   isExpired,
   validateTrustPassport,
-} from "../../packages/trust-passport-core/src/index.js";
+} from '../../packages/trust-passport-core/src/index.js';
 
 /** Per-step outcome written to `chain-report.json` and streamed to stdout. */
 export interface ChainStepResult {
@@ -40,7 +43,7 @@ export interface ChainStepResult {
   /** Human-readable label. */
   label: string;
   /** "valid" when the step passed, "invalid" otherwise. */
-  verdict: "valid" | "invalid";
+  verdict: 'valid' | 'invalid';
   /** Wall-clock duration of the step in milliseconds. */
   duration_ms: number;
   /** Deterministic SHA-256 of the step's canonical output (`sha256:<hex>`). */
@@ -61,7 +64,7 @@ export interface ChainReport {
   example: string;
   /** Roll-up of the per-step verdicts. */
   overall: {
-    status: "valid" | "invalid";
+    status: 'valid' | 'invalid';
     valid_steps: number;
     total_steps: number;
   };
@@ -71,50 +74,50 @@ export interface ChainReport {
 
 /** Ordered step identifiers — the 6 chain nodes joined by 5 verifiable links. */
 export const CHAIN_STEPS = [
-  "manifest",
-  "agentbom",
-  "mcp-posture",
-  "audit-report",
-  "trust-passport",
+  'manifest',
+  'agentbom',
+  'mcp-posture',
+  'audit-report',
+  'trust-passport',
 ] as const;
 
 const DEFAULT_EXAMPLE_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../examples/bscode-agent",
+  '../../examples/bscode-agent',
 );
 
 const CHAIN_USAGE = [
-  "Usage: agent-trust chain [--example <dir>] [--out <path>]",
-  "",
-  "Runs the full Agent Trust Infrastructure chain in-process and fully offline:",
-  "  bscode → CapabilityManifest + AEP → AgentBOM → MCP Posture → audit report → Trust Passport",
-  "",
-  "Emits one JSON object per step to stdout and writes chain-report.json.",
-  "",
-  "Options:",
-  "  --example <dir>  Example directory containing agentbom.json, posture.json,",
-  "                  and trust-passport.json (default: examples/bscode-agent).",
-  "  --out <path>     Output path for chain-report.json (default: ./chain-report.json).",
-  "",
-  "Example:",
-  "  agent-trust chain --example examples/bscode-agent --out chain-report.json",
-].join("\n");
+  'Usage: agent-trust chain [--example <dir>] [--out <path>]',
+  '',
+  'Runs the full Agent Trust Infrastructure chain in-process and fully offline:',
+  '  bscode → CapabilityManifest + AEP → AgentBOM → MCP Posture → audit report → Trust Passport',
+  '',
+  'Emits one JSON object per step to stdout and writes chain-report.json.',
+  '',
+  'Options:',
+  '  --example <dir>  Example directory containing agentbom.json, posture.json,',
+  '                  and trust-passport.json (default: examples/bscode-agent).',
+  '  --out <path>     Output path for chain-report.json (default: ./chain-report.json).',
+  '',
+  'Example:',
+  '  agent-trust chain --example examples/bscode-agent --out chain-report.json',
+].join('\n');
 
 /** Deterministic JSON canonicalization: object keys sorted recursively. */
 function canonicalize(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
-  if (value !== null && typeof value === "object") {
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
     const obj = value as Record<string, unknown>;
     return `{${Object.keys(obj)
       .sort()
       .map((k) => `${JSON.stringify(k)}:${canonicalize(obj[k])}`)
-      .join(",")}}`;
+      .join(',')}}`;
   }
   return JSON.stringify(value);
 }
 
 function sha256Hex(input: string): string {
-  return createHash("sha256").update(input, "utf-8").digest("hex");
+  return createHash('sha256').update(input, 'utf-8').digest('hex');
 }
 
 function hashObject(value: unknown): string {
@@ -122,22 +125,22 @@ function hashObject(value: unknown): string {
 }
 
 function hashFile(path: string): string {
-  return `sha256:${sha256Hex(readFileSync(path, "utf-8"))}`;
+  return `sha256:${sha256Hex(readFileSync(path, 'utf-8'))}`;
 }
 
 function loadJSON<T = unknown>(path: string): T {
-  return JSON.parse(readFileSync(path, "utf-8")) as T;
+  return JSON.parse(readFileSync(path, 'utf-8')) as T;
 }
 
 function repoSha(): string {
   try {
-    return execSync("git rev-parse HEAD", {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
+    return execSync('git rev-parse HEAD', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
   } catch {
     // Offline / non-git context: no sha available.
-    return "unknown";
+    return 'unknown';
   }
 }
 
@@ -150,7 +153,7 @@ const startTimer: Timer = () => Date.now();
 const elapsedMs = (start: number): number => Date.now() - start;
 
 function asRecord(value: unknown): Record<string, unknown> {
-  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
   return {};
@@ -171,7 +174,7 @@ function stringArray(value: unknown): unknown[] {
 function runManifestStep(exampleDir: string): ChainStepResult {
   const start = startTimer();
   const errors: string[] = [];
-  const bomPath = resolve(exampleDir, "agentbom.json");
+  const bomPath = resolve(exampleDir, 'agentbom.json');
   let manifest: Record<string, unknown> = {};
 
   try {
@@ -182,7 +185,7 @@ function runManifestStep(exampleDir: string): ChainStepResult {
     const modelLayer = asRecord(bom.model_layer);
 
     manifest = {
-      manifest_version: "0.1",
+      manifest_version: '0.1',
       agent_id: identity.agent_id ?? null,
       capabilities: toolLayer.map((t) => asRecord(t).tool_id ?? null),
       permissions: stringArray(permissionLayer.granted_scopes),
@@ -190,21 +193,21 @@ function runManifestStep(exampleDir: string): ChainStepResult {
       aep_evidence: true,
     };
 
-    if (!manifest.agent_id) errors.push("manifest: missing agent_id");
+    if (!manifest.agent_id) errors.push('manifest: missing agent_id');
     if (!Array.isArray(manifest.capabilities) || manifest.capabilities.length === 0) {
-      errors.push("manifest: capability list is empty");
+      errors.push('manifest: capability list is empty');
     }
   } catch (err) {
     errors.push(`manifest: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return {
-    step: "manifest",
-    label: "CapabilityManifest + AEP",
-    verdict: errors.length === 0 ? "valid" : "invalid",
+    step: 'manifest',
+    label: 'CapabilityManifest + AEP',
+    verdict: errors.length === 0 ? 'valid' : 'invalid',
     duration_ms: elapsedMs(start),
     output_hash: hashObject(manifest),
-    detail: { source: "agentbom.json", reconstructed: true },
+    detail: { source: 'agentbom.json', reconstructed: true },
     errors,
   };
 }
@@ -213,9 +216,9 @@ function runManifestStep(exampleDir: string): ChainStepResult {
 function runAgentBomStep(exampleDir: string): ChainStepResult {
   const start = startTimer();
   const errors: string[] = [];
-  const bomPath = resolve(exampleDir, "agentbom.json");
-  let outputHash = "";
-  let summary = "";
+  const bomPath = resolve(exampleDir, 'agentbom.json');
+  let outputHash = '';
+  let summary = '';
 
   try {
     const data = loadJSON<unknown>(bomPath);
@@ -228,12 +231,12 @@ function runAgentBomStep(exampleDir: string): ChainStepResult {
   }
 
   return {
-    step: "agentbom",
-    label: "AgentBOM",
-    verdict: errors.length === 0 ? "valid" : "invalid",
+    step: 'agentbom',
+    label: 'AgentBOM',
+    verdict: errors.length === 0 ? 'valid' : 'invalid',
     duration_ms: elapsedMs(start),
     output_hash: outputHash,
-    detail: { schema: "specs/agentbom/schema.json", inspect: summary },
+    detail: { schema: 'specs/agentbom/schema.json', inspect: summary },
     errors,
   };
 }
@@ -242,9 +245,9 @@ function runAgentBomStep(exampleDir: string): ChainStepResult {
 function runPostureStep(exampleDir: string): ChainStepResult {
   const start = startTimer();
   const errors: string[] = [];
-  const posturePath = resolve(exampleDir, "posture.json");
-  let outputHash = "";
-  let summary = "";
+  const posturePath = resolve(exampleDir, 'posture.json');
+  let outputHash = '';
+  let summary = '';
 
   try {
     const data = loadJSON<unknown>(posturePath);
@@ -257,12 +260,12 @@ function runPostureStep(exampleDir: string): ChainStepResult {
   }
 
   return {
-    step: "mcp-posture",
-    label: "MCP Posture",
-    verdict: errors.length === 0 ? "valid" : "invalid",
+    step: 'mcp-posture',
+    label: 'MCP Posture',
+    verdict: errors.length === 0 ? 'valid' : 'invalid',
     duration_ms: elapsedMs(start),
     output_hash: outputHash,
-    detail: { schema: "specs/mcp-posture/schema.json", inspect: summary },
+    detail: { schema: 'specs/mcp-posture/schema.json', inspect: summary },
     errors,
   };
 }
@@ -278,40 +281,44 @@ function runAuditStep(exampleDir: string): ChainStepResult {
   let report: Record<string, unknown> = {};
 
   try {
-    const bom = asRecord(loadJSON(resolve(exampleDir, "agentbom.json")));
-    const posture = asRecord(loadJSON(resolve(exampleDir, "posture.json")));
+    const bom = asRecord(loadJSON(resolve(exampleDir, 'agentbom.json')));
+    const posture = asRecord(loadJSON(resolve(exampleDir, 'posture.json')));
     const bomIdentity = asRecord(bom.identity);
     const postureIdentity = asRecord(posture.identity);
     const permissionGraph = asRecord(posture.permission_graph);
     const risks = stringArray(bom.risk_layer);
-    const openRisks = risks.filter((r) => asRecord(r).status === "open");
+    const openRisks = risks.filter((r) => asRecord(r).status === 'open');
 
     report = {
-      report_id: "audit-bscode-demo-001",
+      report_id: 'audit-bscode-demo-001',
       agent_id: bomIdentity.agent_id ?? null,
       snapshot_id: postureIdentity.snapshot_id ?? null,
       generated_at: (bomIdentity.generated_at as string | undefined) ?? null,
       open_findings: openRisks.length,
       high_risk_tools: permissionGraph.high_risk_tools ?? 0,
-      framework_mappings: [{ framework: "OWASP-MCP-Top10", coverage: "partial" }],
-      note: "Demo placeholder. Not a real audit.",
+      framework_mappings: [{ framework: 'OWASP-MCP-Top10', coverage: 'partial' }],
+      note: 'Demo placeholder. Not a real audit.',
     };
 
-    if (!report.agent_id) errors.push("audit-report: missing agent_id");
-    if (bomIdentity.agent_id && postureIdentity.agent_id && bomIdentity.agent_id !== postureIdentity.agent_id) {
-      errors.push("audit-report: agent_id mismatch between AgentBOM and posture");
+    if (!report.agent_id) errors.push('audit-report: missing agent_id');
+    if (
+      bomIdentity.agent_id &&
+      postureIdentity.agent_id &&
+      bomIdentity.agent_id !== postureIdentity.agent_id
+    ) {
+      errors.push('audit-report: agent_id mismatch between AgentBOM and posture');
     }
   } catch (err) {
     errors.push(`audit-report: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   return {
-    step: "audit-report",
-    label: "Audit report",
-    verdict: errors.length === 0 ? "valid" : "invalid",
+    step: 'audit-report',
+    label: 'Audit report',
+    verdict: errors.length === 0 ? 'valid' : 'invalid',
     duration_ms: elapsedMs(start),
     output_hash: hashObject(report),
-    detail: { synthesized: true, reference: "open-agent-audit (placeholder)" },
+    detail: { synthesized: true, reference: 'open-agent-audit (placeholder)' },
     errors,
   };
 }
@@ -320,13 +327,13 @@ function runAuditStep(exampleDir: string): ChainStepResult {
 function runPassportStep(exampleDir: string): ChainStepResult {
   const start = startTimer();
   const errors: string[] = [];
-  const passportPath = resolve(exampleDir, "trust-passport.json");
-  let outputHash = "";
-  let summary = "";
+  const passportPath = resolve(exampleDir, 'trust-passport.json');
+  let outputHash = '';
+  let summary = '';
 
   try {
-    const bom = asRecord(loadJSON(resolve(exampleDir, "agentbom.json")));
-    const posture = asRecord(loadJSON(resolve(exampleDir, "posture.json")));
+    const bom = asRecord(loadJSON(resolve(exampleDir, 'agentbom.json')));
+    const posture = asRecord(loadJSON(resolve(exampleDir, 'posture.json')));
     const passport = loadJSON<unknown>(passportPath);
 
     const result = validateTrustPassport(passport);
@@ -338,14 +345,26 @@ function runPassportStep(exampleDir: string): ChainStepResult {
     const bomIdentity = asRecord(bom.identity);
     const postureIdentity = asRecord(posture.identity);
 
-    if (agentbomRef.agentbom_id && bomIdentity.agent_id && agentbomRef.agentbom_id !== bomIdentity.agent_id) {
-      errors.push("trust-passport: agentbom_ref.agentbom_id does not match AgentBOM identity.agent_id");
+    if (
+      agentbomRef.agentbom_id &&
+      bomIdentity.agent_id &&
+      agentbomRef.agentbom_id !== bomIdentity.agent_id
+    ) {
+      errors.push(
+        'trust-passport: agentbom_ref.agentbom_id does not match AgentBOM identity.agent_id',
+      );
     }
-    if (postureRef.snapshot_id && postureIdentity.snapshot_id && postureRef.snapshot_id !== postureIdentity.snapshot_id) {
-      errors.push("trust-passport: posture_ref.snapshot_id does not match posture identity.snapshot_id");
+    if (
+      postureRef.snapshot_id &&
+      postureIdentity.snapshot_id &&
+      postureRef.snapshot_id !== postureIdentity.snapshot_id
+    ) {
+      errors.push(
+        'trust-passport: posture_ref.snapshot_id does not match posture identity.snapshot_id',
+      );
     }
     if (isExpired(passportObj)) {
-      errors.push("trust-passport: passport has expired");
+      errors.push('trust-passport: passport has expired');
     }
 
     outputHash = hashFile(passportPath);
@@ -355,12 +374,12 @@ function runPassportStep(exampleDir: string): ChainStepResult {
   }
 
   return {
-    step: "trust-passport",
-    label: "Trust Passport",
-    verdict: errors.length === 0 ? "valid" : "invalid",
+    step: 'trust-passport',
+    label: 'Trust Passport',
+    verdict: errors.length === 0 ? 'valid' : 'invalid',
     duration_ms: elapsedMs(start),
     output_hash: outputHash,
-    detail: { schema: "specs/trust-passport/schema.json", inspect: summary },
+    detail: { schema: 'specs/trust-passport/schema.json', inspect: summary },
     errors,
   };
 }
@@ -379,13 +398,13 @@ export function runChain(exampleDir: string = DEFAULT_EXAMPLE_DIR): ChainReport 
     runPassportStep(resolved),
   ];
 
-  const validSteps = steps.filter((s) => s.verdict === "valid").length;
+  const validSteps = steps.filter((s) => s.verdict === 'valid').length;
   return {
     timestamp: now(),
     repo_sha: repoSha(),
     example: resolved,
     overall: {
-      status: validSteps === steps.length ? "valid" : "invalid",
+      status: validSteps === steps.length ? 'valid' : 'invalid',
       valid_steps: validSteps,
       total_steps: steps.length,
     },
@@ -395,20 +414,20 @@ export function runChain(exampleDir: string = DEFAULT_EXAMPLE_DIR): ChainReport 
 
 /** CLI entry point for `agent-trust chain`. */
 export function chainCommand(args: string[]): number {
-  if (args.includes("--help") || args.includes("-h")) {
+  if (args.includes('--help') || args.includes('-h')) {
     console.log(CHAIN_USAGE);
     return 0;
   }
 
   let exampleDir = DEFAULT_EXAMPLE_DIR;
-  let outPath = "chain-report.json";
+  let outPath = 'chain-report.json';
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const next = args[i + 1];
-    if (arg === "--example" && next) {
+    if (arg === '--example' && next) {
       exampleDir = next;
       i++;
-    } else if (arg === "--out" && next) {
+    } else if (arg === '--out' && next) {
       outPath = next;
       i++;
     } else {
@@ -426,17 +445,19 @@ export function chainCommand(args: string[]): number {
   }
 
   const resolvedOut = resolve(outPath);
-  writeFileSync(resolvedOut, `${JSON.stringify(report, null, 2)}\n`, "utf-8");
+  writeFileSync(resolvedOut, `${JSON.stringify(report, null, 2)}\n`, 'utf-8');
 
-  if (report.overall.status !== "valid") {
+  if (report.overall.status !== 'valid') {
     const failed = report.steps
-      .filter((s) => s.verdict !== "valid")
+      .filter((s) => s.verdict !== 'valid')
       .map((s) => s.step)
-      .join(", ");
+      .join(', ');
     console.error(`Chain failed: ${failed}`);
     return 1;
   }
 
-  console.error(`Chain valid: ${report.overall.valid_steps}/${report.overall.total_steps} steps → ${resolvedOut}`);
+  console.error(
+    `Chain valid: ${report.overall.valid_steps}/${report.overall.total_steps} steps → ${resolvedOut}`,
+  );
   return 0;
 }

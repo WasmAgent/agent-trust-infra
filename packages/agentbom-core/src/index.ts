@@ -1,8 +1,8 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import Ajv from "ajv";
-import type { ErrorObject, ValidateFunction } from "ajv";
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import Ajv from 'ajv';
+import type { ErrorObject, ValidateFunction } from 'ajv';
 
 export interface ValidationError {
   /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
@@ -25,7 +25,7 @@ export interface ValidationResult {
 // This file is <root>/packages/agentbom-core/src/index.ts.
 const SCHEMA_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../../../specs/agentbom/schema.json",
+  '../../../specs/agentbom/schema.json',
 );
 
 let validateSchema: ValidateFunction | null = null;
@@ -33,25 +33,25 @@ let validateSchema: ValidateFunction | null = null;
 function getValidator(): ValidateFunction {
   if (validateSchema) return validateSchema;
   const ajv = new Ajv({ allErrors: true, strict: false });
-  const schema = JSON.parse(readFileSync(SCHEMA_PATH, "utf-8"));
+  const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
   validateSchema = ajv.compile(schema);
   return validateSchema;
 }
 
 /** Convert an AJV instancePath (JSON pointer) into a dot-notation field path. */
 function toFieldPath(instancePath: string, extra?: string): string {
-  let path = instancePath.startsWith("/") ? instancePath.slice(1) : instancePath;
-  path = path.replace(/\//g, ".");
+  let path = instancePath.startsWith('/') ? instancePath.slice(1) : instancePath;
+  path = path.replace(/\//g, '.');
   if (extra) path = path ? `${path}.${extra}` : extra;
-  return path || "(root)";
+  return path || '(root)';
 }
 
 /** For errors that name a specific property, return it so it can be folded into the field path. */
 function namedProperty(err: ErrorObject): string | undefined {
-  if (err.keyword === "required") {
+  if (err.keyword === 'required') {
     return (err.params as { missingProperty?: string } | undefined)?.missingProperty;
   }
-  if (err.keyword === "additionalProperties") {
+  if (err.keyword === 'additionalProperties') {
     return (err.params as { additionalProperty?: string } | undefined)?.additionalProperty;
   }
   return undefined;
@@ -69,7 +69,7 @@ export function validateAgentBOM(data: unknown): ValidationResult {
       valid: false,
       errors: [`(root): schema validation crashed: ${message}`],
       errorDetails: [
-        { field: "(root)", message: `schema validation crashed: ${message}`, keyword: "exception" },
+        { field: '(root)', message: `schema validation crashed: ${message}`, keyword: 'exception' },
       ],
     };
   }
@@ -93,11 +93,11 @@ export function inspectAgentBOM(data: Record<string, unknown>): string {
   const riskLayer = (data.risk_layer as unknown[]) ?? [];
   return [
     `AgentBOM v${data.agentbom_version}`,
-    `  Agent:   ${identity?.agent_name ?? "unknown"} (${identity?.agent_id ?? "?"})`,
-    `  Context: ${identity?.deployment_context ?? "unset"}`,
+    `  Agent:   ${identity?.agent_name ?? 'unknown'} (${identity?.agent_id ?? '?'})`,
+    `  Context: ${identity?.deployment_context ?? 'unset'}`,
     `  Tools:   ${toolLayer.length}`,
     `  Risks:   ${riskLayer.length}`,
-  ].join("\n");
+  ].join('\n');
 }
 
 // --- AgentBOM Diff types and logic ---
@@ -150,7 +150,7 @@ export interface AgentBOMDiff {
   isEmpty(): boolean;
 }
 
-export function createAgentBOMDiff(partial: Omit<AgentBOMDiff, "isEmpty">): AgentBOMDiff {
+export function createAgentBOMDiff(partial: Omit<AgentBOMDiff, 'isEmpty'>): AgentBOMDiff {
   const isEmpty = (): boolean =>
     partial.tools.added.length === 0 &&
     partial.tools.removed.length === 0 &&
@@ -171,13 +171,13 @@ function toArray(val: unknown): unknown[] {
 function parseTools(toolLayer: unknown): Map<string, ToolEntry> {
   const tools = new Map<string, ToolEntry>();
   for (const item of toArray(toolLayer)) {
-    if (typeof item === "object" && item !== null) {
+    if (typeof item === 'object' && item !== null) {
       const t = item as Record<string, unknown>;
-      if (typeof t.tool_id === "string") {
+      if (typeof t.tool_id === 'string') {
         tools.set(t.tool_id, {
           tool_id: t.tool_id,
-          tool_name: String(t.tool_name ?? ""),
-          source: String(t.source ?? ""),
+          tool_name: String(t.tool_name ?? ''),
+          source: String(t.source ?? ''),
           permissions: toArray(t.permissions).map(String),
           risk_signals: toArray(t.risk_signals).map(String),
         });
@@ -190,15 +190,15 @@ function parseTools(toolLayer: unknown): Map<string, ToolEntry> {
 function parseRisks(riskLayer: unknown): Map<string, RiskEntry> {
   const risks = new Map<string, RiskEntry>();
   for (const item of toArray(riskLayer)) {
-    if (typeof item === "object" && item !== null) {
+    if (typeof item === 'object' && item !== null) {
       const r = item as Record<string, unknown>;
-      if (typeof r.risk_id === "string") {
+      if (typeof r.risk_id === 'string') {
         risks.set(r.risk_id, {
           risk_id: r.risk_id,
-          severity: String(r.severity ?? ""),
-          category: String(r.category ?? ""),
-          description: String(r.description ?? ""),
-          status: String(r.status ?? ""),
+          severity: String(r.severity ?? ''),
+          category: String(r.category ?? ''),
+          description: String(r.description ?? ''),
+          status: String(r.status ?? ''),
         });
       }
     }
@@ -206,7 +206,10 @@ function parseRisks(riskLayer: unknown): Map<string, RiskEntry> {
   return risks;
 }
 
-function diffStringArrays(oldArr: string[], newArr: string[]): { added: string[]; removed: string[] } {
+function diffStringArrays(
+  oldArr: string[],
+  newArr: string[],
+): { added: string[]; removed: string[] } {
   const oldSet = new Set(oldArr);
   const newSet = new Set(newArr);
   const added = newArr.filter((s) => !oldSet.has(s));
@@ -214,7 +217,10 @@ function diffStringArrays(oldArr: string[], newArr: string[]): { added: string[]
   return { added, removed };
 }
 
-export function diffAgentBOM(oldData: Record<string, unknown>, newData: Record<string, unknown>): AgentBOMDiff {
+export function diffAgentBOM(
+  oldData: Record<string, unknown>,
+  newData: Record<string, unknown>,
+): AgentBOMDiff {
   const oldTools = parseTools(oldData.tool_layer);
   const newTools = parseTools(newData.tool_layer);
 
@@ -238,17 +244,27 @@ export function diffAgentBOM(oldData: Record<string, unknown>, newData: Record<s
 
     const permDiff = diffStringArrays(oldTool.permissions ?? [], newTool.permissions ?? []);
     for (const p of permDiff.added) {
-      toolsModified.push({ tool_id: id, field: "permissions", old: "", new: p });
+      toolsModified.push({ tool_id: id, field: 'permissions', old: '', new: p });
     }
     for (const p of permDiff.removed) {
-      toolsModified.push({ tool_id: id, field: "permissions", old: p, new: "" });
+      toolsModified.push({ tool_id: id, field: 'permissions', old: p, new: '' });
     }
 
     if (oldTool.tool_name !== newTool.tool_name) {
-      toolsModified.push({ tool_id: id, field: "tool_name", old: oldTool.tool_name, new: newTool.tool_name });
+      toolsModified.push({
+        tool_id: id,
+        field: 'tool_name',
+        old: oldTool.tool_name,
+        new: newTool.tool_name,
+      });
     }
     if (oldTool.source !== newTool.source) {
-      toolsModified.push({ tool_id: id, field: "source", old: oldTool.source, new: newTool.source });
+      toolsModified.push({
+        tool_id: id,
+        field: 'source',
+        old: oldTool.source,
+        new: newTool.source,
+      });
     }
   }
 
@@ -282,13 +298,28 @@ export function diffAgentBOM(oldData: Record<string, unknown>, newData: Record<s
     if (!oldRisk) continue;
 
     if (oldRisk.severity !== newRisk.severity) {
-      risksModified.push({ risk_id: id, field: "severity", old: oldRisk.severity, new: newRisk.severity });
+      risksModified.push({
+        risk_id: id,
+        field: 'severity',
+        old: oldRisk.severity,
+        new: newRisk.severity,
+      });
     }
     if (oldRisk.status !== newRisk.status) {
-      risksModified.push({ risk_id: id, field: "status", old: oldRisk.status, new: newRisk.status });
+      risksModified.push({
+        risk_id: id,
+        field: 'status',
+        old: oldRisk.status,
+        new: newRisk.status,
+      });
     }
     if (oldRisk.category !== newRisk.category) {
-      risksModified.push({ risk_id: id, field: "category", old: oldRisk.category, new: newRisk.category });
+      risksModified.push({
+        risk_id: id,
+        field: 'category',
+        old: oldRisk.category,
+        new: newRisk.category,
+      });
     }
   }
 
@@ -319,7 +350,7 @@ export function formatAgentBOMDiff(diff: AgentBOMDiff): string {
   if (diff.tools.modified.length > 0) {
     lines.push(`Tools changed (${diff.tools.modified.length}):`);
     for (const m of diff.tools.modified) {
-      if (m.field === "permissions") {
+      if (m.field === 'permissions') {
         if (m.new) {
           lines.push(`  ~ ${m.tool_id}: permission added: ${m.new}`);
         } else {
@@ -367,8 +398,8 @@ export function formatAgentBOMDiff(diff: AgentBOMDiff): string {
   }
 
   if (lines.length === 0) {
-    lines.push("No differences found between the two AgentBOMs.");
+    lines.push('No differences found between the two AgentBOMs.');
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }

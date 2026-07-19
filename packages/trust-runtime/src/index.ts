@@ -5,8 +5,8 @@
  * functionality for enforcing trust policies at runtime.
  */
 
-import { validateAgentBOM as validateAgentBOMCore } from "@wasmagent/agentbom-core";
-import { validateMCPPosture } from "@wasmagent/mcp-posture-core";
+import { validateAgentBOM as validateAgentBOMCore } from '@wasmagent/agentbom-core';
+import { validateMCPPosture } from '@wasmagent/mcp-posture-core';
 
 // ============================================================================
 // AgentBOM Runtime Validation
@@ -34,7 +34,7 @@ export interface ValidationResult {
 }
 
 export interface ValidationError {
-  type: "unknown_tool" | "undeclared_permission" | "invalid_agentbom";
+  type: 'unknown_tool' | 'undeclared_permission' | 'invalid_agentbom';
   message: string;
   tool_id?: string;
   permission?: string;
@@ -69,12 +69,10 @@ class RuntimeValidatorImpl implements RuntimeValidator {
     this.declaredTools = new Map();
     const toolLayer = (agentBOM.tool_layer as unknown[]) ?? [];
     for (const item of toolLayer) {
-      if (typeof item === "object" && item !== null) {
+      if (typeof item === 'object' && item !== null) {
         const t = item as Record<string, unknown>;
-        if (typeof t.tool_id === "string") {
-          const perms = new Set(
-            Array.isArray(t.permissions) ? t.permissions.map(String) : []
-          );
+        if (typeof t.tool_id === 'string') {
+          const perms = new Set(Array.isArray(t.permissions) ? t.permissions.map(String) : []);
           this.declaredTools.set(t.tool_id, { permissions: perms });
         }
       }
@@ -82,14 +80,10 @@ class RuntimeValidatorImpl implements RuntimeValidator {
 
     // Parse permission_layer
     this.grantedScopes = new Set();
-    const permLayer = agentBOM.permission_layer as
-      | Record<string, unknown>
-      | undefined;
-    const scopes = (
-      permLayer?.granted_scopes as unknown[]
-    ) ?? [];
+    const permLayer = agentBOM.permission_layer as Record<string, unknown> | undefined;
+    const scopes = (permLayer?.granted_scopes as unknown[]) ?? [];
     for (const scope of scopes) {
-      if (typeof scope === "string") {
+      if (typeof scope === 'string') {
         this.grantedScopes.add(scope);
       }
     }
@@ -102,7 +96,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
     const declaredTool = this.declaredTools.get(invocation.tool_id);
     if (!declaredTool) {
       errors.push({
-        type: "unknown_tool",
+        type: 'unknown_tool',
         message: `Tool '${invocation.tool_name}' (${invocation.tool_id}) is not declared in AgentBOM tool_layer`,
         tool_id: invocation.tool_id,
       });
@@ -118,7 +112,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
     for (const perm of requestedPerms) {
       if (!this.grantedScopes.has(perm)) {
         errors.push({
-          type: "undeclared_permission",
+          type: 'undeclared_permission',
           message: `Tool '${invocation.tool_name}' requires permission '${perm}' which is not in granted_scopes`,
           tool_id: invocation.tool_id,
           permission: perm,
@@ -132,7 +126,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
       for (const perm of requiredPerms) {
         if (!this.grantedScopes.has(perm)) {
           errors.push({
-            type: "undeclared_permission",
+            type: 'undeclared_permission',
             message: `Tool '${invocation.tool_name}' requires permission '${perm}' (from AgentBOM) which is not in granted_scopes`,
             tool_id: invocation.tool_id,
             permission: perm,
@@ -153,7 +147,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
 
     if (!this.grantedScopes.has(request.scope)) {
       errors.push({
-        type: "undeclared_permission",
+        type: 'undeclared_permission',
         message: `Permission scope '${request.scope}' is not in granted_scopes`,
         permission: request.scope,
       });
@@ -193,9 +187,7 @@ class RuntimeValidatorImpl implements RuntimeValidator {
  * Creates a runtime validator from an AgentBOM.
  * First validates the AgentBOM itself, then returns a validator if valid.
  */
-export function createRuntimeValidator(
-  agentBOM: Record<string, unknown>
-): RuntimeValidator | null {
+export function createRuntimeValidator(agentBOM: Record<string, unknown>): RuntimeValidator | null {
   const bomValidation = validateAgentBOMCore(agentBOM);
   if (!bomValidation.valid) {
     // AgentBOM is invalid - cannot create validator
@@ -216,7 +208,7 @@ export interface MCPServer {
   server_id: string;
   server_name: string;
   version?: string;
-  provenance?: "verified" | "unverified" | "unknown";
+  provenance?: 'verified' | 'unverified' | 'unknown';
   tools: MCPTool[];
 }
 
@@ -228,31 +220,31 @@ export interface MCPTool {
   tool_name: string;
   permissions?: string[];
   risk_categories?: RiskCategory[];
-  risk_severity?: "critical" | "high" | "medium" | "low" | "info";
+  risk_severity?: 'critical' | 'high' | 'medium' | 'low' | 'info';
 }
 
 /**
  * Risk categories from the MCP posture taxonomy
  */
 export type RiskCategory =
-  | "ssrf"
-  | "exfiltration"
-  | "command_execution"
-  | "privilege_escalation"
-  | "prompt_injection"
-  | "credential_access"
-  | "supply_chain";
+  | 'ssrf'
+  | 'exfiltration'
+  | 'command_execution'
+  | 'privilege_escalation'
+  | 'prompt_injection'
+  | 'credential_access'
+  | 'supply_chain';
 
 /**
  * Configuration for posture enforcement
  */
 export interface PostureEnforcementConfig {
   /** Maximum allowed risk severity (tools above this level are blocked) */
-  maxRiskSeverity?: "critical" | "high" | "medium" | "low" | "info";
+  maxRiskSeverity?: 'critical' | 'high' | 'medium' | 'low' | 'info';
   /** Risk categories that are explicitly blocked */
   blockedCategories?: RiskCategory[];
   /** Required provenance level for servers */
-  requiredProvenance?: "verified" | "unverified" | "unknown";
+  requiredProvenance?: 'verified' | 'unverified' | 'unknown';
   /** Whether to allow unverified servers */
   allowUnverified?: boolean;
   /** Custom tool filter function */
@@ -303,7 +295,7 @@ export class MCPServerDecorator {
     }
 
     // Check if unverified servers are blocked
-    if (this.server.provenance === "unverified" && !this.config.allowUnverified) {
+    if (this.server.provenance === 'unverified' && !this.config.allowUnverified) {
       return {
         allowed: false,
         reason: `Server ${this.server.server_id} has unverified provenance and allowUnverified is false`,
@@ -317,7 +309,7 @@ export class MCPServerDecorator {
       this.config.requiredProvenance &&
       this.server.provenance !== this.config.requiredProvenance
     ) {
-      if (!this.config.allowUnverified || this.server.provenance === "unverified") {
+      if (!this.config.allowUnverified || this.server.provenance === 'unverified') {
         return {
           allowed: false,
           reason: `Server ${this.server.server_id} does not meet required provenance ${this.config.requiredProvenance}`,
@@ -329,7 +321,7 @@ export class MCPServerDecorator {
 
     // Check risk severity
     if (this.config.maxRiskSeverity && tool.risk_severity) {
-      const severityLevels = ["critical", "high", "medium", "low", "info"];
+      const severityLevels = ['critical', 'high', 'medium', 'low', 'info'];
       const toolLevel = severityLevels.indexOf(tool.risk_severity);
       const maxLevel = severityLevels.indexOf(this.config.maxRiskSeverity);
 
@@ -409,7 +401,7 @@ export class MCPServerDecorator {
  */
 export function createDecoratedServer(
   serverData: MCPServer,
-  config: PostureEnforcementConfig = {}
+  config: PostureEnforcementConfig = {},
 ): MCPServerDecorator {
   return new MCPServerDecorator(serverData, config);
 }
@@ -426,14 +418,12 @@ export function createDecoratedServer(
 export function decorateServerFromPosture(
   postureData: unknown,
   serverId: string,
-  config: PostureEnforcementConfig = {}
+  config: PostureEnforcementConfig = {},
 ): MCPServerDecorator {
   // Validate the posture data
   const validation = validateMCPPosture(postureData);
   if (!validation.valid) {
-    throw new Error(
-      `Invalid posture data: ${validation.errors.join(", ")}`
-    );
+    throw new Error(`Invalid posture data: ${validation.errors.join(', ')}`);
   }
 
   // Extract server data
@@ -458,7 +448,7 @@ export function decorateServerFromPosture(
  */
 export function enforcePostureOnServers(
   servers: MCPServer[],
-  config: PostureEnforcementConfig = {}
+  config: PostureEnforcementConfig = {},
 ): MCPServerDecorator[] {
   return servers.map((server) => new MCPServerDecorator(server, config));
 }
@@ -472,14 +462,12 @@ export function enforcePostureOnServers(
  */
 export function checkToolAccessAcrossServers(
   decorators: MCPServerDecorator[],
-  toolId: string
+  toolId: string,
 ): {
   allowed: boolean;
   results: EnforcementResult[];
 } {
-  const results = decorators.map((decorator) =>
-    decorator.enforceToolAccess(toolId)
-  );
+  const results = decorators.map((decorator) => decorator.enforceToolAccess(toolId));
 
   const allowed = results.some((r) => r.allowed);
 
@@ -511,17 +499,17 @@ export function summarizeEnforcementState(decorators: MCPServerDecorator[]): str
         return !result.allowed;
       });
 
-      lines.push("  Blocked tools:");
+      lines.push('  Blocked tools:');
       for (const tool of blockedList) {
         const result = decorator.enforceToolAccess(tool.tool_id);
         lines.push(`    - ${tool.tool_name}: ${result.reason}`);
       }
     }
 
-    lines.push("");
+    lines.push('');
   }
 
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 // ============================================================================
@@ -532,4 +520,4 @@ export function summarizeEnforcementState(decorators: MCPServerDecorator[]): str
  * Validates an AgentBOM and returns detailed validation results.
  * Re-exported from @wasmagent/agentbom-core for convenience.
  */
-export { validateAgentBOM } from "@wasmagent/agentbom-core";
+export { validateAgentBOM } from '@wasmagent/agentbom-core';

@@ -1,19 +1,25 @@
-import { createHash } from "node:crypto";
+import { createHash } from 'node:crypto';
 
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
 }
 
-const PASSPORT_REQUIRED = ["passport_version", "identity", "validity", "revocation", "attestation"] as const;
+const PASSPORT_REQUIRED = [
+  'passport_version',
+  'identity',
+  'validity',
+  'revocation',
+  'attestation',
+] as const;
 
-const VALID_COVERAGE_VALUES = ["selected_technical_evidence", "partial", "none"] as const;
+const VALID_COVERAGE_VALUES = ['selected_technical_evidence', 'partial', 'none'] as const;
 
 const hasOwn = Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty);
 
 /** Check that a value is a plain object (not null, not array). */
 export function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** Collect errors if a required field is missing or not an object. */
@@ -31,7 +37,7 @@ function expectObject(
     return undefined;
   }
   const obj = d[key] as Record<string, unknown>;
-  if (hasOwn(obj, "__proto__") || hasOwn(obj, "constructor") || hasOwn(obj, "prototype")) {
+  if (hasOwn(obj, '__proto__') || hasOwn(obj, 'constructor') || hasOwn(obj, 'prototype')) {
     errors.push(`${key} contains unsafe reserved keys (__proto__, constructor, or prototype)`);
     return undefined;
   }
@@ -49,7 +55,7 @@ function expectString(
     errors.push(`${path}: missing ${key}`);
     return undefined;
   }
-  if (typeof obj[key] !== "string") {
+  if (typeof obj[key] !== 'string') {
     errors.push(`${path}.${key} must be a string`);
     return undefined;
   }
@@ -73,7 +79,7 @@ function expectDateTimeString(
     errors.push(`${path}: missing ${key}`);
     return;
   }
-  if (typeof raw !== "string") {
+  if (typeof raw !== 'string') {
     errors.push(`${path}.${key} must be a string`);
     return;
   }
@@ -83,78 +89,83 @@ function expectDateTimeString(
 }
 
 export function validateTrustPassport(data: unknown): ValidationResult {
-  if (typeof data !== "object" || data === null || Array.isArray(data)) {
-    return { valid: false, errors: ["root must be an object"] };
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    return { valid: false, errors: ['root must be an object'] };
   }
   const d = data as Record<string, unknown>;
   const errors: string[] = [];
 
   // Guard against prototype pollution keys (own properties only)
-  if (hasOwn(d, "__proto__") || hasOwn(d, "constructor") || hasOwn(d, "prototype")) {
-    return { valid: false, errors: ["root contains unsafe reserved keys (__proto__, constructor, or prototype)"] };
+  if (hasOwn(d, '__proto__') || hasOwn(d, 'constructor') || hasOwn(d, 'prototype')) {
+    return {
+      valid: false,
+      errors: ['root contains unsafe reserved keys (__proto__, constructor, or prototype)'],
+    };
   }
 
   // --- Required top-level fields ---
   errors.push(...PASSPORT_REQUIRED.filter((k) => !(k in d)).map((k) => `missing required: ${k}`));
 
   // --- passport_version ---
-  if ("passport_version" in d) {
-    if (typeof d.passport_version !== "string") {
+  if ('passport_version' in d) {
+    if (typeof d.passport_version !== 'string') {
       errors.push('passport_version must be a string');
-    } else if (d.passport_version !== "0.1") {
+    } else if (d.passport_version !== '0.1') {
       errors.push(`passport_version must be "0.1"`);
     }
   }
 
   // --- identity ---
-  const identity = expectObject(d, "identity", errors);
+  const identity = expectObject(d, 'identity', errors);
   if (identity) {
-    expectString(identity, "passport_id", "identity", errors);
-    expectString(identity, "agent_id", "identity", errors);
-    expectString(identity, "agent_name", "identity", errors);
-    expectString(identity, "issuer", "identity", errors);
-    expectString(identity, "issuance_context", "identity", errors);
+    expectString(identity, 'passport_id', 'identity', errors);
+    expectString(identity, 'agent_id', 'identity', errors);
+    expectString(identity, 'agent_name', 'identity', errors);
+    expectString(identity, 'issuer', 'identity', errors);
+    expectString(identity, 'issuance_context', 'identity', errors);
   }
 
   // --- validity ---
-  const validity = expectObject(d, "validity", errors);
+  const validity = expectObject(d, 'validity', errors);
   if (validity) {
-    expectDateTimeString(validity, "issued_at", "validity", errors);
-    expectDateTimeString(validity, "expires_at", "validity", errors);
+    expectDateTimeString(validity, 'issued_at', 'validity', errors);
+    expectDateTimeString(validity, 'expires_at', 'validity', errors);
   }
 
   // --- revocation ---
-  const revocation = expectObject(d, "revocation", errors);
+  const revocation = expectObject(d, 'revocation', errors);
   if (revocation) {
-    if (!("revoked" in revocation)) {
-      errors.push("revocation: missing revoked");
-    } else if (typeof revocation.revoked !== "boolean") {
-      errors.push("revocation.revoked must be a boolean");
+    if (!('revoked' in revocation)) {
+      errors.push('revocation: missing revoked');
+    } else if (typeof revocation.revoked !== 'boolean') {
+      errors.push('revocation.revoked must be a boolean');
     }
-    if (!("revocation_triggers" in revocation)) {
-      errors.push("revocation: missing revocation_triggers");
+    if (!('revocation_triggers' in revocation)) {
+      errors.push('revocation: missing revocation_triggers');
     } else if (!Array.isArray(revocation.revocation_triggers)) {
-      errors.push("revocation.revocation_triggers must be an array");
+      errors.push('revocation.revocation_triggers must be an array');
     }
   }
 
   // --- attestation ---
-  const attestation = expectObject(d, "attestation", errors);
+  const attestation = expectObject(d, 'attestation', errors);
   if (attestation) {
-    expectString(attestation, "issuer", "attestation", errors);
+    expectString(attestation, 'issuer', 'attestation', errors);
   }
 
   // --- evidence_summary.framework_mappings coverage enum ---
-  if (d.evidence_summary && typeof d.evidence_summary === "object") {
+  if (d.evidence_summary && typeof d.evidence_summary === 'object') {
     const es = d.evidence_summary as Record<string, unknown>;
     if (Array.isArray(es.framework_mappings)) {
       for (const mapping of es.framework_mappings) {
-        if (typeof mapping === "object" && mapping !== null && !Array.isArray(mapping)) {
+        if (typeof mapping === 'object' && mapping !== null && !Array.isArray(mapping)) {
           const m = mapping as Record<string, unknown>;
-          if ("coverage" in m && typeof m.coverage === "string") {
-            if (!VALID_COVERAGE_VALUES.includes(m.coverage as (typeof VALID_COVERAGE_VALUES)[number])) {
+          if ('coverage' in m && typeof m.coverage === 'string') {
+            if (
+              !VALID_COVERAGE_VALUES.includes(m.coverage as (typeof VALID_COVERAGE_VALUES)[number])
+            ) {
               errors.push(
-                `evidence_summary.framework_mappings.coverage: invalid value "${m.coverage}", must be one of: ${VALID_COVERAGE_VALUES.join(", ")}`,
+                `evidence_summary.framework_mappings.coverage: invalid value "${m.coverage}", must be one of: ${VALID_COVERAGE_VALUES.join(', ')}`,
               );
             }
           }
@@ -179,13 +190,13 @@ export function inspectTrustPassport(data: Record<string, unknown>): string {
   const revocation = data.revocation as Record<string, unknown> | undefined;
   return [
     `Trust Passport v${data.passport_version}`,
-    `  Passport: ${identity?.passport_id ?? "?"}`,
-    `  Agent:    ${identity?.agent_name ?? identity?.agent_id ?? "?"}`,
-    `  Issued:   ${validity?.issued_at ?? "?"}`,
-    `  Expires:  ${validity?.expires_at ?? "?"}`,
+    `  Passport: ${identity?.passport_id ?? '?'}`,
+    `  Agent:    ${identity?.agent_name ?? identity?.agent_id ?? '?'}`,
+    `  Issued:   ${validity?.issued_at ?? '?'}`,
+    `  Expires:  ${validity?.expires_at ?? '?'}`,
     `  Revoked:  ${revocation?.revoked ?? false}`,
     `  Risks:    critical=${risks?.critical ?? 0} high=${risks?.high ?? 0}`,
-  ].join("\n");
+  ].join('\n');
 }
 
 // ────────────────────────────────────────────────
@@ -210,7 +221,7 @@ export function inspectTrustPassport(data: Record<string, unknown>): string {
  * ```
  */
 export function hashEvidence(content: string): string {
-  return `sha256:${createHash("sha256").update(content, "utf-8").digest("hex")}`;
+  return `sha256:${createHash('sha256').update(content, 'utf-8').digest('hex')}`;
 }
 
 /**
@@ -256,7 +267,7 @@ export function addFact(
   content: unknown,
 ): Record<string, unknown> {
   // Normalise content to a string for hashing
-  const contentStr = typeof content === "string" ? content : JSON.stringify(content);
+  const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
   const contentHash = hashEvidence(contentStr);
   const recordedAt = new Date().toISOString();
 

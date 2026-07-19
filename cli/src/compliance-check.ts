@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { validateAgentBOM } from "../../packages/agentbom-core/src/index.js";
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 
 interface ComplianceResult {
   compliant: boolean;
@@ -32,7 +32,7 @@ interface ComplianceProfile {
     };
     tool_layer?: {
       weight?: number;
-      max_severity?: "low" | "medium" | "high" | "critical";
+      max_severity?: 'low' | 'medium' | 'high' | 'critical';
       requires_tool_inventory?: boolean;
       blocked_permissions?: string[];
       blocked_sources?: string[];
@@ -43,7 +43,7 @@ interface ComplianceProfile {
       max_unmitigated_critical?: number;
       max_unmitigated_high?: number;
       max_unmitigated_medium?: number;
-      requires_mitigation_for?: ("critical" | "high" | "medium" | "low")[];
+      requires_mitigation_for?: ('critical' | 'high' | 'medium' | 'low')[];
     };
     attestation?: {
       weight?: number;
@@ -68,15 +68,12 @@ function severityLevel(severity: string): number {
 }
 
 function loadProfile(profileId: string): ComplianceProfile | null {
-  const profilesDir = resolve(
-    dirname(fileURLToPath(import.meta.url)),
-    "../../profiles",
-  );
+  const profilesDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../profiles');
 
   const profilePath = resolve(profilesDir, `${profileId}.json`);
 
   try {
-    const raw = readFileSync(profilePath, "utf-8");
+    const raw = readFileSync(profilePath, 'utf-8');
     return JSON.parse(raw) as ComplianceProfile;
   } catch {
     return null;
@@ -94,13 +91,13 @@ function checkIdentity(
   const identity = data.identity as Record<string, unknown> | undefined;
 
   if (!identity) {
-    errors.push("identity section is missing");
+    errors.push('identity section is missing');
     return { errors, warnings, passed };
   }
 
   const rules = profile.rules.identity;
   if (!rules) {
-    passed.push("identity: no rules defined");
+    passed.push('identity: no rules defined');
     return { errors, warnings, passed };
   }
 
@@ -117,10 +114,10 @@ function checkIdentity(
 
   // Check allowed contexts
   if (rules.allowed_contexts && rules.allowed_contexts.length > 0) {
-    const context = String(identity.deployment_context ?? "");
+    const context = String(identity.deployment_context ?? '');
     if (!rules.allowed_contexts.includes(context)) {
       errors.push(
-        `identity: deployment_context "${context}" not in allowed contexts [${rules.allowed_contexts.join(", ")}]`,
+        `identity: deployment_context "${context}" not in allowed contexts [${rules.allowed_contexts.join(', ')}]`,
       );
     } else {
       passed.push(`identity: deployment_context "${context}" is allowed`);
@@ -129,8 +126,8 @@ function checkIdentity(
 
   // Check version requirement
   if (rules.requires_version) {
-    if (!identity.agent_version || String(identity.agent_version).trim() === "") {
-      errors.push("identity: agent_version is required but missing or empty");
+    if (!identity.agent_version || String(identity.agent_version).trim() === '') {
+      errors.push('identity: agent_version is required but missing or empty');
     } else {
       passed.push(`identity: agent_version "${identity.agent_version}" present`);
     }
@@ -151,14 +148,14 @@ function checkToolLayer(
 
   const rules = profile.rules.tool_layer;
   if (!rules) {
-    passed.push("tool_layer: no rules defined");
+    passed.push('tool_layer: no rules defined');
     return { errors, warnings, passed };
   }
 
   // Check tool inventory requirement
   if (rules.requires_tool_inventory) {
     if (!toolLayer || toolLayer.length === 0) {
-      errors.push("tool_layer: tool inventory is required but missing or empty");
+      errors.push('tool_layer: tool inventory is required but missing or empty');
     } else {
       passed.push(`tool_layer: tool inventory present (${toolLayer.length} tools)`);
     }
@@ -172,12 +169,12 @@ function checkToolLayer(
   if (rules.max_severity) {
     const maxLevel = severityLevel(rules.max_severity);
     for (const tool of toolLayer) {
-      if (typeof tool === "object" && tool !== null) {
+      if (typeof tool === 'object' && tool !== null) {
         const t = tool as Record<string, unknown>;
         const riskSignals = t.risk_signals as string[] | undefined;
         if (riskSignals) {
           for (const signal of riskSignals) {
-            const severity = signal.split(":")[0]?.toLowerCase();
+            const severity = signal.split(':')[0]?.toLowerCase();
             if (severity && severityLevel(severity) > maxLevel) {
               errors.push(
                 `tool_layer: tool "${t.tool_name}" has risk signal "${signal}" exceeding max severity "${rules.max_severity}"`,
@@ -187,20 +184,21 @@ function checkToolLayer(
         }
       }
     }
-    if (errors.filter((e) => e.startsWith("tool_layer: tool")).length === 0) {
+    if (errors.filter((e) => e.startsWith('tool_layer: tool')).length === 0) {
       passed.push(`tool_layer: all tools within max severity "${rules.max_severity}"`);
     }
   }
 
   // Check blocked permissions
   if (rules.blocked_permissions && rules.blocked_permissions.length > 0) {
+    const blockedPermissions = rules.blocked_permissions;
     for (const tool of toolLayer) {
-      if (typeof tool === "object" && tool !== null) {
+      if (typeof tool === 'object' && tool !== null) {
         const t = tool as Record<string, unknown>;
         const permissions = t.permissions as string[] | undefined;
         if (permissions) {
           for (const perm of permissions) {
-            for (const blocked of rules.blocked_permissions!) {
+            for (const blocked of blockedPermissions) {
               if (perm.toLowerCase().includes(blocked.toLowerCase())) {
                 errors.push(
                   `tool_layer: tool "${t.tool_name}" has blocked permission "${perm}" (matches "${blocked}")`,
@@ -215,11 +213,12 @@ function checkToolLayer(
 
   // Check blocked sources
   if (rules.blocked_sources && rules.blocked_sources.length > 0) {
+    const blockedSources = rules.blocked_sources;
     for (const tool of toolLayer) {
-      if (typeof tool === "object" && tool !== null) {
+      if (typeof tool === 'object' && tool !== null) {
         const t = tool as Record<string, unknown>;
-        const source = String(t.source ?? "");
-        for (const blocked of rules.blocked_sources!) {
+        const source = String(t.source ?? '');
+        for (const blocked of blockedSources) {
           if (source.toLowerCase().includes(blocked.toLowerCase())) {
             errors.push(`tool_layer: tool "${t.tool_name}" has blocked source "${source}"`);
           }
@@ -228,8 +227,8 @@ function checkToolLayer(
     }
   }
 
-  if (errors.filter((e) => e.startsWith("tool_layer:")).length === 0) {
-    passed.push("tool_layer: no blocked permissions or sources found");
+  if (errors.filter((e) => e.startsWith('tool_layer:')).length === 0) {
+    passed.push('tool_layer: no blocked permissions or sources found');
   }
 
   return { errors, warnings, passed };
@@ -247,14 +246,14 @@ function checkRiskLayer(
 
   const rules = profile.rules.risk_layer;
   if (!rules) {
-    passed.push("risk_layer: no rules defined");
+    passed.push('risk_layer: no rules defined');
     return { errors, warnings, passed };
   }
 
   // Check risk assessment requirement
   if (rules.requires_risk_assessment) {
     if (!riskLayer || riskLayer.length === 0) {
-      errors.push("risk_layer: risk assessment is required but missing or empty");
+      errors.push('risk_layer: risk assessment is required but missing or empty');
     } else {
       passed.push(`risk_layer: risk assessment present (${riskLayer.length} risks)`);
     }
@@ -268,12 +267,12 @@ function checkRiskLayer(
   const unmitigatedCounts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
 
   for (const risk of riskLayer) {
-    if (typeof risk === "object" && risk !== null) {
+    if (typeof risk === 'object' && risk !== null) {
       const r = risk as Record<string, unknown>;
-      const severity = String(r.severity ?? "").toLowerCase();
-      const status = String(r.status ?? "").toLowerCase();
+      const severity = String(r.severity ?? '').toLowerCase();
+      const status = String(r.status ?? '').toLowerCase();
 
-      if (status !== "mitigated" && status !== "accepted") {
+      if (status !== 'mitigated' && status !== 'accepted') {
         if (severity in unmitigatedCounts) {
           unmitigatedCounts[severity]++;
         }
@@ -289,7 +288,9 @@ function checkRiskLayer(
         `risk_layer: ${count} unmitigated critical risks (max allowed: ${rules.max_unmitigated_critical})`,
       );
     } else {
-      passed.push(`risk_layer: unmitigated critical risks within limit (${count}/${rules.max_unmitigated_critical})`);
+      passed.push(
+        `risk_layer: unmitigated critical risks within limit (${count}/${rules.max_unmitigated_critical})`,
+      );
     }
   }
 
@@ -301,7 +302,9 @@ function checkRiskLayer(
         `risk_layer: ${count} unmitigated high risks (max allowed: ${rules.max_unmitigated_high})`,
       );
     } else {
-      passed.push(`risk_layer: unmitigated high risks within limit (${count}/${rules.max_unmitigated_high})`);
+      passed.push(
+        `risk_layer: unmitigated high risks within limit (${count}/${rules.max_unmitigated_high})`,
+      );
     }
   }
 
@@ -313,20 +316,26 @@ function checkRiskLayer(
         `risk_layer: ${count} unmitigated medium risks (max allowed: ${rules.max_unmitigated_medium})`,
       );
     } else {
-      passed.push(`risk_layer: unmitigated medium risks within limit (${count}/${rules.max_unmitigated_medium})`);
+      passed.push(
+        `risk_layer: unmitigated medium risks within limit (${count}/${rules.max_unmitigated_medium})`,
+      );
     }
   }
 
   // Check mitigation requirements
   if (rules.requires_mitigation_for && rules.requires_mitigation_for.length > 0) {
     for (const risk of riskLayer) {
-      if (typeof risk === "object" && risk !== null) {
+      if (typeof risk === 'object' && risk !== null) {
         const r = risk as Record<string, unknown>;
-        const severity = String(r.severity ?? "").toLowerCase();
-        const status = String(r.status ?? "").toLowerCase();
+        const severity = String(r.severity ?? '').toLowerCase();
+        const status = String(r.status ?? '').toLowerCase();
 
-        if (rules.requires_mitigation_for!.includes(severity as any)) {
-          if (status !== "mitigated" && status !== "accepted") {
+        if (
+          rules.requires_mitigation_for?.includes(
+            severity as 'critical' | 'high' | 'medium' | 'low',
+          )
+        ) {
+          if (status !== 'mitigated' && status !== 'accepted') {
             warnings.push(
               `risk_layer: risk "${r.risk_id}" has severity "${severity}" without mitigation status`,
             );
@@ -350,33 +359,33 @@ function checkAttestation(
   const attestation = data.attestation as Record<string, unknown> | undefined;
 
   if (!attestation) {
-    errors.push("attestation section is missing");
+    errors.push('attestation section is missing');
     return { errors, warnings, passed };
   }
 
   const rules = profile.rules.attestation;
   if (!rules) {
-    passed.push("attestation: no rules defined");
+    passed.push('attestation: no rules defined');
     return { errors, warnings, passed };
   }
 
   // Check signature requirement
   if (rules.requires_signature) {
     const signature = attestation.signature;
-    if (!signature || String(signature).trim() === "") {
-      errors.push("attestation: signature is required but missing or empty");
+    if (!signature || String(signature).trim() === '') {
+      errors.push('attestation: signature is required but missing or empty');
     } else {
-      passed.push("attestation: signature present");
+      passed.push('attestation: signature present');
     }
   }
 
   // Check timestamp requirement
   if (rules.requires_timestamp) {
     const timestamp = attestation.timestamp;
-    if (!timestamp || String(timestamp).trim() === "") {
-      errors.push("attestation: timestamp is required but missing or empty");
+    if (!timestamp || String(timestamp).trim() === '') {
+      errors.push('attestation: timestamp is required but missing or empty');
     } else {
-      passed.push("attestation: timestamp present");
+      passed.push('attestation: timestamp present');
     }
   }
 
@@ -400,16 +409,22 @@ function computeWeightedScore(
   checkResults: { errors: string[]; warnings: string[]; passed: string[] }[],
   profile: ComplianceProfile,
 ): number {
-  const ruleKeys: (keyof typeof profile.rules)[] = ["identity", "tool_layer", "risk_layer", "attestation"];
+  const ruleKeys: (keyof typeof profile.rules)[] = [
+    'identity',
+    'tool_layer',
+    'risk_layer',
+    'attestation',
+  ];
   let totalWeight = 0;
   let passedWeight = 0;
 
   for (let i = 0; i < ruleKeys.length; i++) {
     const key = ruleKeys[i];
     const section = profile.rules[key];
-    const weight = (section && typeof section === "object" && "weight" in section)
-      ? (section as { weight?: number }).weight ?? DEFAULT_RULE_WEIGHT
-      : DEFAULT_RULE_WEIGHT;
+    const weight =
+      section && typeof section === 'object' && 'weight' in section
+        ? ((section as { weight?: number }).weight ?? DEFAULT_RULE_WEIGHT)
+        : DEFAULT_RULE_WEIGHT;
 
     if (weight <= 0) continue; // Skip zero-weight sections
 
@@ -424,19 +439,21 @@ function computeWeightedScore(
 
 export function complianceCheckCommand(args: string[]): number {
   if (args.length < 3) {
-    console.error("Usage: agent-trust compliance-check <bom.json> --profile <name> [--min-score <score>]");
-    console.error("");
-    console.error("Available profiles:");
-    console.error("  soc2-2024       SOC 2 Type II compliance (2024)");
-    console.error("  iso27001-2022   ISO/IEC 27001:2022 compliance");
-    console.error("  eidas-controlled eIDAS controlled digital identity services");
+    console.error(
+      'Usage: agent-trust compliance-check <bom.json> --profile <name> [--min-score <score>]',
+    );
+    console.error('');
+    console.error('Available profiles:');
+    console.error('  soc2-2024       SOC 2 Type II compliance (2024)');
+    console.error('  iso27001-2022   ISO/IEC 27001:2022 compliance');
+    console.error('  eidas-controlled eIDAS controlled digital identity services');
     return 1;
   }
 
   const bomPath = args[0];
   const profileArg = args[1];
 
-  if (profileArg !== "--profile") {
+  if (profileArg !== '--profile') {
     console.error(`Error: expected "--profile" argument, got "${profileArg}"`);
     return 1;
   }
@@ -446,9 +463,9 @@ export function complianceCheckCommand(args: string[]): number {
   // Parse --min-score if present
   let minScore = 1.0;
   for (let i = 3; i < args.length; i++) {
-    if (args[i] === "--min-score" && i + 1 < args.length) {
-      const parsed = parseFloat(args[i + 1]);
-      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+    if (args[i] === '--min-score' && i + 1 < args.length) {
+      const parsed = Number.parseFloat(args[i + 1]);
+      if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 1) {
         minScore = parsed;
       } else {
         console.error(`Error: --min-score must be a number between 0 and 1, got "${args[i + 1]}"`);
@@ -462,7 +479,7 @@ export function complianceCheckCommand(args: string[]): number {
   const resolvedBomPath = resolve(bomPath);
   let bomRaw: string;
   try {
-    bomRaw = readFileSync(resolvedBomPath, "utf-8");
+    bomRaw = readFileSync(resolvedBomPath, 'utf-8');
   } catch {
     console.error(`Error: cannot read AgentBOM file "${resolvedBomPath}"`);
     return 1;
@@ -528,37 +545,40 @@ export function complianceCheckCommand(args: string[]): number {
   console.log(`Profile: ${profile.profile_id}`);
   console.log(`AgentBOM: ${resolvedBomPath}`);
   console.log(`Score: ${(score * 100).toFixed(1)}% (threshold: ${(minScore * 100).toFixed(0)}%)`);
-  console.log("");
+  console.log('');
 
   if (result.passed_checks.length > 0) {
-    console.log("✓ Passed checks:");
+    console.log('✓ Passed checks:');
     for (const check of result.passed_checks) {
       console.log(`  ${check}`);
     }
-    console.log("");
+    console.log('');
   }
 
   if (result.warnings.length > 0) {
-    console.log("⚠ Warnings:");
+    console.log('⚠ Warnings:');
     for (const warning of result.warnings) {
       console.log(`  ${warning}`);
     }
-    console.log("");
+    console.log('');
   }
 
   if (result.errors.length > 0) {
-    console.log("✗ Failed checks:");
+    console.log('✗ Failed checks:');
     for (const error of result.errors) {
       console.log(`  ${error}`);
     }
-    console.log("");
+    console.log('');
   }
 
   if (result.compliant) {
-    console.log(`✓ COMPLIANT (score ${(score * 100).toFixed(1)}% ≥ ${(minScore * 100).toFixed(0)}%)`);
+    console.log(
+      `✓ COMPLIANT (score ${(score * 100).toFixed(1)}% ≥ ${(minScore * 100).toFixed(0)}%)`,
+    );
     return 0;
-  } else {
-    console.log(`✗ NON-COMPLIANT (score ${(score * 100).toFixed(1)}% < ${(minScore * 100).toFixed(0)}%)`);
-    return 1;
   }
+  console.log(
+    `✗ NON-COMPLIANT (score ${(score * 100).toFixed(1)}% < ${(minScore * 100).toFixed(0)}%)`,
+  );
+  return 1;
 }

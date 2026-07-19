@@ -25,10 +25,10 @@ jobs:
         run: bun install
 
       - name: Typecheck
-        run: bun run typecheck || true   # warn only until packages are wired up
+        run: bun run typecheck
 
       - name: Lint
-        run: bun run lint || true        # warn only until biome config is added
+        run: bun run lint
 
       - name: Test
         run: bun test
