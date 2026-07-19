@@ -27,6 +27,7 @@ import { signPassportCommand } from './passport-sign.js';
 import { validatePassportCommand } from './passport-validate.js';
 import { verifySignedPassportCommand } from './passport-verify-signed.js';
 import { verifySigstoreCommand } from './sigstore-verify.js';
+import { publishCommand } from './trust-publish.js';
 import { subscribeCommand } from './trust-subscribe.js';
 
 const USAGE = [
@@ -54,6 +55,7 @@ const USAGE = [
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
   '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
   '  subscribe <agent-id> --baseline <path> [--watch <dir>] [--callback <url>] [--interval <s>] [--once]  Monitor trust artifact drift for an agent',
+  '  publish <artifact.json> [--registry <dir>] [--tag <tag>]  Publish trust artifact to registry with CAS identifier',
 ].join('\n');
 
 /** Parse --target and --dry-run flags from a CLI arg slice. */
@@ -321,6 +323,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'export-dashboard') {
     return exportDashboardCommand(args.slice(1));
+  }
+
+  if (args[0] === 'publish') {
+    return publishCommand(args.slice(1));
   }
 
   if (args[0] === 'subscribe') {

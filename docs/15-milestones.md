@@ -80,7 +80,7 @@ Begins when research preview graduates to production. **No Trust Passport work h
 
 ## Milestone 9 — Trust Chain Operations & Distribution (Proposed)
 
-- [ ] `trust-cli publish <artifact.json>` — publishes signed trust artifacts to a distribution registry with content-addressable storage (CAS) identifiers and immutable versioning
+- [x] `trust-cli publish <artifact.json>` — publishes signed trust artifacts to a distribution registry with content-addressable storage (CAS) identifiers and immutable versioning — command at `cli/src/trust-publish.ts` (issue #239)
 - [ ] `trust-cli pull <artifact-id>` — retrieves trust artifacts from the registry by CAS identifier with integrity verification and dependency resolution
 - [x] `trust-cli subscribe <agent-identity>` — sets up continuous monitoring for trust artifact updates from specific agent publishers with notification callbacks — command at `cli/src/trust-subscribe.ts` (issue #241)
 - [ ] AgentBOM schema: add `distribution` object with `registry_uri`, `publication_timestamp`, `deprecation_status`, and `supersedes` fields for artifact lifecycle management
