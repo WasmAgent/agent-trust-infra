@@ -83,7 +83,7 @@ The following items are **cancelled** for this repo (implement in open-agent-aud
 
 ### In-flight (previously listed)
 
-- [ ] Static site for [`papers/`](../papers) so the technical reports are
+- [x] Static site for [`papers/`](../papers) so the technical reports are
       browseable on the web
 - [ ] Apply split criteria (see below) once individual artifacts stabilize
 

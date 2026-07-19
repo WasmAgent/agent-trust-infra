@@ -135,7 +135,7 @@ When items complete, update the checkboxes in `docs/roadmap.md`.
 ### In-flight (from docs/roadmap.md)
 - [ ] Federation with `open-agent-audit` / `trace-pipeline` for shared evidence and audit-report plumbing
 - [ ] Cryptographic Trust Passport signing (signed, revocable, expiring — beyond current reference validity model)
-- [ ] Static site for `papers/` — make technical reports browseable on web
+- [x] Static site for `papers/` — make technical reports browseable on web
 - [ ] Apply split criteria: evaluate whether AgentBOM/MCP Posture/Trust Passport should become standalone repos
 
 ### Phase 5 — Regulatory alignment
