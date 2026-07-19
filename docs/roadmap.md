@@ -101,7 +101,7 @@ The following items are **cancelled** for this repo (implement in open-agent-aud
 - [ ] AgentBOM as standalone specification repo (if external adoption warrants)
 - [ ] MCP Posture as standalone MCP security product (if demand appears)
 - ~~Trust Passport as product module under Trustavo~~ — Trust Passport product development moves to open-agent-audit; schema incubation here is complete
-- [ ] Cross-org standard: propose AgentBOM to OpenSSF or similar body
+- [x] Cross-org standard: propose AgentBOM to OpenSSF or similar body — proposal document at `docs/openssf-proposal.md` (issue #200)
 
 ## Future: split criteria
 

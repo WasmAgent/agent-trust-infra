@@ -63,4 +63,4 @@ Begins when research preview graduates to production. **No Trust Passport work h
 
 - [ ] AgentBOM as standalone specification repository if external adoption warrants
 - [ ] MCP Posture as standalone MCP security product if demand appears
-- [ ] Propose AgentBOM to OpenSSF or equivalent standards body for cross-org adoption
+- [x] Propose AgentBOM to OpenSSF or equivalent standards body for cross-org adoption — proposal at `docs/openssf-proposal.md` (issue #200)
