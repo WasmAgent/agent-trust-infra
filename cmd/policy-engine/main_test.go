@@ -227,3 +227,113 @@ func writeTempJSON(t *testing.T, name string, value any) string {
 	}
 	return path
 }
+
+func TestBenchWorkloadsProduceValidPolicies(t *testing.T) {
+	for _, workload := range []string{benchWorkloadSmall, benchWorkloadMedium, benchWorkloadLarge} {
+		policy := benchPolicyDocument(workload)
+		if err := validatePolicy(policy); err != nil {
+			t.Errorf("workload %s: validatePolicy failed: %v", workload, err)
+			continue
+		}
+		artifact := benchArtifact(workload)
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			t.Errorf("workload %s: evaluatePolicy failed: %v", workload, err)
+		}
+	}
+}
+
+func TestBenchSuitePublishesAllOperations(t *testing.T) {
+	metrics, err := runValidationBenchmarksIter(benchWorkloadSmall, 3)
+	if err != nil {
+		t.Fatalf("runValidationBenchmarksIter: %v", err)
+	}
+
+	want := []string{
+		benchOpValidatePolicy,
+		benchOpComposePolicyRules,
+		benchOpEvaluateCondition,
+		benchOpValuesAtPath,
+		benchOpEvaluatePolicy,
+	}
+	seen := make(map[string]bool, len(metrics))
+	for _, m := range metrics {
+		seen[m.Operation] = true
+		if m.Workload != benchWorkloadSmall {
+			t.Errorf("operation %s: workload = %q, want %q", m.Operation, m.Workload, benchWorkloadSmall)
+		}
+		if m.Iterations != 3 {
+			t.Errorf("operation %s: iterations = %d, want 3", m.Operation, m.Iterations)
+		}
+		if m.ThroughputOpsPerSec <= 0 {
+			t.Errorf("operation %s: throughput = %f, want > 0", m.Operation, m.ThroughputOpsPerSec)
+		}
+		if m.AvgLatencyNsPerOp <= 0 {
+			t.Errorf("operation %s: avg latency = %f, want > 0", m.Operation, m.AvgLatencyNsPerOp)
+		}
+		if m.P99LatencyNs < m.P50LatencyNs {
+			t.Errorf("operation %s: p99 (%f) < p50 (%f)", m.Operation, m.P99LatencyNs, m.P50LatencyNs)
+		}
+	}
+	for _, op := range want {
+		if !seen[op] {
+			t.Errorf("operation %s not present in published metrics", op)
+		}
+	}
+}
+
+func TestRunBenchSubcommandPublishesResults(t *testing.T) {
+	resultsPath := filepath.Join(t.TempDir(), "bench.json")
+
+	var stdout, stderr strings.Builder
+	exitCode, err := run(
+		[]string{benchSubcommand, "-workload", benchWorkloadSmall, "-iterations", "2", "-results", resultsPath},
+		strings.NewReader(""),
+		&stdout,
+		&stderr,
+	)
+	if err != nil {
+		t.Fatalf("run returned error: %v", err)
+	}
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, want 0; stderr=%s", exitCode, stderr.String())
+	}
+
+	var report benchReport
+	if err := json.Unmarshal([]byte(stdout.String()), &report); err != nil {
+		t.Fatalf("decode published report: %v\nstdout=%s", err, stdout.String())
+	}
+	if len(report.Metrics) == 0 {
+		t.Fatal("published report has no metrics")
+	}
+	if report.GoVersion == "" {
+		t.Error("published report missing go_version")
+	}
+
+	fileData, err := os.ReadFile(resultsPath)
+	if err != nil {
+		t.Fatalf("published results file not written: %v", err)
+	}
+	var fileReport benchReport
+	if err := json.Unmarshal(fileData, &fileReport); err != nil {
+		t.Fatalf("decode published results file: %v", err)
+	}
+	if len(fileReport.Metrics) != len(report.Metrics) {
+		t.Errorf("file metrics = %d, want %d", len(fileReport.Metrics), len(report.Metrics))
+	}
+}
+
+func TestBenchRejectsUnknownWorkload(t *testing.T) {
+	var stdout, stderr strings.Builder
+	exitCode, err := run(
+		[]string{benchSubcommand, "-workload", "enormous"},
+		strings.NewReader(""),
+		&stdout,
+		&stderr,
+	)
+	if err == nil {
+		t.Fatal("run returned nil error, want unsupported -workload error")
+	}
+	if exitCode != 2 {
+		t.Errorf("exitCode = %d, want 2", exitCode)
+	}
+}
