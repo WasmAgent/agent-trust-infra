@@ -1,10 +1,33 @@
 {
   "name": "@wasmagent/agent-trust-cli",
   "version": "0.0.0-research",
-  "description": "CLI for Agent Trust Infrastructure — experimental",
+  "description": "CLI for Agent Trust Infrastructure — experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
   "type": "module",
   "bin": {
-    "agent-trust": "./src/index.ts"
+    "agent-trust": "./src/index.ts",
+    "trust-cli": "./src/index.ts"
+  },
+  "files": ["src/"],
+  "keywords": [
+    "agent-trust",
+    "agentbom",
+    "mcp-posture",
+    "ai-trust",
+    "trust-passport",
+    "compliance",
+    "cli",
+    "mcp",
+    "ai-agent",
+    "security"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WasmAgent/agent-trust-infra",
+    "directory": "cli"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@wasmagent/aep": "^1.8.0",
