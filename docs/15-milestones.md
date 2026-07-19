@@ -57,7 +57,7 @@ Begins when research preview graduates to production. **No Trust Passport work h
 - [ ] `@wasmagent/trust-cli` npm publish with binary builds for Linux, macOS, Windows — AgentBOM and MCP Posture CLI only (Trust Passport CLI lives in `open-agent-audit`)
 - [ ] Compliance profile registry: `soc2-2024`, `iso27001-2022`, `eidas-controlled` with verified mapping to actual regulatory text
 - [ ] `docs/cli.md` — complete command reference and examples for all shipped CLI commands
-- [ ] Static site for `papers/` directory so technical reports are browseable on the web
+- [x] Static site for `papers/` directory so technical reports are browseable on the web
 
 ## Milestone 7 — Ecosystem & Standardization (Phase 7)
 

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Technical Reports — Agent Trust Infrastructure</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #79c0ff;
+      --tag-bg: #1f2937;
+      --tag-text: #8b949e;
+      --card-hover: #1c2129;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial,
+                   sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header p.subtitle {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    header a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    header a:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .paper-list { list-style: none; }
+
+    .paper-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      background: var(--surface);
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .paper-card:hover {
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .paper-card h2 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+    }
+
+    .paper-card h2 a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .paper-card h2 a:hover { color: var(--accent); }
+
+    .paper-card .description {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .paper-card .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+    .tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.75rem;
+      border-radius: 12px;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      border: 1px solid var(--border);
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Technical Reports</h1>
+      <p class="subtitle">
+        Agent Trust Infrastructure —
+        <a href="https://github.com/WasmAgent/agent-trust-infra">WasmAgent/agent-trust-infra</a>
+      </p>
+    </header>
+
+    <main>
+      <ul class="paper-list">
+        <li class="paper-card">
+          <h2><a href="agent-trust-infrastructure.md">Agent Trust Infrastructure</a></h2>
+          <p class="description">
+            Rationale and architecture for three connected trust artifacts —
+            AgentBOM, MCP Posture, and Trust Passport — that form a chain from
+            runtime facts to verifiable trust state for AI agents.
+          </p>
+          <div class="tags">
+            <span class="tag">trust artifacts</span>
+            <span class="tag">AgentBOM</span>
+            <span class="tag">MCP Posture</span>
+            <span class="tag">Trust Passport</span>
+            <span class="tag">architecture</span>
+          </div>
+        </li>
+      </ul>
+    </main>
+
+    <footer>
+      Part of the
+      <a href="https://github.com/WasmAgent">WasmAgent</a>
+      ecosystem ·
+      <a href="https://github.com/WasmAgent/agent-trust-infra/blob/main/LICENSE">Apache-2.0</a>
+    </footer>
+  </div>
+</body>
+</html>
