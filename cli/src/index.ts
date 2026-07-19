@@ -49,6 +49,7 @@ const USAGE = [
   '  audit-report <bom.json>    Generate human-readable audit summary with evidence citations',
   '  compliance-check <bom.json> --profile <name> [--min-score <score>]  Validate AgentBOM against compliance profile with adaptive weighted scoring',
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
+  '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
 ].join('\n');
 
 /** Parse --target and --dry-run flags from a CLI arg slice. */
