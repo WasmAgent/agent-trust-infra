@@ -1,15 +1,15 @@
 # Bot State
 
-_Last updated: 2026-07-19 23:25 UTC by patrol_
+_Last updated: 2026-07-19 23:55 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 9 |
-| Active (running/reviewing) | 1 |
-| Blocked | 0 |
-| Completed/Merged (all time) | 1212 |
+| Pending | 6 |
+| Active (running/reviewing) | 2 |
+| Blocked | 1 |
+| Completed/Merged (all time) | 1213 |
 
 ## Recent Activity (last 5)
 
@@ -17,9 +17,9 @@ _Last updated: 2026-07-19 23:25 UTC by patrol_
 |---|---|---|---|
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-19 |
 | #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-19 |
+| #167 | panel-harvest #167 | completed/issue_closed_upstream | 2026-07-19 |
 | #248 | [milestone Milestone 9 ] `trust-cli diff <artifact-a.json... | merged/merged | 2026-07-19 |
 | #243 | [milestone Milestone 9 ] AgentBOM schema: add `distributi... | completed/complexity_gate_split | 2026-07-19 |
-| #244 | [milestone Milestone 9 ] MCP Posture schema: add `verific... | completed/complexity_gate_split | 2026-07-19 |
 
 ## Waiting for Human
 
