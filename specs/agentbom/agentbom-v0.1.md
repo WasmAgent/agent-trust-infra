@@ -245,3 +245,19 @@ agent-trust agentbom validate <path>    # Validate against schema
 agent-trust agentbom inspect <path>     # Human-readable summary
 agent-trust agentbom diff <old> <new>   # Show changes between two AgentBOMs
 ```
+
+## Extraction criteria
+
+AgentBOM can be extracted into a standalone specification repository when:
+
+1. The schema version (`agentbom_version`) has stabilized and no breaking changes
+   are expected in the short term.
+2. External consumers (beyond the WasmAgent ecosystem) adopt the package
+   independently, or a standardization pathway (e.g., OpenSSF, OWASP CycloneDX
+   extension) has been initiated — see [`docs/openssf-proposal.md`](../../docs/openssf-proposal.md).
+3. The eleven-layer schema has coverage across at least one major regulatory
+   framework mapping (e.g., EU AI Act Annex IV, ISO/IEC 42001, NIST AI RMF).
+
+Until extraction, the canonical source is this repository. The JSON schema in
+`specs/agentbom/schema.json` and the reference implementation in
+`packages/agentbom-core/` are versioned together.
