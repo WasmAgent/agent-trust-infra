@@ -1,45 +1,61 @@
 # Milestones
 
-## Milestone 1 — Production Hardening & CLI Tooling
+> Milestones 1–4 correspond to Weeks 0–12 deliverables — all shipped.
+> See `docs/roadmap.md` for the authoritative status narrative.
+> Active work starts at Milestone 5.
 
-- [ ] `npm install -g @wasmagent/trust-cli` — standalone CLI for generating AgentBOM, MCP Posture, and Trust Passport artifacts
-- [ ] `trust-cli generate bom --agent <path>` — command produces valid AgentBOM JSON with tool inventory and permission mapping
-- [ ] `trust-cli validate <artifact.json>` — validates artifacts against published JSON schemas with detailed error messages
-- [ ] `trust-cli sign <artifact.json> --key <key-path>` — signs Trust Passport with expiry, outputs signed JWT
-- [ ] `trust-cli verify <signed-passport.jwt>` — verifies signature, expiry, and chains trust evidence
-- [ ] Add E2E test: `npm test` covers full generate → sign → verify → revoke flow
-- [ ] Publish `@wasmagent/trust-cli@1.0.0-rc.1` to npm with binary builds for Linux/macOS/Windows
-- [ ] Documentation: `docs/cli.md` with complete command reference and examples
+## Milestone 1 — Spec Skeletons & Repo Foundation (Shipped)
 
-## Milestone 2 — Ecosystem Integration & WASM Runtime
+- [x] Public repo with vision, architecture, and boundaries docs
+- [x] AgentBOM spec skeleton
+- [x] MCP Posture spec skeleton
+- [x] Trust Passport spec skeleton
 
-- [ ] `@wasmagent/trust-runtime` package for consumption by `wasmagent-js` and other runtimes
-- [ ] Runtime API: `AgentTrust.load(bomPath)` validates AgentBOM and returns parsed trust metadata
-- [ ] Runtime API: `AgentTrust.checkPermission(tool, action)` returns decision with evidence trace
-- [ ] WASM module: `trust_core.wasm` compiled from Rust/Go core validation logic
-- [ ] `wasmagent-js` integration: runtime reads AgentBOM at agent load time, enforces declared policies
-- [ ] MCP server decorator: wraps MCP servers with posture enforcement based on declared capabilities
-- [ ] Integration tests: runtime correctly rejects tools/permissions not declared in AgentBOM
-- [ ] Publish `@wasmagent/trust-runtime@1.0.0-rc.1` to npm with TypeScript definitions
+## Milestone 2 — JSON Schemas & Validators (Shipped)
 
-## Milestone 3 — Audit Evidence & Compliance Features
+- [x] JSON schemas for AgentBOM, MCP Posture, and Trust Passport
+- [x] Fixture-based validator tests for all three schemas
+- [x] `trust-cli validate <artifact.json>` — validates artifact against published schemas with detailed error messages
+- [x] `trust-cli generate bom --agent <path>` — produces valid AgentBOM JSON with tool inventory and permission mapping
 
-- [ ] `AuditLog` schema extension to AgentBOM for structured audit trail entries
-- [ ] `trust-cli attest <action>` — generates signed attestation for audit log inclusion
-- [ ] `trust-cli audit-report <bom.json>` — generates human-readable audit summary with evidence citations
-- [ ] `ComplianceProfile` schema for mapping trust artifacts to compliance frameworks (SOC2, ISO27001, etc.)
-- [ ] `trust-cli compliance-check <bom.json> --profile <name>` — validates artifact against selected compliance profile
-- [ ] Pre-built profiles: `soc2-2024`, `iso27001-2022`, `eidas-controlled` in `profiles/` directory
-- [ ] Test suite validates all compliance profiles with known-good and known-bad fixtures
-- [ ] Documentation: `docs/compliance.md` with profile authoring guide
+## Milestone 3 — End-to-End Demo & Close-out (Shipped)
 
-## Milestone 4 — Trust Dashboard & Marketplace Preview
+- [x] Full trust chain wired: `bscode → CapabilityManifest + AEP → AgentBOM → MCP Posture → audit report → Trust Passport`
+- [x] `examples/bscode-agent/run-chain.sh` — single command runs the full offline demo
+- [x] Architecture diagram and README stitching
+- [x] `trust-cli sign <artifact.json> --key <key-path>` — signs Trust Passport with expiry, outputs signed JWT
+- [x] `trust-cli verify <signed-passport.jwt>` — verifies signature, expiry, and chains trust evidence
 
-- [ ] Web UI: `trust-dashboard/` React app for visualizing AgentBOM, MCP Posture, and Trust Passport
-- [ ] Dashboard renders tool inventory, permission matrix, and trust chain with visual indicators
-- [ ] `npm run dev` in dashboard directory starts local development server with example agents
-- [ ] Dashboard supports drag-and-drop artifact upload with real-time validation feedback
-- [ ] `trust-cli export-dashboard <bom.json> --output <dir>` — generates static HTML report
-- [ ] Marketplace schema: `AgentListing.md` for publishing discoverable agents with trust metadata
-- [ ] CLI command: `trust-cli publish <bom.json> --registry <url>` — publishes agent listing to registry
-- [ ] End-to-end demo: published agent appears in marketplace, buyer verifies trust chain before download
+## Milestone 4 — Research Preview Hardening (Shipped)
+
+- [x] `AuditLog` schema extension to AgentBOM for structured audit trail entries
+- [x] `trust-cli attest <action>` — generates signed attestation for audit log inclusion
+- [x] `trust-cli audit-report <bom.json>` — generates human-readable audit summary with evidence citations
+- [x] Compliance profile schema mapping trust artifacts to SOC2, ISO27001, eIDAS frameworks
+- [x] Static papers site for `papers/` directory
+
+## Milestone 5 — Regulatory Alignment (Phase 5, time-sensitive)
+
+External deadlines drive this milestone. All items have corresponding GitHub issues.
+
+- [ ] `specs/agentbom/ai-act-annex-iv-mapping.md` — AgentBOM field ↔ EU AI Act Annex IV technical documentation requirements table; citable by compliance teams before 2026-08-02 deadline (issue #171)
+- [ ] AgentBOM schema: add "action pathway" fields (`tool_skills`, `prompt_version`, `policy_definitions`, `workflow_definitions`) per Oxford/Cisco arXiv 2026-03 proposal; positions AgentBOM ahead of CycloneDX ML-BOM standardization (issue #170, PR #179 open)
+- [ ] MCP Posture schema: adapt for MCP 2026-07-28 stateless model — add audience-bound token field and MCP-Method/MCP-Name header risk entries (issue #173, PR #174 open)
+- [ ] Replace doc-string coherence tests with CycloneDX/SPDX 3.0 schema conformance tests (issue #172, PRs #176 and #178 open)
+- [ ] `specs/mcp-posture/owasp-alignment.md` — cross-reference MCP Posture risk taxonomy with OWASP Agentic Top 10 2026 (ASI01–ASI10)
+- [ ] Compliance profile `eu-ai-act-annex-iv.json` — maps AgentBOM fields to Annex IV requirements for high-risk AI systems
+
+## Milestone 6 — Production Hardening (Phase 6)
+
+Begins when research preview graduates to production. Trust Passport items are frozen and moved to `open-agent-audit`.
+
+- [ ] `@wasmagent/trust-cli` npm publish with binary builds for Linux, macOS, Windows — AgentBOM and MCP Posture CLI only (Trust Passport CLI lives in `open-agent-audit`)
+- [ ] Compliance profile registry: `soc2-2024`, `iso27001-2022`, `eidas-controlled` with verified mapping to actual regulatory text
+- [ ] `docs/cli.md` — complete command reference and examples for all shipped CLI commands
+- [ ] Static site for `papers/` directory so technical reports are browseable on the web
+
+## Milestone 7 — Ecosystem & Standardization (Phase 7)
+
+- [ ] AgentBOM as standalone specification repository if external adoption warrants
+- [ ] MCP Posture as standalone MCP security product if demand appears
+- [ ] Propose AgentBOM to OpenSSF or equivalent standards body for cross-org adoption
