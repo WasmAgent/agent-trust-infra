@@ -26,6 +26,7 @@ import { inspectPassportCommand } from './passport-inspect.js';
 import { signPassportCommand } from './passport-sign.js';
 import { validatePassportCommand } from './passport-validate.js';
 import { verifySignedPassportCommand } from './passport-verify-signed.js';
+import { verifySigstoreCommand } from './sigstore-verify.js';
 
 const USAGE = [
   'Usage: agent-trust <command> [args]',
@@ -36,6 +37,7 @@ const USAGE = [
   '  passport inspect <path>    Inspect a trust passport file',
   '  passport sign <path> --key <key-path>  Sign a passport as JWT (EdDSA)',
   '  passport verify-signed <jwt-path> [--key <pubkey>]  Verify a signed passport JWT',
+  '  passport verify-sigstore <bundle.json> [--artifact <path>] [--offline] [--fips] [--issuer <url>]  Verify with Sigstore bundle',
   '  agentbom inspect <path>    Inspect an AgentBOM file',
   '  agentbom diff <old> <new>  Diff two AgentBOM files',
   '  agentbom pipeline <path> [--partitions N] [--no-incremental]  Stream-process BOM artifacts',
@@ -222,6 +224,9 @@ export function runCommand(args: string[]): number | Promise<number> {
     }
     if (args[1] === 'verify-signed') {
       return verifySignedPassportCommand(args.slice(2));
+    }
+    if (args[1] === 'verify-sigstore') {
+      return verifySigstoreCommand(args.slice(2));
     }
     console.error(`Error: unknown passport subcommand "${args[1]}"`);
     return 1;
