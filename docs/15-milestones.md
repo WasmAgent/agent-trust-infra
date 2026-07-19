@@ -3,6 +3,11 @@
 > Milestones 1–4 correspond to Weeks 0–12 deliverables — all shipped.
 > See `docs/roadmap.md` for the authoritative status narrative.
 > Active work starts at Milestone 5.
+>
+> **FROZEN PACKAGES — do not open issues, write tests, or make any changes:**
+> `trust-passport-core` and `trust-runtime` are frozen. All Trust Passport
+> feature work has moved to `WasmAgent/open-agent-audit`. Any bullet below that
+> would require touching these packages must be implemented in that repo instead.
 
 ## Milestone 1 — Spec Skeletons & Repo Foundation (Shipped)
 
@@ -47,7 +52,7 @@ External deadlines drive this milestone. All items have corresponding GitHub iss
 
 ## Milestone 6 — Production Hardening (Phase 6)
 
-Begins when research preview graduates to production. Trust Passport items are frozen and moved to `open-agent-audit`.
+Begins when research preview graduates to production. **No Trust Passport work here** — `trust-passport-core` and `trust-runtime` are frozen; all Trust Passport work lives in `open-agent-audit`.
 
 - [ ] `@wasmagent/trust-cli` npm publish with binary builds for Linux, macOS, Windows — AgentBOM and MCP Posture CLI only (Trust Passport CLI lives in `open-agent-audit`)
 - [ ] Compliance profile registry: `soc2-2024`, `iso27001-2022`, `eidas-controlled` with verified mapping to actual regulatory text
