@@ -13,10 +13,14 @@ import (
 	"strings"
 )
 
+const supportedDSLVersion = "1.0"
+
 type policyDocument struct {
-	PolicySetID string       `json:"policy_set_id"`
-	Version     string       `json:"version"`
-	Rules       []policyRule `json:"rules"`
+	DSLVersion  string           `json:"dsl_version,omitempty"`
+	PolicySetID string           `json:"policy_set_id"`
+	Version     string           `json:"version"`
+	Rules       []policyRule     `json:"rules"`
+	Includes    []policyDocument `json:"includes,omitempty"`
 }
 
 type policyRule struct {
@@ -47,10 +51,18 @@ type evaluationResult struct {
 }
 
 type ruleFinding struct {
+	PolicySetID string `json:"policy_set_id,omitempty"`
+	Version     string `json:"version,omitempty"`
 	RuleID      string `json:"rule_id"`
 	Severity    string `json:"severity,omitempty"`
 	Description string `json:"description,omitempty"`
 	Message     string `json:"message"`
+}
+
+type composedRule struct {
+	policySetID string
+	version     string
+	rule        policyRule
 }
 
 func main() {
@@ -136,13 +148,23 @@ func decodeJSON(data []byte, dst any) error {
 }
 
 func validatePolicy(policy policyDocument) error {
+	if err := validatePolicyDocument(policy); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validatePolicyDocument(policy policyDocument) error {
+	if policy.DSLVersion != "" && policy.DSLVersion != supportedDSLVersion {
+		return fmt.Errorf("policy %q has unsupported dsl_version %q", policy.PolicySetID, policy.DSLVersion)
+	}
 	if policy.PolicySetID == "" {
 		return errors.New("policy missing policy_set_id")
 	}
 	if policy.Version == "" {
 		return errors.New("policy missing version")
 	}
-	if len(policy.Rules) == 0 {
+	if len(policy.Rules) == 0 && len(policy.Includes) == 0 {
 		return errors.New("policy must contain at least one rule")
 	}
 	for i, rule := range policy.Rules {
@@ -162,20 +184,28 @@ func validatePolicy(policy policyDocument) error {
 			return fmt.Errorf("policy rule %q has unsupported effect %q", rule.ID, rule.Effect)
 		}
 	}
+	for i, included := range policy.Includes {
+		if err := validatePolicyDocument(included); err != nil {
+			return fmt.Errorf("included policy %d: %w", i, err)
+		}
+	}
 	return nil
 }
 
 func evaluatePolicy(policy policyDocument, artifact any) (evaluationResult, error) {
+	rules := composePolicyRules(policy)
 	result := evaluationResult{
 		PolicySetID: policy.PolicySetID,
 		Version:     policy.Version,
 		Allowed:     true,
 		Metadata: map[string]int{
-			"rules_evaluated": len(policy.Rules),
+			"policy_sets_composed": countPolicyDocuments(policy),
+			"rules_evaluated":      len(rules),
 		},
 	}
 
-	for _, rule := range policy.Rules {
+	for _, composed := range rules {
+		rule := composed.rule
 		matches, err := evaluateCondition(*rule.When, artifact)
 		if err != nil {
 			return result, fmt.Errorf("rule %q when: %w", rule.ID, err)
@@ -188,9 +218,9 @@ func evaluatePolicy(policy policyDocument, artifact any) (evaluationResult, erro
 		switch rule.Effect {
 		case "deny":
 			result.Allowed = false
-			result.Violations = append(result.Violations, findingForRule(rule, "deny condition matched"))
+			result.Violations = append(result.Violations, findingForRule(composed, "deny condition matched"))
 		case "warn":
-			result.Warnings = append(result.Warnings, findingForRule(rule, "warn condition matched"))
+			result.Warnings = append(result.Warnings, findingForRule(composed, "warn condition matched"))
 			result.PassedRules = append(result.PassedRules, rule.ID)
 		case "require":
 			ok, err := evaluateCondition(*rule.Assert, artifact)
@@ -202,7 +232,7 @@ func evaluatePolicy(policy policyDocument, artifact any) (evaluationResult, erro
 				continue
 			}
 			result.Allowed = false
-			result.Violations = append(result.Violations, findingForRule(rule, "required assertion failed"))
+			result.Violations = append(result.Violations, findingForRule(composed, "required assertion failed"))
 		}
 	}
 
@@ -213,12 +243,38 @@ func evaluatePolicy(policy policyDocument, artifact any) (evaluationResult, erro
 	return result, nil
 }
 
-func findingForRule(rule policyRule, fallback string) ruleFinding {
+func composePolicyRules(policy policyDocument) []composedRule {
+	var rules []composedRule
+	for _, included := range policy.Includes {
+		rules = append(rules, composePolicyRules(included)...)
+	}
+	for _, rule := range policy.Rules {
+		rules = append(rules, composedRule{
+			policySetID: policy.PolicySetID,
+			version:     policy.Version,
+			rule:        rule,
+		})
+	}
+	return rules
+}
+
+func countPolicyDocuments(policy policyDocument) int {
+	count := 1
+	for _, included := range policy.Includes {
+		count += countPolicyDocuments(included)
+	}
+	return count
+}
+
+func findingForRule(composed composedRule, fallback string) ruleFinding {
+	rule := composed.rule
 	message := rule.Message
 	if message == "" {
 		message = fallback
 	}
 	return ruleFinding{
+		PolicySetID: composed.policySetID,
+		Version:     composed.version,
 		RuleID:      rule.ID,
 		Severity:    rule.Severity,
 		Description: rule.Description,

@@ -95,6 +95,125 @@ func TestPolicyEngineRequiresAEPForFileSystemTools(t *testing.T) {
 	}
 }
 
+func TestPolicyEngineComposesVersionedPolicySets(t *testing.T) {
+	policy := policyDocument{
+		DSLVersion:  "1.0",
+		PolicySetID: "org-governance",
+		Version:     "2026.07",
+		Includes: []policyDocument{
+			{
+				DSLVersion:  "1.0",
+				PolicySetID: "mcp-baseline",
+				Version:     "1.2.0",
+				Rules: []policyRule{
+					{
+						ID:     "approved-mcp-servers",
+						Effect: "deny",
+						When: &condition{
+							Path:   "servers[].server_id",
+							Op:     "not_in",
+							Values: []string{"filesystem-prod", "github-prod"},
+						},
+					},
+				},
+			},
+			{
+				DSLVersion:  "1.0",
+				PolicySetID: "aep-baseline",
+				Version:     "2.0.0",
+				Rules: []policyRule{
+					{
+						ID:     "filesystem-tools-require-aep",
+						Effect: "require",
+						When: &condition{
+							Path:   "tools[].permissions[]",
+							Op:     "contains",
+							Values: []string{"filesystem"},
+						},
+						Assert: &condition{
+							Path: "evidence_layer.aep_references[]",
+							Op:   "exists",
+						},
+					},
+				},
+			},
+		},
+		Rules: []policyRule{
+			{
+				ID:     "passport-expiry-present",
+				Effect: "require",
+				When: &condition{
+					Path: "agent_id",
+					Op:   "exists",
+				},
+				Assert: &condition{
+					Path: "passport.expires_at",
+					Op:   "exists",
+				},
+			},
+		},
+	}
+	artifact := map[string]any{
+		"agent_id": "agent-123",
+		"servers": []map[string]any{
+			{"server_id": "github-prod"},
+		},
+		"tools": []map[string]any{
+			{
+				"tool_id":     "file-read",
+				"permissions": []string{"filesystem:read"},
+			},
+		},
+		"evidence_layer": map[string]any{
+			"aep_references": []string{"aep://audit/123"},
+		},
+		"passport": map[string]any{
+			"expires_at": "2026-12-31T00:00:00Z",
+		},
+	}
+
+	result, err := evaluatePolicy(policy, artifact)
+	if err != nil {
+		t.Fatalf("evaluatePolicy returned error: %v", err)
+	}
+	if !result.Allowed {
+		t.Fatalf("result.Allowed = false, want true; violations=%#v", result.Violations)
+	}
+	if result.Metadata["policy_sets_composed"] != 3 {
+		t.Fatalf("policy_sets_composed = %d, want 3", result.Metadata["policy_sets_composed"])
+	}
+	if result.Metadata["rules_evaluated"] != 3 {
+		t.Fatalf("rules_evaluated = %d, want 3", result.Metadata["rules_evaluated"])
+	}
+	if len(result.PassedRules) != 3 {
+		t.Fatalf("passed rules = %#v, want 3 rules", result.PassedRules)
+	}
+}
+
+func TestPolicyEngineRejectsUnsupportedDSLVersion(t *testing.T) {
+	err := validatePolicy(policyDocument{
+		DSLVersion:  "9.0",
+		PolicySetID: "future-policy",
+		Version:     "1.0.0",
+		Rules: []policyRule{
+			{
+				ID:     "future-rule",
+				Effect: "warn",
+				When: &condition{
+					Path: "agent_id",
+					Op:   "exists",
+				},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatal("validatePolicy returned nil, want unsupported dsl_version error")
+	}
+	if !strings.Contains(err.Error(), `unsupported dsl_version "9.0"`) {
+		t.Fatalf("validatePolicy error = %q, want unsupported dsl_version", err.Error())
+	}
+}
+
 func writeTempJSON(t *testing.T, name string, value any) string {
 	t.Helper()
 
