@@ -27,6 +27,7 @@ import { signPassportCommand } from './passport-sign.js';
 import { validatePassportCommand } from './passport-validate.js';
 import { verifySignedPassportCommand } from './passport-verify-signed.js';
 import { verifySigstoreCommand } from './sigstore-verify.js';
+import { subscribeCommand } from './trust-subscribe.js';
 
 const USAGE = [
   'Usage: agent-trust <command> [args]',
@@ -52,6 +53,7 @@ const USAGE = [
   '  compliance-check <bom.json> --profile <name> [--min-score <score>]  Validate AgentBOM against compliance profile with adaptive weighted scoring',
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
   '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
+  '  subscribe <agent-id> --baseline <path> [--watch <dir>] [--callback <url>] [--interval <s>] [--once]  Monitor trust artifact drift for an agent',
 ].join('\n');
 
 /** Parse --target and --dry-run flags from a CLI arg slice. */
@@ -319,6 +321,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'export-dashboard') {
     return exportDashboardCommand(args.slice(1));
+  }
+
+  if (args[0] === 'subscribe') {
+    return subscribeCommand(args.slice(1));
   }
 
   console.error(`Error: unknown command "${args[0]}"`);
