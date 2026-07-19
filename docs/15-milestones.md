@@ -76,4 +76,4 @@ Begins when research preview graduates to production. **No Trust Passport work h
 - [ ] Trust analytics dashboard — web UI for visualizing trust posture across agent fleets, BOM dependency graphs, compliance heatmaps, and audit log search with temporal filtering
 - [ ] BOM versioning and migration framework — semver-compatible schema evolution tooling with automated migration scripts, backward compatibility shims, and deprecation warnings for legacy AgentBOM/MCP Posture versions
 - [ ] Performance benchmarks and SLIs — published throughput/latency benchmarks for validation operations, SLO guidance for production deployments, and regression test suite for performance degradation
-- [ ] Enterprise onboarding and certification guide — runbooks for security teams adopting trust infra, attestation collection procedures, and trustworthiness review checklist before agent deployment to production
+- [x] Enterprise onboarding and certification guide — runbooks for security teams adopting trust infra, attestation collection procedures, and trustworthiness review checklist before agent deployment to production — guide at `docs/enterprise-onboarding.md` (issue #223)
