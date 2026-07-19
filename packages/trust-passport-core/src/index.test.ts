@@ -262,6 +262,154 @@ describe('validateTrustPassport', () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('revocation.revocation_triggers must be an array');
     });
+
+    it('accepts revoked=false without revoked_at, revocation_reason, or revoking_authority', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: { revoked: false, revocation_triggers: ['critical_security_finding'] },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('requires revoked_at when revoked=true', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revocation_reason: 'critical security vulnerability',
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(
+        'revocation: missing revoked_at (required when revoked=true)',
+      );
+    });
+
+    it('requires revocation_reason when revoked=true', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15T12:00:00Z',
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(
+        'revocation: missing revocation_reason (required when revoked=true)',
+      );
+    });
+
+    it('requires revoking_authority when revoked=true', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15T12:00:00Z',
+          revocation_reason: 'critical security vulnerability',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain(
+        'revocation: missing revoking_authority (required when revoked=true)',
+      );
+    });
+
+    it('accepts a fully-populated revocation object when revoked=true', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15T12:00:00Z',
+          revocation_reason: 'critical security vulnerability',
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it('rejects non-string revocation.revoked_at', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: 123,
+          revocation_reason: 'critical security vulnerability',
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('revocation.revoked_at must be a string');
+    });
+
+    it('rejects malformed revoked_at date string (no Z suffix)', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15',
+          revocation_reason: 'critical security vulnerability',
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(
+        result.errors.some((e) =>
+          e.includes('revocation.revoked_at must be an ISO 8601 UTC date string'),
+        ),
+      ).toBe(true);
+    });
+
+    it('rejects non-string revocation.revocation_reason', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15T12:00:00Z',
+          revocation_reason: 42,
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('revocation.revocation_reason must be a string');
+    });
+
+    it('rejects non-string revocation.revoking_authority', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15T12:00:00Z',
+          revocation_reason: 'critical security vulnerability',
+          revoking_authority: 42,
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('revocation.revoking_authority must be a string');
+    });
+
+    it('accepts revoked_at with fractional seconds', () => {
+      const result = validateTrustPassport({
+        ...VALID_PASSPORT,
+        revocation: {
+          revoked: true,
+          revoked_at: '2026-07-15T12:00:00.500Z',
+          revocation_reason: 'critical security vulnerability',
+          revoking_authority: 'security-ops',
+          revocation_triggers: ['critical_security_finding'],
+        },
+      });
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe('attestation object validation', () => {
@@ -382,6 +530,24 @@ describe('inspectTrustPassport', () => {
     expect(output).toContain('2026-06-28T00:00:00Z');
     expect(output).toContain('2026-09-26T00:00:00Z');
     expect(output).toContain('Revoked:  false');
+  });
+
+  it('shows revocation details when passport is revoked', () => {
+    const revokedPassport = {
+      ...VALID_PASSPORT,
+      revocation: {
+        revoked: true,
+        revoked_at: '2026-07-15T12:00:00Z',
+        revocation_reason: 'critical security vulnerability',
+        revoking_authority: 'security-ops',
+        revocation_triggers: ['critical_security_finding'],
+      },
+    };
+    const output = inspectTrustPassport(revokedPassport);
+    expect(output).toContain('Revoked:  true');
+    expect(output).toContain('Revoked at:   2026-07-15T12:00:00Z');
+    expect(output).toContain('Reason:       critical security vulnerability');
+    expect(output).toContain('Authority:    security-ops');
   });
 });
 

@@ -8,7 +8,7 @@
 
 A Trust Passport is a signed trust-state artifact for an AI agent.
 
-It summarizes evidence quality, open risks, audit references, validity period, renewal triggers, and revocation triggers.
+It summarizes evidence quality, open risks, audit references, validity period, renewal triggers, and revocation state (including revoked timestamp, reason, and revoking authority).
 
 It supports technical due diligence, procurement review, and internal governance workflows.
 
@@ -101,7 +101,7 @@ TrustPassport v0.1
 ├── evidence_summary — evidence quality and framework mapping
 ├── risk_summary     — open risk count by severity
 ├── validity         — issued_at, expires_at, renewal triggers
-├── revocation       — revoked flag, revocation triggers
+├── revocation       — revoked flag, revoked_at, revocation_reason, revoking_authority, revocation triggers
 └── attestation      — issuer, signature
 ```
 
