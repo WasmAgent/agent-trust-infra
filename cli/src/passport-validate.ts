@@ -1,10 +1,17 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { validateTrustPassport, isExpired, inspectTrustPassport } from "../../packages/trust-passport-core/src/index.js";
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  inspectTrustPassport,
+  isExpired,
+  validateTrustPassport,
+} from '../../packages/trust-passport-core/src/index.js';
 
 const WARN_EXPIRY_DAYS = 14;
 
-function expiresWithinDays(passport: { validity?: { expires_at?: string } }, days: number): boolean {
+function expiresWithinDays(
+  passport: { validity?: { expires_at?: string } },
+  days: number,
+): boolean {
   const expiresAt = passport.validity?.expires_at;
   if (!expiresAt) return false;
   const expiry = new Date(expiresAt).getTime();
@@ -18,7 +25,7 @@ export function validatePassportCommand(filePath: string): number {
 
   let raw: string;
   try {
-    raw = readFileSync(resolvedPath, "utf-8");
+    raw = readFileSync(resolvedPath, 'utf-8');
   } catch {
     console.error(`Error: cannot read file "${resolvedPath}"`);
     return 1;
@@ -45,16 +52,20 @@ export function validatePassportCommand(filePath: string): number {
   console.log(inspectTrustPassport(passport));
 
   if (isExpired(passport)) {
-    console.error("\nPassport has EXPIRED.");
+    console.error('\nPassport has EXPIRED.');
     return 1;
   }
 
   if (expiresWithinDays(passport, WARN_EXPIRY_DAYS)) {
-    const expiresAt = (passport.validity as Record<string, string>)?.expires_at;
-    const daysLeft = Math.ceil((new Date(expiresAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    console.warn(`\nWarning: passport expires within ${WARN_EXPIRY_DAYS} days (${daysLeft} days remaining).`);
+    const expiresAt = (passport.validity as Record<string, string>)?.expires_at ?? '';
+    const daysLeft = Math.ceil(
+      (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+    );
+    console.warn(
+      `\nWarning: passport expires within ${WARN_EXPIRY_DAYS} days (${daysLeft} days remaining).`,
+    );
   }
 
-  console.log("\nPassport is valid.");
+  console.log('\nPassport is valid.');
   return 0;
 }

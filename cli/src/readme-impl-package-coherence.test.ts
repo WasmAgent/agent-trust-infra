@@ -21,45 +21,43 @@
  * readme-status-coherence.test.ts (#48) and docs-private-repo-coherence.test.ts
  * (#62).
  */
-import { describe, expect, it } from "bun:test";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { describe, expect, it } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const README = join(__dirname, "../../README.md");
-const text = readFileSync(README, "utf-8");
+const README = join(__dirname, '../../README.md');
+const text = readFileSync(README, 'utf-8');
 
 /** npm package names that ship the runtime implementation of the specs here. */
-const AEP_REF = "@wasmagent/aep";
-const MCP_ATTESTATION_REF = "@wasmagent/mcp-attestation";
+const AEP_REF = '@wasmagent/aep';
+const MCP_ATTESTATION_REF = '@wasmagent/mcp-attestation';
 
-describe("README implementation-package coherence (issue #66)", () => {
-	it("exists and has content", () => {
-		expect(text.length).toBeGreaterThan(0);
-	});
+describe('README implementation-package coherence (issue #66)', () => {
+  it('exists and has content', () => {
+    expect(text.length).toBeGreaterThan(0);
+  });
 
-	it("links the AEP implementation package for the AgentBOM evidence layer", () => {
-		// `@wasmagent/aep` ships the AEP emitter that produces the runtime
-		// evidence referenced by specs/agentbom's `evidence_layer.aep_references`.
-		expect(text).toContain(AEP_REF);
-		expect(text).toContain("https://www.npmjs.com/package/@wasmagent/aep");
-	});
+  it('links the AEP implementation package for the AgentBOM evidence layer', () => {
+    // `@wasmagent/aep` ships the AEP emitter that produces the runtime
+    // evidence referenced by specs/agentbom's `evidence_layer.aep_references`.
+    expect(text).toContain(AEP_REF);
+    expect(text).toContain('https://www.npmjs.com/package/@wasmagent/aep');
+  });
 
-	it("links the MCP attestation implementation package for the MCP Posture spec", () => {
-		// `@wasmagent/mcp-attestation` ships the MCP posture/attestation runtime
-		// that consumes specs/mcp-posture.
-		expect(text).toContain(MCP_ATTESTATION_REF);
-		expect(text).toContain(
-			"https://www.npmjs.com/package/@wasmagent/mcp-attestation",
-		);
-	});
+  it('links the MCP attestation implementation package for the MCP Posture spec', () => {
+    // `@wasmagent/mcp-attestation` ships the MCP posture/attestation runtime
+    // that consumes specs/mcp-posture.
+    expect(text).toContain(MCP_ATTESTATION_REF);
+    expect(text).toContain('https://www.npmjs.com/package/@wasmagent/mcp-attestation');
+  });
 
-	it("frames both packages as the implementation layer for specs defined here", () => {
-		// The README must tie the packages back to the specs in *this* repo, not
-		// merely mention them as related work. "implementation" is the framing
-		// the patrol asked for (consumer-facing counterpart to the schemas here).
-		expect(/implementation/i.test(text)).toBe(true);
-		expect(/spec/i.test(text)).toBe(true);
-	});
+  it('frames both packages as the implementation layer for specs defined here', () => {
+    // The README must tie the packages back to the specs in *this* repo, not
+    // merely mention them as related work. "implementation" is the framing
+    // the patrol asked for (consumer-facing counterpart to the schemas here).
+    expect(/implementation/i.test(text)).toBe(true);
+    expect(/spec/i.test(text)).toBe(true);
+  });
 });
