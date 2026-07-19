@@ -98,7 +98,7 @@ The following items are **cancelled** for this repo (implement in open-agent-aud
 
 ### Phase 7 — Ecosystem
 
-- [ ] AgentBOM as standalone specification repo (if external adoption warrants)
+- [x] AgentBOM as standalone specification repo (if external adoption warrants) — extraction criteria added to spec (schema stability, external adoption/standardization pathway, regulatory coverage), mirrors MCP Posture pattern
 - [x] MCP Posture as standalone MCP security product (if demand appears) — standalone product positioning documented in spec, package README added, validate + diff CLI commands implemented, risk taxonomy complete (8 categories)
 - ~~Trust Passport as product module under Trustavo~~ — Trust Passport product development moves to open-agent-audit; schema incubation here is complete
 - [x] Cross-org standard: propose AgentBOM to OpenSSF or similar body — proposal document at `docs/openssf-proposal.md` (issue #200)

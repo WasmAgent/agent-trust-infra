@@ -154,7 +154,7 @@ When items complete, update the checkboxes in `docs/roadmap.md`.
 - [ ] Compliance profile registry — verified regulatory mapping for `soc2-2024`, `iso27001-2022`, `eidas-controlled`
 
 ### Phase 7 — Ecosystem
-- [ ] AgentBOM as standalone specification repo (if external adoption warrants)
+- [x] AgentBOM as standalone specification repo (if external adoption warrants) — extraction criteria in spec
 - [ ] MCP Posture as standalone MCP security product (if demand appears)
 - [ ] Trust Passport as product module under Trustavo (trustavo.com/passport)
 - [ ] Cross-org standard: propose AgentBOM to OpenSSF or similar body
