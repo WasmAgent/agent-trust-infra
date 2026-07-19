@@ -477,3 +477,229 @@ export function inspectMCPPosture(data: Record<string, unknown>): string {
 
   return lines.join('\n');
 }
+
+// --- Semver utilities ---
+
+export interface SemVer {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease?: string;
+  build?: string;
+}
+
+export function parseSemver(version: string): SemVer | null {
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([\w.]+))?(?:\+([\w.]+))?$/.exec(version);
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    ...(match[4] ? { prerelease: match[4] } : {}),
+    ...(match[5] ? { build: match[5] } : {}),
+  };
+}
+
+export function compareSemver(a: string, b: string): number {
+  const pa = parseSemver(a);
+  const pb = parseSemver(b);
+  if (!pa || !pb) throw new Error(`Invalid semver: ${!pa ? a : b}`);
+  if (pa.major !== pb.major) return pa.major - pb.major;
+  if (pa.minor !== pb.minor) return pa.minor - pb.minor;
+  if (pa.patch !== pb.patch) return pa.patch - pb.patch;
+  if (pa.prerelease && !pb.prerelease) return -1;
+  if (!pa.prerelease && pb.prerelease) return 1;
+  if (pa.prerelease && pb.prerelease) return pa.prerelease.localeCompare(pb.prerelease);
+  return 0;
+}
+
+export function isVersionInRange(version: string, range: string): boolean {
+  if (range.startsWith('>=')) return compareSemver(version, range.slice(2)) >= 0;
+  if (range.startsWith('<=')) return compareSemver(version, range.slice(2)) <= 0;
+  if (range.startsWith('>')) return compareSemver(version, range.slice(1)) > 0;
+  if (range.startsWith('<')) return compareSemver(version, range.slice(1)) < 0;
+  return version === range;
+}
+
+// --- Migration framework ---
+
+export type MigrationFn = (data: Record<string, unknown>) => Record<string, unknown>;
+
+export interface MigrationStep {
+  fromVersion: string;
+  toVersion: string;
+  migrate: MigrationFn;
+  description: string;
+  breaking: boolean;
+}
+
+export interface MigrationResult {
+  success: boolean;
+  fromVersion: string;
+  toVersion: string;
+  data: Record<string, unknown>;
+  stepsApplied: MigrationStep[];
+  warnings: string[];
+  errors: string[];
+}
+
+export interface DeprecationNotice {
+  version: string;
+  message: string;
+  severity: 'info' | 'warn' | 'deprecated';
+}
+
+export interface VersionedValidationResult extends ValidationResult {
+  version_warnings: DeprecationNotice[];
+  detected_version: string | null;
+}
+
+/** Currently supported MCP Posture schema versions. */
+const SUPPORTED_POSTURE_VERSIONS: readonly string[] = ['0.1'];
+const LATEST_POSTURE_VERSION = '0.1';
+const DEPRECATED_POSTURE_VERSIONS: Map<string, DeprecationNotice> = new Map();
+const POSTURE_MIGRATION_REGISTRY: MigrationStep[] = [];
+
+export function getSupportedVersions(): string[] {
+  return [...SUPPORTED_POSTURE_VERSIONS];
+}
+
+export function getLatestVersion(): string {
+  return LATEST_POSTURE_VERSION;
+}
+
+/** Register a migration step. Call at module init time to extend the framework. */
+export function registerMigration(step: MigrationStep): void {
+  POSTURE_MIGRATION_REGISTRY.push(step);
+}
+
+/** Find the shortest migration path from `from` to `to` via registered steps (BFS). */
+export function getMigrationPath(fromVersion: string, toVersion: string): MigrationStep[] {
+  const visited = new Set<string>([fromVersion]);
+  const queue: Array<{ version: string; path: MigrationStep[] }> = [
+    { version: fromVersion, path: [] },
+  ];
+
+  while (queue.length > 0) {
+    const entry = queue.shift();
+    if (!entry) break;
+    const { version, path } = entry;
+    if (version === toVersion) return path;
+
+    for (const step of POSTURE_MIGRATION_REGISTRY) {
+      if (step.fromVersion === version && !visited.has(step.toVersion)) {
+        visited.add(step.toVersion);
+        queue.push({ version: step.toVersion, path: [...path, step] });
+      }
+    }
+  }
+
+  return [];
+}
+
+/** Mark a version as deprecated with a notice consumers should surface. */
+export function deprecateVersion(notice: DeprecationNotice): void {
+  DEPRECATED_POSTURE_VERSIONS.set(notice.version, notice);
+}
+
+/** Migrate an MCP Posture document to a target schema version. */
+export function migrateMCPPosture(
+  data: Record<string, unknown>,
+  targetVersion?: string,
+): MigrationResult {
+  const fromVersion = String(data.posture_version ?? 'unknown');
+  const target = targetVersion ?? LATEST_POSTURE_VERSION;
+
+  if (fromVersion === target) {
+    return {
+      success: true,
+      fromVersion,
+      toVersion: target,
+      data,
+      stepsApplied: [],
+      warnings: [],
+      errors: [],
+    };
+  }
+
+  const path = getMigrationPath(fromVersion, target);
+  if (path.length === 0) {
+    return {
+      success: false,
+      fromVersion,
+      toVersion: target,
+      data,
+      stepsApplied: [],
+      warnings: [],
+      errors: [`No migration path from ${fromVersion} to ${target}`],
+    };
+  }
+
+  let current = { ...data };
+  const warnings: string[] = [];
+  const applied: MigrationStep[] = [];
+
+  for (const step of path) {
+    if (step.breaking) {
+      warnings.push(
+        `Breaking migration: ${step.fromVersion} → ${step.toVersion}: ${step.description}`,
+      );
+    }
+    try {
+      current = step.migrate(current);
+      applied.push(step);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        fromVersion,
+        toVersion: target,
+        data: current,
+        stepsApplied: applied,
+        warnings,
+        errors: [`Migration failed at step ${step.fromVersion} → ${step.toVersion}: ${message}`],
+      };
+    }
+  }
+
+  return {
+    success: true,
+    fromVersion,
+    toVersion: target,
+    data: current,
+    stepsApplied: applied,
+    warnings,
+    errors: [],
+  };
+}
+
+/** Detect deprecation notices for a given version string. */
+export function detectVersionWarnings(version: string): DeprecationNotice[] {
+  const notices: DeprecationNotice[] = [];
+  const notice = DEPRECATED_POSTURE_VERSIONS.get(version);
+  if (notice) {
+    notices.push(notice);
+  } else if (!SUPPORTED_POSTURE_VERSIONS.includes(version)) {
+    notices.push({
+      version,
+      message: `MCP Posture version ${version} is not in the supported set (${SUPPORTED_POSTURE_VERSIONS.join(', ')})`,
+      severity: 'warn',
+    });
+  }
+  return notices;
+}
+
+/** Validate an MCP Posture document and return version-aware diagnostics. */
+export function validateMCPPostureWithVersioning(data: unknown): VersionedValidationResult {
+  const raw = data as Record<string, unknown> | null;
+  const version = (raw?.posture_version as string | undefined) ?? null;
+  const versionWarnings = detectVersionWarnings(version ?? 'unknown');
+
+  const baseResult = validateMCPPosture(data);
+
+  return {
+    ...baseResult,
+    version_warnings: versionWarnings,
+    detected_version: version,
+  };
+}
