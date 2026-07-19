@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { diffAgentBOMCommand } from './agentbom-diff.js';
 import { inspectAgentBOMCommand } from './agentbom-inspect.js';
+import { agentbomPipelineCommand } from './agentbom-pipeline.js';
 import { auditReportCommand } from './audit-report.js';
 import { generateAgentBOMCommand } from './bom-generate.js';
 import { chainCommand } from './chain.js';
@@ -25,6 +26,7 @@ const USAGE = [
   '  passport verify-signed <jwt-path> [--key <pubkey>]  Verify a signed passport JWT',
   '  agentbom inspect <path>    Inspect an AgentBOM file',
   '  agentbom diff <old> <new>  Diff two AgentBOM files',
+  '  agentbom pipeline <path> [--partitions N] [--no-incremental]  Stream-process BOM artifacts',
   '  agentbom generate --agent <path>  Generate AgentBOM JSON from agent directory',
   '  generate bom --agent <path>  Generate AgentBOM JSON from agent directory (alias)',
   '  mcp-posture inspect <path>    Inspect an MCP posture file',
@@ -87,6 +89,9 @@ export function runCommand(args: string[]): number | Promise<number> {
     }
     if (args[1] === 'generate') {
       return generateAgentBOMCommand(args.slice(2));
+    }
+    if (args[1] === 'pipeline') {
+      return agentbomPipelineCommand(args.slice(2));
     }
     console.error(`Error: unknown agentbom subcommand "${args[1]}"`);
     return 1;
