@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 
 /** AgentBOM structure for dashboard generation */
-interface AgentBOM {
+export interface AgentBOM {
   agentbom_version: string;
   identity?: {
     agent_id?: string;
@@ -804,8 +804,779 @@ export function generateDashboardHTML(bom: AgentBOM): string {
 </html>`;
 }
 
+// ---------------------------------------------------------------------------
+// Fleet trust analytics dashboard
+// ---------------------------------------------------------------------------
+// Generates a fleet-level dashboard covering the four capabilities called out
+// in the Milestone 8 "Trust analytics dashboard" bullet:
+//   1. Trust posture across an agent fleet (aggregate + per-agent overview)
+//   2. BOM dependency graphs (agent -> model / MCP servers / tools / scopes)
+//   3. Compliance heatmap (per-agent x trust-control posture grid)
+//   4. Audit log search with temporal (date-range) + text + event-type filters
+// ---------------------------------------------------------------------------
+
+/** Escape a value for safe interpolation into HTML. */
+function escapeHtml(value: unknown): string {
+  const s = value === undefined || value === null ? '' : String(value);
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+type ControlStatus = 'pass' | 'warn' | 'fail';
+
+interface ControlResult {
+  name: string;
+  status: ControlStatus;
+  detail: string;
+}
+
+const CONTROL_LABELS: Record<string, string> = {
+  identity: 'Identity',
+  tools: 'Tool Inventory',
+  risks: 'Risk Mgmt',
+  permissions: 'Permissions',
+  evidence: 'Evidence',
+  attestation: 'Attestation',
+};
+
+const SEVERITY_RANK: Record<string, number> = {
+  critical: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+  info: 0,
+};
+
+function assessIdentity(bom: AgentBOM): ControlResult {
+  const id = bom.identity || {};
+  const fields = [id.agent_id, id.agent_name, id.agent_version, id.deployment_context];
+  const present = fields.filter((f) => f !== undefined && String(f).trim() !== '').length;
+  if (!bom.identity || present === 0) {
+    return { name: 'identity', status: 'fail', detail: 'No identity metadata' };
+  }
+  if (present === fields.length) {
+    return { name: 'identity', status: 'pass', detail: 'Complete identity record' };
+  }
+  return {
+    name: 'identity',
+    status: 'warn',
+    detail: `${present}/${fields.length} identity fields present`,
+  };
+}
+
+function assessTools(bom: AgentBOM): ControlResult {
+  const tools = bom.tool_layer || [];
+  if (tools.length === 0) {
+    return { name: 'tools', status: 'fail', detail: 'No tool inventory' };
+  }
+  const dangerous = tools.filter((t) => {
+    const sig = t.risk_signals || [];
+    return sig.includes('command_execution') || sig.includes('privilege_escalation');
+  }).length;
+  if (dangerous === 0) {
+    return {
+      name: 'tools',
+      status: 'pass',
+      detail: `${tools.length} tools, no high-risk signals`,
+    };
+  }
+  return {
+    name: 'tools',
+    status: 'warn',
+    detail: `${tools.length} tools, ${dangerous} with high-risk signals`,
+  };
+}
+
+function assessRisks(bom: AgentBOM): ControlResult {
+  const risks = bom.risk_layer || [];
+  if (risks.length === 0) {
+    return { name: 'risks', status: 'pass', detail: 'No risks recorded' };
+  }
+  const open = risks.filter((r) => r.status === 'open');
+  const openCritical = open.filter((r) => r.severity === 'critical').length;
+  const openHigh = open.filter((r) => r.severity === 'high').length;
+  if (openCritical > 0) {
+    return { name: 'risks', status: 'fail', detail: `${openCritical} open critical risk(s)` };
+  }
+  if (openHigh > 2) {
+    return { name: 'risks', status: 'fail', detail: `${openHigh} open high risk(s)` };
+  }
+  if (openHigh > 0) {
+    return { name: 'risks', status: 'warn', detail: `${openHigh} open high risk(s)` };
+  }
+  return { name: 'risks', status: 'pass', detail: 'All risks mitigated or accepted' };
+}
+
+function assessPermissions(bom: AgentBOM): ControlResult {
+  const scopes = bom.permission_layer?.granted_scopes || [];
+  if (scopes.length === 0) {
+    return { name: 'permissions', status: 'fail', detail: 'No permission scopes documented' };
+  }
+  const highRisk = scopes.filter((s) => s === 'process:exec' || s === 'network:outbound').length;
+  if (highRisk > 0) {
+    return {
+      name: 'permissions',
+      status: 'warn',
+      detail: `${scopes.length} scopes incl. ${highRisk} high-risk`,
+    };
+  }
+  return { name: 'permissions', status: 'pass', detail: `${scopes.length} documented scopes` };
+}
+
+function assessEvidence(bom: AgentBOM): ControlResult {
+  const ev = bom.evidence_layer || {};
+  const hashes = ev.evidence_hashes?.length || 0;
+  const aep = ev.aep_references?.length || 0;
+  if (hashes === 0 && aep === 0) {
+    return { name: 'evidence', status: 'fail', detail: 'No evidence or AEP references' };
+  }
+  if (hashes === 0 || aep === 0) {
+    return { name: 'evidence', status: 'warn', detail: 'Partial evidence coverage' };
+  }
+  return {
+    name: 'evidence',
+    status: 'pass',
+    detail: `${hashes} evidence hash(es), ${aep} AEP ref(s)`,
+  };
+}
+
+function assessAttestation(bom: AgentBOM): ControlResult {
+  const att = bom.attestation || {};
+  if (!att.generator) {
+    return { name: 'attestation', status: 'fail', detail: 'No attestation generator' };
+  }
+  if (!att.generator_version) {
+    return {
+      name: 'attestation',
+      status: 'warn',
+      detail: 'Generator recorded, version missing',
+    };
+  }
+  return {
+    name: 'attestation',
+    status: 'pass',
+    detail: `${att.generator} v${att.generator_version}`,
+  };
+}
+
+/** Assess a single AgentBOM against the fleet trust-posture controls. */
+export function assessControls(bom: AgentBOM): ControlResult[] {
+  return [
+    assessIdentity(bom),
+    assessTools(bom),
+    assessRisks(bom),
+    assessPermissions(bom),
+    assessEvidence(bom),
+    assessAttestation(bom),
+  ];
+}
+
+const STATUS_WEIGHT: Record<ControlStatus, number> = { pass: 2, warn: 1, fail: 0 };
+
+/** Compute a 0-100 trust posture score for an AgentBOM from its control results. */
+export function postureScore(bom: AgentBOM): number {
+  const controls = assessControls(bom);
+  const total = controls.length * 2;
+  const earned = controls.reduce((acc, c) => acc + STATUS_WEIGHT[c.status], 0);
+  return total > 0 ? Math.round((earned / total) * 100) : 0;
+}
+
+/** Highest severity label among an AgentBOM's risks ('' when there are none). */
+export function maxSeverity(bom: AgentBOM): string {
+  let max = '';
+  let rank = -1;
+  for (const r of bom.risk_layer || []) {
+    const r2 = SEVERITY_RANK[r.severity || ''] ?? -1;
+    if (r2 > rank) {
+      rank = r2;
+      max = r.severity || '';
+    }
+  }
+  return max;
+}
+
+function truncateLabel(value: string, max = 16): string {
+  return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+}
+
+interface GraphNode {
+  id: string;
+  label: string;
+  kind: string;
+}
+
+interface GraphEdge {
+  from: string;
+  to: string;
+}
+
+const GRAPH_KIND_COLORS: Record<string, string> = {
+  agent: '#1e3a8a',
+  model: '#0f766e',
+  mcp: '#b45309',
+  builtin: '#475569',
+  plugin: '#6d28d9',
+  permission: '#be123c',
+};
+
+/** Derive a BOM dependency graph: agent -> model, MCP servers, tool groups, scopes. */
+export function buildDependencyGraph(bom: AgentBOM): {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+} {
+  const agentId = bom.identity?.agent_id || 'agent';
+  const nodes: GraphNode[] = [
+    { id: agentId, label: bom.identity?.agent_name || 'agent', kind: 'agent' },
+  ];
+  const edges: GraphEdge[] = [];
+
+  if (bom.model_layer?.model_id) {
+    nodes.push({ id: 'model', label: bom.model_layer.model_id, kind: 'model' });
+    edges.push({ from: agentId, to: 'model' });
+  }
+
+  const servers = new Set<string>();
+  for (const t of bom.tool_layer || []) {
+    if (t.source === 'mcp' && t.mcp_server_id) servers.add(t.mcp_server_id);
+  }
+  for (const s of servers) {
+    const id = `srv:${s}`;
+    nodes.push({ id, label: s, kind: 'mcp' });
+    edges.push({ from: agentId, to: id });
+  }
+
+  const tools = bom.tool_layer || [];
+  const builtin = tools.filter((t) => (t.source || 'builtin') === 'builtin').length;
+  const plugin = tools.filter((t) => t.source === 'plugin').length;
+  if (builtin > 0) {
+    nodes.push({ id: 'builtin', label: `builtin tools (${builtin})`, kind: 'builtin' });
+    edges.push({ from: agentId, to: 'builtin' });
+  }
+  if (plugin > 0) {
+    nodes.push({ id: 'plugin', label: `plugin tools (${plugin})`, kind: 'plugin' });
+    edges.push({ from: agentId, to: 'plugin' });
+  }
+
+  const scopes = (bom.permission_layer?.granted_scopes || []).slice(0, 8);
+  for (const sc of scopes) {
+    const id = `perm:${sc}`;
+    nodes.push({ id, label: sc, kind: 'permission' });
+    edges.push({ from: agentId, to: id });
+  }
+
+  return { nodes, edges };
+}
+
+/** Render a single agent's dependency graph as a self-contained inline SVG. */
+export function renderDependencyGraphSVG(bom: AgentBOM): string {
+  const { nodes, edges } = buildDependencyGraph(bom);
+  const agentId = bom.identity?.agent_id || 'agent';
+  const dependents = nodes.filter((n) => n.id !== agentId);
+  const width = 480;
+  const agentX = 90;
+  const depX = 350;
+  const rowH = 38;
+  const height = Math.max(140, dependents.length * rowH + 40);
+  const agentY = height / 2;
+
+  const pos = new Map<string, { x: number; y: number }>();
+  pos.set(agentId, { x: agentX, y: agentY });
+  dependents.forEach((n, i) => {
+    pos.set(n.id, { x: depX, y: 30 + i * rowH + rowH / 2 });
+  });
+
+  const edgeSvg = edges
+    .map((e) => {
+      const a = pos.get(e.from);
+      const b = pos.get(e.to);
+      if (!a || !b) return '';
+      return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#cbd5e1" stroke-width="1.5"/>`;
+    })
+    .join('');
+
+  const nodeSvg = nodes
+    .map((n) => {
+      const p = pos.get(n.id);
+      if (!p) return '';
+      const fill = GRAPH_KIND_COLORS[n.kind] || '#475569';
+      const text = escapeHtml(truncateLabel(n.label));
+      if (n.id === agentId) {
+        return `<circle cx="${p.x}" cy="${p.y}" r="34" fill="${fill}"/><text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="white" font-size="9" font-weight="700">${text}</text>`;
+      }
+      return `<rect x="${p.x - 70}" y="${p.y - 14}" width="140" height="28" rx="6" fill="${fill}" opacity="0.92"/><text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="white" font-size="10">${text}</text>`;
+    })
+    .join('');
+
+  return `<svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" role="img" aria-label="BOM dependency graph">${edgeSvg}${nodeSvg}</svg>`;
+}
+
+interface FleetAuditEntry {
+  agent: string;
+  timestamp?: string;
+  event_type?: string;
+  actor?: string;
+  resource?: string;
+  outcome?: string;
+  details?: Record<string, unknown>;
+}
+
+function parseTs(t?: string): number {
+  if (!t) return 0;
+  const n = Date.parse(t);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+/** Merge audit logs across a fleet, sorted oldest-first by timestamp. */
+export function mergeAuditEntries(boms: { bom: AgentBOM; source: string }[]): FleetAuditEntry[] {
+  const out: FleetAuditEntry[] = [];
+  for (const { bom } of boms) {
+    const agent = bom.identity?.agent_name || bom.identity?.agent_id || 'unknown';
+    for (const e of bom.audit_log || []) {
+      out.push({ agent, ...e });
+    }
+  }
+  out.sort((a, b) => parseTs(a.timestamp) - parseTs(b.timestamp));
+  return out;
+}
+
+const HEATMAP_CELL_CLASS: Record<ControlStatus, string> = {
+  pass: 'hm-pass',
+  warn: 'hm-warn',
+  fail: 'hm-fail',
+};
+
+const SEVERITY_BADGE_CLASS: Record<string, string> = {
+  critical: 'risk-critical',
+  high: 'risk-high',
+  medium: 'risk-med',
+  low: 'risk-low',
+};
+
+/** Generate a fleet trust analytics dashboard HTML document. */
+export function generateFleetDashboardHTML(boms: { bom: AgentBOM; source: string }[]): string {
+  let totalTools = 0;
+  let openRisks = 0;
+  let openCriticalHigh = 0;
+  let withAttestation = 0;
+  for (const { bom } of boms) {
+    totalTools += (bom.tool_layer || []).length;
+    const open = (bom.risk_layer || []).filter((r) => r.status === 'open');
+    openRisks += open.length;
+    openCriticalHigh += open.filter(
+      (r) => r.severity === 'critical' || r.severity === 'high',
+    ).length;
+    if (bom.attestation?.generator) withAttestation += 1;
+  }
+  const audit = mergeAuditEntries(boms);
+  const eventTypes = Array.from(new Set(audit.map((a) => a.event_type).filter(Boolean)));
+  const generatedAt = new Date().toISOString();
+
+  const postureRows = boms
+    .map(({ bom, source }) => {
+      const sev = maxSeverity(bom);
+      const score = postureScore(bom);
+      const sevClass = SEVERITY_BADGE_CLASS[sev] || 'risk-low';
+      const open = (bom.risk_layer || []).filter((r) => r.status === 'open').length;
+      return `<tr>
+            <td>${escapeHtml(bom.identity?.agent_name || 'unnamed')}</td>
+            <td><code>${escapeHtml(bom.identity?.agent_id || 'N/A')}</code></td>
+            <td>${escapeHtml(bom.identity?.deployment_context || 'N/A')}</td>
+            <td>${(bom.tool_layer || []).length}</td>
+            <td><span class="badge ${sevClass}">${sev || 'none'}</span></td>
+            <td>${open}</td>
+            <td><strong>${score}</strong></td>
+            <td><code>${escapeHtml(source)}</code></td>
+          </tr>`;
+    })
+    .join('');
+
+  const heatmapHeader = Object.values(CONTROL_LABELS)
+    .map((label) => `<th>${label}</th>`)
+    .join('');
+
+  const heatmapRows = boms
+    .map(({ bom }) => {
+      const controls = assessControls(bom);
+      const cells = controls
+        .map(
+          (c) =>
+            `<td class="${HEATMAP_CELL_CLASS[c.status]}" title="${escapeHtml(c.detail)}"><span class="hm-glyph">${c.status[0].toUpperCase()}</span></td>`,
+        )
+        .join('');
+      const score = postureScore(bom);
+      return `<tr>
+            <td class="hm-agent">${escapeHtml(bom.identity?.agent_name || 'unnamed')}</td>
+            ${cells}
+            <td class="hm-score">${score}</td>
+          </tr>`;
+    })
+    .join('');
+
+  const graphCards = boms
+    .map(({ bom }) => {
+      const name = escapeHtml(bom.identity?.agent_name || 'unnamed');
+      return `<div class="graph-card">
+            <div class="graph-title">${name}</div>
+            ${renderDependencyGraphSVG(bom)}
+          </div>`;
+    })
+    .join('');
+
+  const eventTypeOptions = eventTypes
+    .map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`)
+    .join('');
+
+  const auditBlock =
+    audit.length === 0
+      ? '<div class="empty-state">No audit events recorded across the fleet.</div>'
+      : `<div class="audit-filters">
+            <label>From <input type="date" id="f-from" /></label>
+            <label>To <input type="date" id="f-to" /></label>
+            <label>Search <input type="text" id="f-text" placeholder="agent, actor, resource…" /></label>
+            <label>Event
+              <select id="f-type">
+                <option value="">(all)</option>
+                ${eventTypeOptions}
+              </select>
+            </label>
+            <span id="audit-count" class="audit-count"></span>
+          </div>
+          <div class="audit-scroll">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th><th>Agent</th><th>Event</th><th>Actor</th>
+                  <th>Resource</th><th>Outcome</th><th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="audit-body">
+                ${audit
+                  .map((e) => {
+                    const ts = e.timestamp || '';
+                    const ms = parseTs(ts);
+                    const text = [
+                      e.agent,
+                      e.event_type,
+                      e.actor,
+                      e.resource,
+                      e.outcome,
+                      JSON.stringify(e.details || {}),
+                    ]
+                      .join(' ')
+                      .toLowerCase();
+                    const outcomeClass =
+                      e.outcome === 'success'
+                        ? 'outcome-success'
+                        : e.outcome === 'failure'
+                          ? 'outcome-failure'
+                          : 'outcome-unknown';
+                    const details = e.details
+                      ? `<br><code>${escapeHtml(JSON.stringify(e.details))}</code>`
+                      : '';
+                    return `<tr data-ts="${ms}" data-type="${escapeHtml(e.event_type || '')}" data-text="${escapeHtml(text)}">
+                      <td>${escapeHtml(ts)}</td>
+                      <td>${escapeHtml(e.agent)}</td>
+                      <td>${escapeHtml(e.event_type || '')}</td>
+                      <td>${escapeHtml(e.actor || '')}</td>
+                      <td>${escapeHtml(e.resource || '')}</td>
+                      <td><span class="outcome ${outcomeClass}">${escapeHtml(e.outcome || 'unknown')}</span></td>
+                      <td>${details}</td>
+                    </tr>`;
+                  })
+                  .join('')}
+              </tbody>
+            </table>
+          </div>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Trust Analytics — ${boms.length} agents</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0; line-height: 1.55; padding: 24px;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; }
+    .header { margin-bottom: 28px; }
+    .header h1 { font-size: 1.8em; font-weight: 700; color: #f8fafc; }
+    .header .sub { color: #94a3b8; margin-top: 6px; font-size: 0.95em; }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px; margin-bottom: 32px;
+    }
+    .stat-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+      padding: 18px;
+    }
+    .stat-card .v { font-size: 1.9em; font-weight: 700; color: #f8fafc; }
+    .stat-card .l {
+      font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.6px;
+      color: #94a3b8; margin-top: 4px;
+    }
+    .stat-card.alert .v { color: #fca5a5; }
+    section { margin-bottom: 36px; }
+    h2 { font-size: 1.3em; color: #f1f5f9; margin-bottom: 14px; font-weight: 600; }
+    .hint { color: #94a3b8; font-size: 0.88em; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 10px; overflow: hidden; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 0.9em; }
+    th { background: #0f172a; color: #94a3b8; text-transform: uppercase; font-size: 0.74em; letter-spacing: 0.5px; }
+    td code { font-family: monospace; color: #93c5fd; font-size: 0.85em; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72em; font-weight: 600; text-transform: uppercase; }
+    .risk-critical { background: #7f1d1d; color: #fecaca; }
+    .risk-high { background: #7c2d12; color: #fed7aa; }
+    .risk-med { background: #713f12; color: #fde68a; }
+    .risk-low { background: #14532d; color: #bbf7d0; }
+    .heatmap th, .heatmap td { text-align: center; }
+    .heatmap td.hm-agent, .heatmap th:first-child { text-align: left; }
+    .hm-pass { background: #14532d; }
+    .hm-warn { background: #713f12; }
+    .hm-fail { background: #7f1d1d; }
+    .hm-glyph { color: #f8fafc; font-weight: 700; font-size: 0.8em; }
+    .hm-score { font-weight: 700; color: #f8fafc; }
+    .graph-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 16px;
+    }
+    .graph-card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 14px;
+    }
+    .graph-title { font-weight: 600; color: #f1f5f9; margin-bottom: 8px; }
+    .graph-card svg { display: block; background: #0f172a; border-radius: 6px; }
+    .audit-filters {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px;
+    }
+    .audit-filters label { color: #cbd5e1; font-size: 0.85em; display: flex; flex-direction: column; gap: 4px; }
+    .audit-filters input, .audit-filters select {
+      background: #0f172a; border: 1px solid #334155; color: #e2e8f0; border-radius: 6px;
+      padding: 6px 8px; font-size: 0.9em;
+    }
+    .audit-count { color: #94a3b8; font-size: 0.85em; margin-left: auto; }
+    .audit-scroll { max-height: 460px; overflow: auto; border-radius: 10px; border: 1px solid #334155; }
+    .audit-table th { position: sticky; top: 0; }
+    .outcome { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72em; font-weight: 600; }
+    .outcome-success { background: #14532d; color: #bbf7d0; }
+    .outcome-failure { background: #7f1d1d; color: #fecaca; }
+    .outcome-unknown { background: #334155; color: #cbd5e1; }
+    .empty-state { color: #94a3b8; padding: 24px; text-align: center; background: #1e293b; border-radius: 10px; }
+    .footer { color: #64748b; font-size: 0.82em; margin-top: 32px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>📊 Fleet Trust Analytics Dashboard</h1>
+      <div class="sub">${boms.length} agent(s) · ${totalTools} tools fleet-wide · ${openRisks} open risk(s) · generated ${generatedAt}</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="v">${boms.length}</div><div class="l">Agents</div></div>
+      <div class="stat-card"><div class="v">${totalTools}</div><div class="l">Tools (fleet)</div></div>
+      <div class="stat-card"><div class="v">${openRisks}</div><div class="l">Open Risks</div></div>
+      <div class="stat-card alert"><div class="v">${openCriticalHigh}</div><div class="l">Open Critical/High</div></div>
+      <div class="stat-card"><div class="v">${audit.length}</div><div class="l">Audit Events</div></div>
+      <div class="stat-card"><div class="v">${withAttestation}/${boms.length}</div><div class="l">Attested</div></div>
+    </div>
+
+    <section>
+      <h2>🛡️ Trust Posture Across the Fleet</h2>
+      <div class="hint">Per-agent posture snapshot. Score blends identity, tool, risk, permission, evidence, and attestation controls.</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th><th>Agent ID</th><th>Context</th><th>Tools</th>
+            <th>Max Severity</th><th>Open Risks</th><th>Posture Score</th><th>Source</th>
+          </tr>
+        </thead>
+        <tbody>${postureRows}</tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>🔥 Compliance Heatmap</h2>
+      <div class="hint">P = pass, W = warn, F = fail. Hover a cell for detail.</div>
+      <table class="heatmap">
+        <thead>
+          <tr><th>Agent</th>${heatmapHeader}<th>Score</th></tr>
+        </thead>
+        <tbody>${heatmapRows}</tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>🕸️ BOM Dependency Graphs</h2>
+      <div class="hint">Agent → model, MCP servers, tool groups, and granted permission scopes.</div>
+      <div class="graph-grid">${graphCards}</div>
+    </section>
+
+    <section>
+      <h2>🔍 Audit Log Search</h2>
+      <div class="hint">Temporal filtering by date range plus free-text and event-type search (runs in-browser).</div>
+      ${auditBlock}
+    </section>
+
+    <div class="footer">Fleet trust analytics dashboard · @wasmagent/agent-trust-cli</div>
+  </div>
+  <script>
+    (function () {
+      var body = document.getElementById('audit-body');
+      if (!body) return;
+      var rows = body.querySelectorAll('tr');
+      var countEl = document.getElementById('audit-count');
+      function parseMs(dateStr, endOfDay) {
+        if (!dateStr) return null;
+        var suffix = endOfDay ? 'T23:59:59Z' : 'T00:00:00Z';
+        var n = Date.parse(dateStr + suffix);
+        return Number.isNaN(n) ? null : n;
+      }
+      function filterAudit() {
+        var fromMs = parseMs(document.getElementById('f-from').value, false);
+        var toMs = parseMs(document.getElementById('f-to').value, true);
+        var text = (document.getElementById('f-text').value || '').toLowerCase();
+        var type = document.getElementById('f-type').value;
+        var visible = 0;
+        for (var i = 0; i < rows.length; i++) {
+          var r = rows[i];
+          var ts = parseInt(r.getAttribute('data-ts'), 10);
+          var rowText = r.getAttribute('data-text');
+          var rowType = r.getAttribute('data-type');
+          var keep = true;
+          if (fromMs !== null && ts < fromMs) keep = false;
+          if (toMs !== null && ts > toMs) keep = false;
+          if (text && rowText.indexOf(text) === -1) keep = false;
+          if (type && rowType !== type) keep = false;
+          r.style.display = keep ? '' : 'none';
+          if (keep) visible++;
+        }
+        if (countEl) countEl.textContent = visible + ' / ' + rows.length + ' entries';
+      }
+      var ids = ['f-from', 'f-to', 'f-text', 'f-type'];
+      for (var j = 0; j < ids.length; j++) {
+        var el = document.getElementById(ids[j]);
+        if (el) {
+          el.addEventListener('input', filterAudit);
+          el.addEventListener('change', filterAudit);
+        }
+      }
+      filterAudit();
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+/** Command handler for `export-dashboard fleet <dir> --output <dir>`. */
+export function exportFleetDashboardCommand(args: string[]): number {
+  if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
+    console.log(
+      [
+        'Usage: agent-trust export-dashboard fleet <dir> --output <dir>',
+        '',
+        'Generates a fleet trust analytics dashboard from every AgentBOM (*.json) in <dir>.',
+        '',
+        'Arguments:',
+        '  <dir>            Directory containing AgentBOM JSON files (one per agent)',
+        '  --output <dir>   Directory to write fleet-dashboard.html (required)',
+        '',
+        'The dashboard visualizes:',
+        '  - Trust posture across the agent fleet (per-agent overview + scores)',
+        '  - BOM dependency graphs (agent -> model / MCP servers / tools / scopes)',
+        '  - Compliance heatmap (per-agent x trust-control posture grid)',
+        '  - Audit log search with temporal (date-range), text, and event-type filters',
+      ].join('\n'),
+    );
+    return 0;
+  }
+
+  let inputDir = '';
+  let outputDir = '';
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--output' && i + 1 < args.length) {
+      outputDir = args[i + 1];
+      i++;
+    } else if (!args[i].startsWith('--')) {
+      inputDir = args[i];
+    }
+  }
+
+  if (!inputDir) {
+    console.error('Error: Missing required argument <dir>');
+    return 1;
+  }
+  if (!outputDir) {
+    console.error('Error: Missing required argument --output <dir>');
+    return 1;
+  }
+
+  let entries: string[];
+  try {
+    entries = readdirSync(resolve(inputDir)).filter((f) => f.endsWith('.json'));
+  } catch {
+    console.error(`Error: cannot read fleet directory "${resolve(inputDir)}"`);
+    return 1;
+  }
+  if (entries.length === 0) {
+    console.error(`Error: no AgentBOM (*.json) files found in "${resolve(inputDir)}"`);
+    return 1;
+  }
+
+  const boms: { bom: AgentBOM; source: string }[] = [];
+  for (const f of entries.sort()) {
+    const filePath = resolve(inputDir, f);
+    let content: string;
+    try {
+      content = readFileSync(filePath, 'utf-8');
+    } catch {
+      console.warn(`Warning: skipping unreadable file "${f}"`);
+      continue;
+    }
+    let data: unknown;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      console.error(`Error: "${filePath}" is not valid JSON`);
+      return 1;
+    }
+    const validation = validateAgentBOM(data);
+    if (!validation.valid) {
+      console.error(`Error: invalid AgentBOM in "${f}":`);
+      for (const error of validation.errors) console.error(`  ${error}`);
+      return 1;
+    }
+    boms.push({ bom: data as AgentBOM, source: f });
+  }
+
+  if (boms.length === 0) {
+    console.error('Error: no valid AgentBOM files found in fleet directory');
+    return 1;
+  }
+
+  const html = generateFleetDashboardHTML(boms);
+
+  const outputPath = resolve(outputDir);
+  try {
+    mkdirSync(outputPath, { recursive: true });
+  } catch {
+    // Directory may already exist
+  }
+  const outputFile = resolve(outputPath, 'fleet-dashboard.html');
+  writeFileSync(outputFile, html, 'utf-8');
+
+  console.log(`✅ Fleet dashboard generated: ${outputFile} (${boms.length} agents)`);
+  return 0;
+}
+
 /** Command handler for export-dashboard */
 export function exportDashboardCommand(args: string[]): number {
+  if (args[0] === 'fleet') {
+    return exportFleetDashboardCommand(args.slice(1));
+  }
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     console.log(
       [
