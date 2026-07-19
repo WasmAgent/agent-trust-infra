@@ -77,3 +77,19 @@ Begins when research preview graduates to production. **No Trust Passport work h
 - [x] BOM versioning and migration framework — semver-compatible schema evolution tooling with automated migration scripts, backward compatibility shims, and deprecation warnings for legacy AgentBOM/MCP Posture versions — framework at `agentbom-core`/`mcp-posture-core` index.ts, CLI `agentbom migrate`/`mcp-posture migrate` (issue #226)
 - [ ] Performance benchmarks and SLIs — published throughput/latency benchmarks for validation operations, SLO guidance for production deployments (guidance at `docs/slo-guidance.md`, issue #233), and regression test suite for performance degradation
 - [x] Enterprise onboarding and certification guide — runbooks for security teams adopting trust infra, attestation collection procedures, and trustworthiness review checklist before agent deployment to production — guide at `docs/enterprise-onboarding.md` (issue #223)
+
+## Milestone 9 — Trust Chain Operations & Distribution (Proposed)
+
+- [ ] `trust-cli publish <artifact.json>` — publishes signed trust artifacts to a distribution registry with content-addressable storage (CAS) identifiers and immutable versioning
+- [ ] `trust-cli pull <artifact-id>` — retrieves trust artifacts from the registry by CAS identifier with integrity verification and dependency resolution
+- [ ] `trust-cli subscribe <agent-identity>` — sets up continuous monitoring for trust artifact updates from specific agent publishers with notification callbacks
+- [ ] AgentBOM schema: add `distribution` object with `registry_uri`, `publication_timestamp`, `deprecation_status`, and `supersedes` fields for artifact lifecycle management
+- [ ] MCP Posture schema: add `verification_endpoint` field specifying URL for real-time posture verification with token-based authentication
+- [ ] Trust Passport schema: add `revocation` object with `revoked_at`, `revocation_reason`, and `revoking_authority` fields for trust chain invalidation
+- [ ] `trust-cli verify-chain <passport.jwt> --depth N` — performs recursive trust chain verification with configurable depth and caching for multi-hop trust relationships
+- [ ] Registry service reference implementation with REST API for artifact publish/pull, query by agent identity, and GCAS-based deduplication
+- [ ] `trust-cli diff <artifact-a.json> <artifact-b.json>` — generates structured diff report for trust artifacts highlighting permission changes, tool additions, and policy modifications
+- [ ] Compliance framework integration: automated mapping updates when AgentBOM schema evolves, with backward compatibility checking for existing compliance profiles
+- [ ] `trust-cli audit-stream <agent-identity>` — continuous audit log streaming with real-time compliance violation detection and alerting integration
+
+This milestone transforms the trust infrastructure from a static artifact system into an operational distribution and verification platform, enabling multi-agent ecosystems to publish, discover, and verify trust artifacts at scale.
