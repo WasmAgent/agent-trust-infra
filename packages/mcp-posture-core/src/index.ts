@@ -703,3 +703,281 @@ export function validateMCPPostureWithVersioning(data: unknown): VersionedValida
     detected_version: version,
   };
 }
+
+// --- Continuous Trust Monitoring ---
+
+/** Severity levels for posture trust monitoring events. */
+export type PostureEventSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
+
+/** Categories of posture trust events produced by drift monitoring. */
+export type PostureEventCategory =
+  | 'server_added'
+  | 'server_removed'
+  | 'tool_added'
+  | 'tool_removed'
+  | 'permission_escalation'
+  | 'permission_reduction'
+  | 'risk_category_added'
+  | 'risk_category_removed'
+  | 'risk_finding_introduced'
+  | 'risk_finding_resolved'
+  | 'risk_finding_escalated'
+  | 'scope_expanded'
+  | 'scope_restricted';
+
+/** A single posture trust event produced by continuous monitoring. */
+export interface PostureTrustEvent {
+  /** Machine-readable event category. */
+  category: PostureEventCategory;
+  /** Severity of the event. */
+  severity: PostureEventSeverity;
+  /** Human-readable description. */
+  description: string;
+  /** The affected entity (server_id, tool_id, finding_id, or scope). */
+  subject: string;
+  /** ISO 8601 timestamp when the event was detected. */
+  detected_at: string;
+}
+
+/** A posture drift alert groups events produced by comparing two MCP Posture snapshots. */
+export interface PostureDriftAlert {
+  /** The agent_id of the monitored agent. */
+  agent_id: string;
+  /** ISO 8601 timestamp of the baseline snapshot. */
+  baseline_at: string;
+  /** ISO 8601 timestamp of the current snapshot. */
+  current_at: string;
+  /** Trust events produced by drift analysis. */
+  events: PostureTrustEvent[];
+  /** Whether this alert contains any high or critical events. */
+  hasHighSeverity(): boolean;
+  /** Whether this alert is empty (no events). */
+  isEmpty(): boolean;
+}
+
+/** Create a PostureDriftAlert with computed helper methods. */
+export function createPostureDriftAlert(
+  partial: Omit<PostureDriftAlert, 'hasHighSeverity' | 'isEmpty'>,
+): PostureDriftAlert {
+  const hasHighSeverity = (): boolean =>
+    partial.events.some((e) => e.severity === 'high' || e.severity === 'critical');
+  const isEmpty = (): boolean => partial.events.length === 0;
+  return { ...partial, hasHighSeverity, isEmpty };
+}
+
+/** Severity for a posture tool based on its risk severity and risk categories. */
+function postureToolEventSeverity(tool: ToolEntry): PostureEventSeverity {
+  const criticalCats = [
+    'command_execution',
+    'credential_access',
+    'exfiltration',
+    'privilege_escalation',
+  ];
+  const hasCriticalCat = tool.risk_categories.some((c) => criticalCats.includes(c));
+  if (tool.risk_severity === 'critical' || hasCriticalCat) return 'critical';
+  if (tool.risk_severity === 'high') return 'high';
+  return 'medium';
+}
+
+/** Severity for a risk finding based on its severity field. */
+function postureRiskEventSeverity(severity: string): PostureEventSeverity {
+  switch (severity) {
+    case 'critical':
+      return 'critical';
+    case 'high':
+      return 'high';
+    case 'medium':
+      return 'medium';
+    default:
+      return 'low';
+  }
+}
+
+/**
+ * Classify posture trust events from a PostureDiff for continuous monitoring.
+ *
+ * Analyzes the diff between two posture snapshots and produces a `PostureDriftAlert`
+ * containing events for server changes, tool additions/removals, permission changes,
+ * risk finding changes, and scope expansions.
+ */
+export function classifyPostureDriftEvents(
+  diff: PostureDiff,
+  agentId: string,
+  baselineAt: string,
+  currentAt: string,
+): PostureDriftAlert {
+  const now = new Date().toISOString();
+  const events: PostureTrustEvent[] = [];
+
+  // Server additions and removals
+  for (const serverId of diff.servers.added) {
+    events.push({
+      category: 'server_added',
+      severity: 'high',
+      description: `MCP server "${serverId}" added to agent trust boundary`,
+      subject: serverId,
+      detected_at: now,
+    });
+  }
+  for (const serverId of diff.servers.removed) {
+    events.push({
+      category: 'server_removed',
+      severity: 'info',
+      description: `MCP server "${serverId}" removed from agent trust boundary`,
+      subject: serverId,
+      detected_at: now,
+    });
+  }
+
+  // Tool additions and removals
+  for (const { server_id, tool } of diff.tools.added) {
+    events.push({
+      category: 'tool_added',
+      severity: postureToolEventSeverity(tool),
+      description: `Tool "${tool.tool_name}" (${tool.tool_id}) added on server ${server_id}`,
+      subject: tool.tool_id,
+      detected_at: now,
+    });
+  }
+  for (const { server_id, tool } of diff.tools.removed) {
+    events.push({
+      category: 'tool_removed',
+      severity: 'info',
+      description: `Tool "${tool.tool_name}" (${tool.tool_id}) removed from server ${server_id}`,
+      subject: tool.tool_id,
+      detected_at: now,
+    });
+  }
+
+  // Tool permission and risk_category changes
+  for (const mod of diff.tools.modified) {
+    if (mod.field === 'permissions') {
+      if (mod.new) {
+        events.push({
+          category: 'permission_escalation',
+          severity: 'high',
+          description: `Permission "${mod.new}" added to tool ${mod.tool_id} on ${mod.server_id}`,
+          subject: mod.tool_id,
+          detected_at: now,
+        });
+      } else if (mod.old) {
+        events.push({
+          category: 'permission_reduction',
+          severity: 'info',
+          description: `Permission "${mod.old}" removed from tool ${mod.tool_id} on ${mod.server_id}`,
+          subject: mod.tool_id,
+          detected_at: now,
+        });
+      }
+    } else if (mod.field === 'risk_category') {
+      if (mod.new) {
+        events.push({
+          category: 'risk_category_added',
+          severity: 'medium',
+          description: `Risk category "${mod.new}" added to tool ${mod.tool_id} on ${mod.server_id}`,
+          subject: mod.tool_id,
+          detected_at: now,
+        });
+      } else if (mod.old) {
+        events.push({
+          category: 'risk_category_removed',
+          severity: 'info',
+          description: `Risk category "${mod.old}" removed from tool ${mod.tool_id} on ${mod.server_id}`,
+          subject: mod.tool_id,
+          detected_at: now,
+        });
+      }
+    }
+  }
+
+  // Risk finding changes
+  for (const risk of diff.risks.added) {
+    events.push({
+      category: 'risk_finding_introduced',
+      severity: postureRiskEventSeverity(risk.severity),
+      description: `New risk finding "${risk.description}" (${risk.severity}/${risk.category})`,
+      subject: risk.finding_id,
+      detected_at: now,
+    });
+  }
+  for (const risk of diff.risks.removed) {
+    events.push({
+      category: 'risk_finding_resolved',
+      severity: 'info',
+      description: `Risk finding "${risk.finding_id}" (${risk.description}) removed`,
+      subject: risk.finding_id,
+      detected_at: now,
+    });
+  }
+  for (const mod of diff.risks.modified) {
+    if (mod.field === 'severity') {
+      const severityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+      if ((severityOrder[mod.new] ?? 0) > (severityOrder[mod.old] ?? 0)) {
+        events.push({
+          category: 'risk_finding_escalated',
+          severity: postureRiskEventSeverity(mod.new),
+          description: `Risk ${mod.finding_id} severity escalated from ${mod.old} to ${mod.new}`,
+          subject: mod.finding_id,
+          detected_at: now,
+        });
+      }
+    }
+  }
+
+  // Permission scope changes
+  for (const scope of diff.permissions.added) {
+    events.push({
+      category: 'scope_expanded',
+      severity: 'high',
+      description: `Permission scope "${scope}" granted`,
+      subject: scope,
+      detected_at: now,
+    });
+  }
+  for (const scope of diff.permissions.removed) {
+    events.push({
+      category: 'scope_restricted',
+      severity: 'info',
+      description: `Permission scope "${scope}" removed`,
+      subject: scope,
+      detected_at: now,
+    });
+  }
+
+  return createPostureDriftAlert({
+    agent_id: agentId,
+    baseline_at: baselineAt,
+    current_at: currentAt,
+    events,
+  });
+}
+
+/** Format a posture drift alert as a human-readable string for monitoring output. */
+export function formatPostureDriftAlert(alert: PostureDriftAlert): string {
+  const lines: string[] = [
+    `Posture Drift Alert — agent: ${alert.agent_id}`,
+    `  Baseline: ${alert.baseline_at} → Current: ${alert.current_at}`,
+    `  Events: ${alert.events.length}`,
+  ];
+
+  const bySeverity = new Map<PostureEventSeverity, PostureTrustEvent[]>();
+  for (const event of alert.events) {
+    const group = bySeverity.get(event.severity) ?? [];
+    group.push(event);
+    bySeverity.set(event.severity, group);
+  }
+
+  for (const [severity, events] of bySeverity) {
+    lines.push('');
+    lines.push(`  [${severity.toUpperCase()}] (${events.length})`);
+    for (const event of events) {
+      lines.push(`    • ${event.category}: ${event.description}`);
+    }
+  }
+
+  if (alert.isEmpty()) {
+    lines.push('  No drift events.');
+  }
+
+  return lines.join('\n');
+}

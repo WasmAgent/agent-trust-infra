@@ -629,3 +629,252 @@ export function validateAgentBOMWithVersioning(data: unknown): VersionedValidati
     detected_version: version,
   };
 }
+
+// --- Continuous Trust Monitoring ---
+
+/** Severity levels for trust monitoring events. */
+export type TrustEventSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
+
+/** Categories of trust events produced by drift monitoring. */
+export type TrustEventCategory =
+  | 'tool_added'
+  | 'tool_removed'
+  | 'permission_escalation'
+  | 'permission_reduction'
+  | 'risk_introduced'
+  | 'risk_resolved'
+  | 'risk_escalated'
+  | 'scope_expanded'
+  | 'scope_restricted';
+
+/** A single trust event produced by continuous monitoring of BOM drift. */
+export interface TrustEvent {
+  /** Machine-readable event category. */
+  category: TrustEventCategory;
+  /** Severity of the event. */
+  severity: TrustEventSeverity;
+  /** Human-readable description of the event. */
+  description: string;
+  /** The affected entity (tool_id, risk_id, or permission scope). */
+  subject: string;
+  /** ISO 8601 timestamp when the event was detected. */
+  detected_at: string;
+}
+
+/** A drift alert groups trust events produced by comparing two AgentBOM snapshots. */
+export interface DriftAlert {
+  /** The agent_id of the monitored agent. */
+  agent_id: string;
+  /** ISO 8601 timestamp of the baseline (old) snapshot. */
+  baseline_at: string;
+  /** ISO 8601 timestamp of the current (new) snapshot. */
+  current_at: string;
+  /** Trust events produced by drift analysis. */
+  events: TrustEvent[];
+  /** Whether this alert contains any high or critical events. */
+  hasHighSeverity(): boolean;
+  /** Whether this alert is empty (no events). */
+  isEmpty(): boolean;
+}
+
+/** Create a DriftAlert with computed helper methods. */
+export function createDriftAlert(
+  partial: Omit<DriftAlert, 'hasHighSeverity' | 'isEmpty'>,
+): DriftAlert {
+  const hasHighSeverity = (): boolean =>
+    partial.events.some((e) => e.severity === 'high' || e.severity === 'critical');
+  const isEmpty = (): boolean => partial.events.length === 0;
+  return { ...partial, hasHighSeverity, isEmpty };
+}
+
+/** Severity for a tool based on its permissions and risk signals. */
+function toolEventSeverity(tool: ToolEntry): TrustEventSeverity {
+  const riskyPerms = ['network:*', 'fs:write', 'process:exec', 'credential:*'];
+  const hasRiskyPerm = (tool.permissions ?? []).some((p) =>
+    riskyPerms.some((rp) => p === rp || (rp.endsWith(':*') && p.startsWith(rp.slice(0, -1)))),
+  );
+  const hasCriticalSignal = (tool.risk_signals ?? []).some((s) =>
+    ['command_execution', 'credential_access', 'exfiltration'].includes(s),
+  );
+  if (hasCriticalSignal) return 'critical';
+  if (hasRiskyPerm) return 'high';
+  return 'medium';
+}
+
+/** Severity for a risk entry based on its severity field. */
+function riskEventSeverity(severity: string): TrustEventSeverity {
+  switch (severity) {
+    case 'critical':
+      return 'critical';
+    case 'high':
+      return 'high';
+    case 'medium':
+      return 'medium';
+    default:
+      return 'low';
+  }
+}
+
+/**
+ * Classify trust events from an AgentBOM diff for continuous monitoring.
+ *
+ * Analyzes the diff between two BOM snapshots and produces a `DriftAlert`
+ * containing `TrustEvent` entries for:
+ * - Tool additions and removals
+ * - Permission escalation (new permissions added to existing tools)
+ * - Permission reductions (permissions removed from existing tools)
+ * - New risk entries introduced
+ * - Risk escalations (severity increased)
+ * - Risk resolutions (risk entries removed)
+ * - Scope expansions (new permission scopes granted)
+ * - Scope restrictions (permission scopes removed)
+ */
+export function classifyDriftEvents(
+  diff: AgentBOMDiff,
+  agentId: string,
+  baselineAt: string,
+  currentAt: string,
+): DriftAlert {
+  const now = new Date().toISOString();
+  const events: TrustEvent[] = [];
+
+  // Tool additions
+  for (const tool of diff.tools.added) {
+    events.push({
+      category: 'tool_added',
+      severity: toolEventSeverity(tool),
+      description: `Tool "${tool.tool_name}" (${tool.tool_id}) added from ${tool.source}`,
+      subject: tool.tool_id,
+      detected_at: now,
+    });
+  }
+
+  // Tool removals
+  for (const tool of diff.tools.removed) {
+    events.push({
+      category: 'tool_removed',
+      severity: 'info',
+      description: `Tool "${tool.tool_name}" (${tool.tool_id}) removed`,
+      subject: tool.tool_id,
+      detected_at: now,
+    });
+  }
+
+  // Permission changes on tools
+  for (const mod of diff.tools.modified) {
+    if (mod.field === 'permissions') {
+      if (mod.new) {
+        events.push({
+          category: 'permission_escalation',
+          severity: 'high',
+          description: `Permission "${mod.new}" added to tool ${mod.tool_id}`,
+          subject: mod.tool_id,
+          detected_at: now,
+        });
+      } else if (mod.old) {
+        events.push({
+          category: 'permission_reduction',
+          severity: 'info',
+          description: `Permission "${mod.old}" removed from tool ${mod.tool_id}`,
+          subject: mod.tool_id,
+          detected_at: now,
+        });
+      }
+    }
+  }
+
+  // Risk changes
+  for (const risk of diff.risks.added) {
+    events.push({
+      category: 'risk_introduced',
+      severity: riskEventSeverity(risk.severity),
+      description: `New risk "${risk.description}" (${risk.severity}/${risk.category})`,
+      subject: risk.risk_id,
+      detected_at: now,
+    });
+  }
+
+  for (const risk of diff.risks.removed) {
+    events.push({
+      category: 'risk_resolved',
+      severity: 'info',
+      description: `Risk "${risk.risk_id}" (${risk.description}) removed`,
+      subject: risk.risk_id,
+      detected_at: now,
+    });
+  }
+
+  for (const mod of diff.risks.modified) {
+    if (mod.field === 'severity') {
+      const severityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+      if ((severityOrder[mod.new] ?? 0) > (severityOrder[mod.old] ?? 0)) {
+        events.push({
+          category: 'risk_escalated',
+          severity: riskEventSeverity(mod.new),
+          description: `Risk ${mod.risk_id} severity escalated from ${mod.old} to ${mod.new}`,
+          subject: mod.risk_id,
+          detected_at: now,
+        });
+      }
+    }
+  }
+
+  // Permission scope changes
+  for (const scope of diff.permissions.added) {
+    events.push({
+      category: 'scope_expanded',
+      severity: 'high',
+      description: `Permission scope "${scope}" granted`,
+      subject: scope,
+      detected_at: now,
+    });
+  }
+
+  for (const scope of diff.permissions.removed) {
+    events.push({
+      category: 'scope_restricted',
+      severity: 'info',
+      description: `Permission scope "${scope}" removed`,
+      subject: scope,
+      detected_at: now,
+    });
+  }
+
+  return createDriftAlert({
+    agent_id: agentId,
+    baseline_at: baselineAt,
+    current_at: currentAt,
+    events,
+  });
+}
+
+/** Format a drift alert as a human-readable string for monitoring output. */
+export function formatDriftAlert(alert: DriftAlert): string {
+  const lines: string[] = [
+    `Drift Alert — agent: ${alert.agent_id}`,
+    `  Baseline: ${alert.baseline_at} → Current: ${alert.current_at}`,
+    `  Events: ${alert.events.length}`,
+  ];
+
+  // Group events by severity
+  const bySeverity = new Map<TrustEventSeverity, TrustEvent[]>();
+  for (const event of alert.events) {
+    const group = bySeverity.get(event.severity) ?? [];
+    group.push(event);
+    bySeverity.set(event.severity, group);
+  }
+
+  for (const [severity, events] of bySeverity) {
+    lines.push('');
+    lines.push(`  [${severity.toUpperCase()}] (${events.length})`);
+    for (const event of events) {
+      lines.push(`    • ${event.category}: ${event.description}`);
+    }
+  }
+
+  if (alert.isEmpty()) {
+    lines.push('  No drift events.');
+  }
+
+  return lines.join('\n');
+}

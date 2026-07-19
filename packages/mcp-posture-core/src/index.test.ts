@@ -4,8 +4,11 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   RISK_CATEGORIES,
+  classifyPostureDriftEvents,
+  createPostureDriftAlert,
   diffMCPPosture,
   formatPostureDiff,
+  formatPostureDriftAlert,
   inspectMCPPosture,
   validateMCPPosture,
 } from './index.js';
@@ -495,5 +498,658 @@ describe('diff with example drift fixtures', () => {
   it('diff is not empty', () => {
     const diff = diffMCPPosture(oldData, newData);
     expect(diff.isEmpty()).toBe(false);
+  });
+});
+
+// --- Continuous Trust Monitoring tests ---
+
+describe('createPostureDriftAlert', () => {
+  it('creates an alert with computed hasHighSeverity and isEmpty', () => {
+    const alert = createPostureDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [
+        {
+          category: 'server_added',
+          severity: 'high',
+          description: 'Server added',
+          subject: 'srv-1',
+          detected_at: '2026-01-02T00:00:00Z',
+        },
+      ],
+    });
+    expect(alert.agent_id).toBe('agent-1');
+    expect(alert.isEmpty()).toBe(false);
+    expect(alert.hasHighSeverity()).toBe(true);
+  });
+
+  it('isEmpty returns true for empty events', () => {
+    const alert = createPostureDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [],
+    });
+    expect(alert.isEmpty()).toBe(true);
+  });
+
+  it('hasHighSeverity returns true when a critical event exists', () => {
+    const alert = createPostureDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [
+        {
+          category: 'risk_finding_introduced',
+          severity: 'critical',
+          description: 'Critical finding',
+          subject: 'f-001',
+          detected_at: '2026-01-02T00:00:00Z',
+        },
+      ],
+    });
+    expect(alert.hasHighSeverity()).toBe(true);
+  });
+});
+
+describe('classifyPostureDriftEvents', () => {
+  it('produces empty alert for identical posture snapshots', () => {
+    const diff = diffMCPPosture(VALID_POSTURE, { ...VALID_POSTURE });
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    expect(alert.isEmpty()).toBe(true);
+    expect(alert.hasHighSeverity()).toBe(false);
+  });
+
+  it('classifies server_added events as high severity', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        ...VALID_POSTURE.servers,
+        {
+          server_id: 'new-server',
+          server_name: 'New Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    expect(alert.isEmpty()).toBe(false);
+    const serverEvents = alert.events.filter((e) => e.category === 'server_added');
+    expect(serverEvents).toHaveLength(1);
+    expect(serverEvents[0].severity).toBe('high');
+    expect(serverEvents[0].subject).toBe('new-server');
+  });
+
+  it('classifies server_removed events as info', () => {
+    const newPosture = { ...VALID_POSTURE, servers: [] };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const removedEvents = alert.events.filter((e) => e.category === 'server_removed');
+    expect(removedEvents).toHaveLength(1);
+    expect(removedEvents[0].severity).toBe('info');
+    expect(removedEvents[0].subject).toBe('test-server');
+  });
+
+  it('classifies tool_added with critical severity for tools with critical risk categories', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'new-tool',
+              tool_name: 'dangerous_tool',
+              permissions: ['fs:write'],
+              risk_categories: ['command_execution', 'credential_access'],
+              risk_severity: 'critical',
+            },
+          ],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const toolAddedEvents = alert.events.filter(
+      (e) => e.category === 'tool_added' && e.severity === 'critical',
+    );
+    expect(toolAddedEvents).toHaveLength(1);
+    expect(toolAddedEvents[0].subject).toBe('new-tool');
+  });
+
+  it('classifies tool_removed events as info', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const removedToolEvents = alert.events.filter((e) => e.category === 'tool_removed');
+    expect(removedToolEvents).toHaveLength(1);
+    expect(removedToolEvents[0].severity).toBe('info');
+  });
+
+  it('classifies permission_escalation events as high', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: ['fs:read'],
+              risk_categories: [],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: ['fs:read', 'fs:write'],
+              risk_categories: [],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const escalationEvents = alert.events.filter((e) => e.category === 'permission_escalation');
+    expect(escalationEvents).toHaveLength(1);
+    expect(escalationEvents[0].severity).toBe('high');
+    expect(escalationEvents[0].subject).toBe('existing-tool');
+  });
+
+  it('classifies permission_reduction events as info', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: ['fs:read'],
+              risk_categories: [],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: [],
+              risk_categories: [],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const reductionEvents = alert.events.filter((e) => e.category === 'permission_reduction');
+    expect(reductionEvents).toHaveLength(1);
+    expect(reductionEvents[0].severity).toBe('info');
+  });
+
+  it('classifies risk_category_added events as medium', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: [],
+              risk_categories: [],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: [],
+              risk_categories: ['ssrf'],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const catAddedEvents = alert.events.filter((e) => e.category === 'risk_category_added');
+    expect(catAddedEvents).toHaveLength(1);
+    expect(catAddedEvents[0].severity).toBe('medium');
+  });
+
+  it('classifies risk_finding_introduced events with matching severity', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        {
+          finding_id: 'f-001',
+          severity: 'critical',
+          category: 'exfiltration',
+          description: 'Data exfiltration risk',
+        },
+      ],
+    };
+    const oldPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const findingEvents = alert.events.filter((e) => e.category === 'risk_finding_introduced');
+    expect(findingEvents).toHaveLength(1);
+    expect(findingEvents[0].severity).toBe('critical');
+    expect(findingEvents[0].subject).toBe('f-001');
+  });
+
+  it('classifies risk_finding_resolved events as info', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'high', category: 'ssrf', description: 'Old finding' },
+      ],
+    };
+    const newPosture = { ...VALID_POSTURE, risk_summary: [] };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const resolvedEvents = alert.events.filter((e) => e.category === 'risk_finding_resolved');
+    expect(resolvedEvents).toHaveLength(1);
+    expect(resolvedEvents[0].severity).toBe('info');
+  });
+
+  it('classifies risk_finding_escalated when severity increases', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'low', category: 'ssrf', description: 'Low finding' },
+      ],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'critical', category: 'ssrf', description: 'Low finding' },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const escalatedEvents = alert.events.filter((e) => e.category === 'risk_finding_escalated');
+    expect(escalatedEvents).toHaveLength(1);
+    expect(escalatedEvents[0].severity).toBe('critical');
+    expect(escalatedEvents[0].description).toContain('low');
+    expect(escalatedEvents[0].description).toContain('critical');
+  });
+
+  it('does not classify risk_finding_escalated when severity decreases', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'critical', category: 'ssrf', description: 'Finding' },
+      ],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      risk_summary: [
+        { finding_id: 'f-001', severity: 'low', category: 'ssrf', description: 'Finding' },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const escalatedEvents = alert.events.filter((e) => e.category === 'risk_finding_escalated');
+    expect(escalatedEvents).toHaveLength(0);
+  });
+
+  it('classifies scope_expanded events as high', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      permission_graph: { permission_scopes: ['network:outbound'] },
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      permission_graph: { permission_scopes: ['network:outbound', 'fs:read'] },
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const expandedEvents = alert.events.filter((e) => e.category === 'scope_expanded');
+    expect(expandedEvents).toHaveLength(1);
+    expect(expandedEvents[0].severity).toBe('high');
+    expect(expandedEvents[0].subject).toBe('fs:read');
+  });
+
+  it('classifies scope_restricted events as info', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      permission_graph: { permission_scopes: ['network:outbound', 'fs:read'] },
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      permission_graph: { permission_scopes: ['network:outbound'] },
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const restrictedEvents = alert.events.filter((e) => e.category === 'scope_restricted');
+    expect(restrictedEvents).toHaveLength(1);
+    expect(restrictedEvents[0].severity).toBe('info');
+  });
+
+  it('populates agent_id and timestamps on the alert', () => {
+    const diff = diffMCPPosture(VALID_POSTURE, { ...VALID_POSTURE });
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'my-agent',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    expect(alert.agent_id).toBe('my-agent');
+    expect(alert.baseline_at).toBe('2026-01-01T00:00:00Z');
+    expect(alert.current_at).toBe('2026-01-02T00:00:00Z');
+  });
+
+  it('each event has an ISO 8601 detected_at timestamp', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'added-srv',
+          server_name: 'Added Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    for (const event of alert.events) {
+      expect(event.detected_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    }
+  });
+
+  it('detects multiple event types in a single diff', () => {
+    const oldPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: ['fs:read'],
+              risk_categories: [],
+              risk_severity: 'low',
+            },
+          ],
+        },
+      ],
+      permission_graph: { permission_scopes: ['fs:read'] },
+      risk_summary: [],
+    };
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'test-server',
+          server_name: 'Test Server',
+          tools: [
+            {
+              tool_id: 'existing-tool',
+              tool_name: 'existing',
+              permissions: ['fs:read', 'fs:write'],
+              risk_categories: ['ssrf'],
+              risk_severity: 'low',
+            },
+          ],
+        },
+        {
+          server_id: 'new-srv',
+          server_name: 'New Server',
+          tools: [],
+        },
+      ],
+      permission_graph: { permission_scopes: ['fs:read', 'fs:write', 'network:outbound'] },
+      risk_summary: [
+        {
+          finding_id: 'f-001',
+          severity: 'high',
+          category: 'exfiltration',
+          description: 'New finding',
+        },
+      ],
+    };
+    const diff = diffMCPPosture(oldPosture, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const categories = new Set(alert.events.map((e) => e.category));
+    expect(categories.has('server_added')).toBe(true);
+    expect(categories.has('permission_escalation')).toBe(true);
+    expect(categories.has('risk_category_added')).toBe(true);
+    expect(categories.has('risk_finding_introduced')).toBe(true);
+    expect(categories.has('scope_expanded')).toBe(true);
+    expect(alert.hasHighSeverity()).toBe(true);
+  });
+});
+
+describe('formatPostureDriftAlert', () => {
+  it('formats empty alert with no drift message', () => {
+    const alert = classifyPostureDriftEvents(
+      diffMCPPosture(VALID_POSTURE, { ...VALID_POSTURE }),
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatPostureDriftAlert(alert);
+    expect(output).toContain('agent-1');
+    expect(output).toContain('No drift events');
+  });
+
+  it('includes agent_id and timestamps in output', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'new-srv',
+          server_name: 'New Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatPostureDriftAlert(alert);
+    expect(output).toContain('agent-1');
+    expect(output).toContain('2026-01-01T00:00:00Z');
+    expect(output).toContain('2026-01-02T00:00:00Z');
+  });
+
+  it('groups events by severity', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'new-srv',
+          server_name: 'New Server',
+          tools: [
+            {
+              tool_id: 'critical-tool',
+              tool_name: 'critical',
+              permissions: ['fs:write'],
+              risk_categories: ['privilege_escalation'],
+              risk_severity: 'critical',
+            },
+          ],
+        },
+      ],
+      permission_graph: { permission_scopes: ['network:outbound'] },
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatPostureDriftAlert(alert);
+    expect(output).toContain('[CRITICAL]');
+    expect(output).toContain('[HIGH]');
+    expect(output).toContain('Events:');
+  });
+
+  it('includes event category and description in output', () => {
+    const newPosture = {
+      ...VALID_POSTURE,
+      servers: [
+        {
+          server_id: 'new-srv',
+          server_name: 'New Server',
+          tools: [],
+        },
+      ],
+    };
+    const diff = diffMCPPosture(VALID_POSTURE, newPosture);
+    const alert = classifyPostureDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatPostureDriftAlert(alert);
+    expect(output).toContain('server_added');
+    expect(output).toContain('new-srv');
   });
 });

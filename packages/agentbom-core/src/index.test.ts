@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import { diffAgentBOM, formatAgentBOMDiff, validateAgentBOM } from './index.js';
+import {
+  classifyDriftEvents,
+  createDriftAlert,
+  diffAgentBOM,
+  formatAgentBOMDiff,
+  formatDriftAlert,
+  validateAgentBOM,
+} from './index.js';
 
 const VALID_AGENTBOM = {
   agentbom_version: '0.1',
@@ -382,5 +389,580 @@ describe('formatAgentBOMDiff', () => {
     const output = formatAgentBOMDiff(diff);
     expect(output).toContain('Tools changed (1)');
     expect(output).toContain('permission added: fs:write');
+  });
+});
+
+// --- Continuous Trust Monitoring tests ---
+
+describe('createDriftAlert', () => {
+  it('creates an alert with computed hasHighSeverity and isEmpty', () => {
+    const alert = createDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [
+        {
+          category: 'tool_added',
+          severity: 'info',
+          description: 'Tool added',
+          subject: 't1',
+          detected_at: '2026-01-02T00:00:00Z',
+        },
+      ],
+    });
+    expect(alert.agent_id).toBe('agent-1');
+    expect(alert.isEmpty()).toBe(false);
+    expect(alert.hasHighSeverity()).toBe(false);
+  });
+
+  it('isEmpty returns true for empty events', () => {
+    const alert = createDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [],
+    });
+    expect(alert.isEmpty()).toBe(true);
+  });
+
+  it('hasHighSeverity returns true when a critical event exists', () => {
+    const alert = createDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [
+        {
+          category: 'risk_introduced',
+          severity: 'critical',
+          description: 'Critical risk',
+          subject: 'r1',
+          detected_at: '2026-01-02T00:00:00Z',
+        },
+      ],
+    });
+    expect(alert.hasHighSeverity()).toBe(true);
+  });
+
+  it('hasHighSeverity returns true when a high event exists', () => {
+    const alert = createDriftAlert({
+      agent_id: 'agent-1',
+      baseline_at: '2026-01-01T00:00:00Z',
+      current_at: '2026-01-02T00:00:00Z',
+      events: [
+        {
+          category: 'permission_escalation',
+          severity: 'high',
+          description: 'Permission escalated',
+          subject: 't1',
+          detected_at: '2026-01-02T00:00:00Z',
+        },
+      ],
+    });
+    expect(alert.hasHighSeverity()).toBe(true);
+  });
+});
+
+describe('classifyDriftEvents', () => {
+  it('produces empty alert for identical BOMs', () => {
+    const diff = diffAgentBOM(BASE_BOM, { ...BASE_BOM });
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    expect(alert.isEmpty()).toBe(true);
+    expect(alert.hasHighSeverity()).toBe(false);
+  });
+
+  it('classifies tool_added events with appropriate severity', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'http-get',
+          tool_name: 'fetch_url',
+          source: 'builtin',
+          permissions: ['http:get'],
+          risk_signals: [],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    expect(alert.isEmpty()).toBe(false);
+    const addedEvents = alert.events.filter((e) => e.category === 'tool_added');
+    expect(addedEvents).toHaveLength(1);
+    expect(addedEvents[0].subject).toBe('http-get');
+    expect(addedEvents[0].severity).toBe('medium');
+  });
+
+  it('classifies tool_added events with high severity when permission matches a wildcard', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'net-fetch',
+          tool_name: 'fetch_url',
+          source: 'builtin',
+          permissions: ['network:outbound'],
+          risk_signals: [],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const addedEvents = alert.events.filter((e) => e.category === 'tool_added');
+    expect(addedEvents).toHaveLength(1);
+    expect(addedEvents[0].subject).toBe('net-fetch');
+    expect(addedEvents[0].severity).toBe('high');
+  });
+
+  it('classifies tool_added with critical severity for tools with command_execution risk signal', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'dangerous-tool',
+          tool_name: 'dangerous',
+          source: 'builtin',
+          permissions: ['network:*'],
+          risk_signals: ['command_execution'],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const criticalEvents = alert.events.filter(
+      (e) => e.category === 'tool_added' && e.severity === 'critical',
+    );
+    expect(criticalEvents).toHaveLength(1);
+    expect(criticalEvents[0].subject).toBe('dangerous-tool');
+  });
+
+  it('classifies tool_removed events as info', () => {
+    const newBom = { ...BASE_BOM, tool_layer: [BASE_BOM.tool_layer[0]] };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const removedEvents = alert.events.filter((e) => e.category === 'tool_removed');
+    expect(removedEvents).toHaveLength(1);
+    expect(removedEvents[0].severity).toBe('info');
+    expect(removedEvents[0].subject).toBe('bash-exec');
+  });
+
+  it('classifies permission_escalation events as high', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        {
+          tool_id: 'fs-read',
+          tool_name: 'read_file',
+          source: 'builtin',
+          permissions: ['fs:read', 'fs:write'],
+          risk_signals: [],
+        },
+        {
+          tool_id: 'bash-exec',
+          tool_name: 'bash',
+          source: 'builtin',
+          permissions: ['process:exec'],
+          risk_signals: ['command_execution'],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const escalationEvents = alert.events.filter((e) => e.category === 'permission_escalation');
+    expect(escalationEvents).toHaveLength(1);
+    expect(escalationEvents[0].severity).toBe('high');
+    expect(escalationEvents[0].subject).toBe('fs-read');
+  });
+
+  it('classifies permission_reduction events as info', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        {
+          tool_id: 'fs-read',
+          tool_name: 'read_file',
+          source: 'builtin',
+          permissions: [],
+          risk_signals: [],
+        },
+        {
+          tool_id: 'bash-exec',
+          tool_name: 'bash',
+          source: 'builtin',
+          permissions: ['process:exec'],
+          risk_signals: ['command_execution'],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const reductionEvents = alert.events.filter((e) => e.category === 'permission_reduction');
+    expect(reductionEvents).toHaveLength(1);
+    expect(reductionEvents[0].severity).toBe('info');
+  });
+
+  it('classifies risk_introduced events with matching severity', () => {
+    const newBom = {
+      ...BASE_BOM,
+      risk_layer: [
+        ...BASE_BOM.risk_layer,
+        {
+          risk_id: 'risk-002',
+          severity: 'critical',
+          category: 'exfiltration',
+          description: 'data exfiltration risk',
+          status: 'open',
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const riskEvents = alert.events.filter((e) => e.category === 'risk_introduced');
+    expect(riskEvents).toHaveLength(1);
+    expect(riskEvents[0].severity).toBe('critical');
+    expect(riskEvents[0].subject).toBe('risk-002');
+  });
+
+  it('classifies risk_resolved events as info', () => {
+    const newBom = { ...BASE_BOM, risk_layer: [] };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const resolvedEvents = alert.events.filter((e) => e.category === 'risk_resolved');
+    expect(resolvedEvents).toHaveLength(1);
+    expect(resolvedEvents[0].severity).toBe('info');
+  });
+
+  it('classifies risk_escalated events when severity increases', () => {
+    const newBom = {
+      ...BASE_BOM,
+      risk_layer: [
+        {
+          risk_id: 'risk-001',
+          severity: 'critical',
+          category: 'command_execution',
+          description: 'bash allows arbitrary execution',
+          status: 'accepted',
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const escalatedEvents = alert.events.filter((e) => e.category === 'risk_escalated');
+    expect(escalatedEvents).toHaveLength(1);
+    expect(escalatedEvents[0].severity).toBe('critical');
+    expect(escalatedEvents[0].description).toContain('medium');
+    expect(escalatedEvents[0].description).toContain('critical');
+  });
+
+  it('does not classify risk_escalated when severity decreases', () => {
+    const criticalBom = {
+      ...BASE_BOM,
+      risk_layer: [
+        {
+          risk_id: 'risk-001',
+          severity: 'critical',
+          category: 'command_execution',
+          description: 'bash allows arbitrary execution',
+          status: 'accepted',
+        },
+      ],
+    };
+    const newBom = {
+      ...BASE_BOM,
+      risk_layer: [
+        {
+          risk_id: 'risk-001',
+          severity: 'low',
+          category: 'command_execution',
+          description: 'bash allows arbitrary execution',
+          status: 'accepted',
+        },
+      ],
+    };
+    const diff = diffAgentBOM(criticalBom, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const escalatedEvents = alert.events.filter((e) => e.category === 'risk_escalated');
+    expect(escalatedEvents).toHaveLength(0);
+  });
+
+  it('classifies scope_expanded events as high', () => {
+    const newBom = {
+      ...BASE_BOM,
+      permission_layer: {
+        granted_scopes: ['fs:read', 'process:exec', 'network:outbound'],
+        data_access: ['local_workspace'],
+        credential_references: [],
+      },
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const expandedEvents = alert.events.filter((e) => e.category === 'scope_expanded');
+    expect(expandedEvents).toHaveLength(1);
+    expect(expandedEvents[0].severity).toBe('high');
+    expect(expandedEvents[0].subject).toBe('network:outbound');
+  });
+
+  it('classifies scope_restricted events as info', () => {
+    const newBom = {
+      ...BASE_BOM,
+      permission_layer: {
+        granted_scopes: ['fs:read'],
+        data_access: ['local_workspace'],
+        credential_references: [],
+      },
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const restrictedEvents = alert.events.filter((e) => e.category === 'scope_restricted');
+    expect(restrictedEvents).toHaveLength(1);
+    expect(restrictedEvents[0].severity).toBe('info');
+  });
+
+  it('populates agent_id and timestamps on the alert', () => {
+    const diff = diffAgentBOM(BASE_BOM, { ...BASE_BOM });
+    const alert = classifyDriftEvents(
+      diff,
+      'my-agent',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    expect(alert.agent_id).toBe('my-agent');
+    expect(alert.baseline_at).toBe('2026-01-01T00:00:00Z');
+    expect(alert.current_at).toBe('2026-01-02T00:00:00Z');
+  });
+
+  it('each event has an ISO 8601 detected_at timestamp', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'new-tool',
+          tool_name: 'new_tool',
+          source: 'builtin',
+          permissions: [],
+          risk_signals: [],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    for (const event of alert.events) {
+      expect(event.detected_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    }
+  });
+
+  it('detects multiple event types in a single diff', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'net-fetch',
+          tool_name: 'fetch_url',
+          source: 'builtin',
+          permissions: ['network:outbound'],
+          risk_signals: [],
+        },
+      ],
+      permission_layer: {
+        granted_scopes: ['fs:read', 'process:exec', 'network:outbound'],
+        data_access: ['local_workspace'],
+        credential_references: [],
+      },
+      risk_layer: [
+        ...BASE_BOM.risk_layer,
+        {
+          risk_id: 'risk-002',
+          severity: 'high',
+          category: 'exfiltration',
+          description: 'data exfiltration risk',
+          status: 'open',
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const categories = new Set(alert.events.map((e) => e.category));
+    expect(categories.has('tool_added')).toBe(true);
+    expect(categories.has('scope_expanded')).toBe(true);
+    expect(categories.has('risk_introduced')).toBe(true);
+    expect(alert.hasHighSeverity()).toBe(true);
+  });
+});
+
+describe('formatDriftAlert', () => {
+  it('formats empty alert with no drift message', () => {
+    const alert = classifyDriftEvents(
+      diffAgentBOM(BASE_BOM, { ...BASE_BOM }),
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatDriftAlert(alert);
+    expect(output).toContain('agent-1');
+    expect(output).toContain('No drift events');
+  });
+
+  it('includes agent_id and timestamps in output', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'new-tool',
+          tool_name: 'new_tool',
+          source: 'builtin',
+          permissions: [],
+          risk_signals: [],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatDriftAlert(alert);
+    expect(output).toContain('agent-1');
+    expect(output).toContain('2026-01-01T00:00:00Z');
+    expect(output).toContain('2026-01-02T00:00:00Z');
+  });
+
+  it('groups events by severity', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'dangerous-tool',
+          tool_name: 'dangerous',
+          source: 'builtin',
+          permissions: ['credential:*'],
+          risk_signals: ['credential_access'],
+        },
+      ],
+      permission_layer: {
+        granted_scopes: ['fs:read', 'process:exec', 'network:outbound'],
+        data_access: ['local_workspace'],
+        credential_references: [],
+      },
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatDriftAlert(alert);
+    expect(output).toContain('[CRITICAL]');
+    expect(output).toContain('[HIGH]');
+    expect(output).toContain('Events:');
+  });
+
+  it('includes event category and description in output', () => {
+    const newBom = {
+      ...BASE_BOM,
+      tool_layer: [
+        ...BASE_BOM.tool_layer,
+        {
+          tool_id: 'new-tool',
+          tool_name: 'new_tool',
+          source: 'builtin',
+          permissions: [],
+          risk_signals: [],
+        },
+      ],
+    };
+    const diff = diffAgentBOM(BASE_BOM, newBom);
+    const alert = classifyDriftEvents(
+      diff,
+      'agent-1',
+      '2026-01-01T00:00:00Z',
+      '2026-01-02T00:00:00Z',
+    );
+    const output = formatDriftAlert(alert);
+    expect(output).toContain('tool_added');
+    expect(output).toContain('new_tool');
   });
 });
