@@ -43,9 +43,16 @@ This repo defines the schemas that downstream packages implement, ships CLI vali
 and incubates specifications. Product functionality and runtime evidence analysis belong
 downstream.
 
+## Frozen packages — do not develop further
+
+`trust-passport-core` and `trust-runtime` are **frozen**. No new features, no new tests, no schema changes.
+- Product home for Trust Passport has moved to `open-agent-audit` (`@openagentaudit/passport`)
+- Open issues tracking the migration: WasmAgent/open-agent-audit#52, #53, #54
+- PRs or issues touching these packages will be closed without merge
+
 ## Tech stack
 - TypeScript + Bun monorepo (turbo)
-- Packages: `agentbom-core`, `mcp-posture-core`, `trust-passport-core`, `trust-runtime`
+- Packages: `agentbom-core`, `mcp-posture-core` (active) · `trust-passport-core`, `trust-runtime` (**frozen — see above**)
 - CLI: `cli/` directory
 - Specs: `specs/agentbom/`, `specs/mcp-posture/`, `specs/trust-passport/`, `specs/compliance-profile/`
 - Tests: `bun run test`

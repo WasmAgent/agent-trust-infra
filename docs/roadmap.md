@@ -66,23 +66,33 @@ External deadlines drive this phase. Items with issue numbers are already tracke
 - [ ] feat: compliance profile — `eu-ai-act-annex-iv.json` for high-risk AI systems
       mapping AgentBOM fields to Annex IV requirements.
 
+### Frozen — Trust Passport (moved to open-agent-audit)
+
+`trust-passport-core` and `trust-runtime` are **frozen**. The product home for
+Trust Passport is [`open-agent-audit`](https://github.com/WasmAgent/open-agent-audit).
+Do not open new issues or PRs against these packages in this repo.
+
+Migration issues filed in open-agent-audit:
+- [#52](https://github.com/WasmAgent/open-agent-audit/issues/52) — validateTrustPassport() with prototype-pollution guard
+- [#53](https://github.com/WasmAgent/open-agent-audit/issues/53) — content-addressable evidence storage (hashEvidence / addFact)
+- [#54](https://github.com/WasmAgent/open-agent-audit/issues/54) — adopt Trust Passport v0.1 specification docs
+
+The following items are **cancelled** for this repo (implement in open-agent-audit instead):
+- ~~Federation with `open-agent-audit` / `trace-pipeline` for shared evidence and audit-report plumbing~~
+- ~~Cryptographic Trust Passport signing (Sigstore/in-toto)~~
+
 ### In-flight (previously listed)
 
-- [ ] Federation with `open-agent-audit` / `trace-pipeline` for shared evidence
-      and audit-report plumbing
-- [ ] Cryptographic Trust Passport signing (signed, revocable, expiring trust
-      state beyond the current reference validity model; consider Sigstore/in-toto
-      rather than self-rolled PKI)
 - [ ] Static site for [`papers/`](../papers) so the technical reports are
       browseable on the web
 - [ ] Apply split criteria (see below) once individual artifacts stabilize
 
 ### Phase 6 — Production hardening (when research preview graduates)
 
-- [ ] `@wasmagent/trust-cli` npm publish with binary builds (Linux/macOS/Windows)
-- [ ] `@wasmagent/trust-runtime` npm publish with TypeScript definitions
-- [ ] Renewal and revocation model for Trust Passport (triggers, revocation list)
-- [ ] Trust Passport integration with `open-agent-audit` audit report pipeline
+- [ ] `@wasmagent/trust-cli` npm publish with binary builds (Linux/macOS/Windows) — AgentBOM/MCP Posture CLI only; Trust Passport CLI moves to open-agent-audit
+- ~~`@wasmagent/trust-runtime` npm publish~~ — frozen; implement in open-agent-audit
+- ~~Renewal and revocation model for Trust Passport~~ — implement in open-agent-audit (see [#52](https://github.com/WasmAgent/open-agent-audit/issues/52)–[#54](https://github.com/WasmAgent/open-agent-audit/issues/54))
+- ~~Trust Passport integration with `open-agent-audit` audit report pipeline~~ — Trust Passport product lives in open-agent-audit directly
 - [ ] Compliance profile registry — `soc2-2024`, `iso27001-2022`, `eidas-controlled`
       with verified mapping to actual regulatory text (not just names)
 
@@ -90,7 +100,7 @@ External deadlines drive this phase. Items with issue numbers are already tracke
 
 - [ ] AgentBOM as standalone specification repo (if external adoption warrants)
 - [ ] MCP Posture as standalone MCP security product (if demand appears)
-- [ ] Trust Passport as product module under Trustavo (trustavo.com/passport)
+- ~~Trust Passport as product module under Trustavo~~ — Trust Passport product development moves to open-agent-audit; schema incubation here is complete
 - [ ] Cross-org standard: propose AgentBOM to OpenSSF or similar body
 
 ## Future: split criteria
