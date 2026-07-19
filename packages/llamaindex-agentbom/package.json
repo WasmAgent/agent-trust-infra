@@ -1,0 +1,15 @@
+{
+  "name": "@wasmagent/llamaindex-agentbom",
+  "version": "0.0.0-research",
+  "description": "LlamaIndex → AgentBOM adapter — auto-generate AgentBOM manifests from LlamaIndex agent definitions",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "echo 'build: stub'",
+    "test": "bun test src/",
+    "typecheck": "echo 'typecheck: stub'"
+  },
+  "dependencies": {
+    "@wasmagent/agentbom-core": "*"
+  }
+}
