@@ -64,3 +64,16 @@ Begins when research preview graduates to production. **No Trust Passport work h
 - [ ] AgentBOM as standalone specification repository if external adoption warrants
 - [ ] MCP Posture as standalone MCP security product if demand appears
 - [x] Propose AgentBOM to OpenSSF or equivalent standards body for cross-org adoption — proposal at `docs/openssf-proposal.md` (issue #200)
+
+## Milestone 8 — Production Readiness & Enterprise Integration (Draft)
+
+- [ ] Enterprise-grade BOM processing pipeline — streaming validation and incremental analysis for AgentBOM files >100MB, with backpressure-aware processing and bounded memory guarantees; horizontally scalable via partitioned artifact queues
+- [ ] Trust Policy Engine SDK — declarative policy DSL for evaluating trust artifacts against organization governance rules (e.g., "reject agents with unapproved MCP servers", "require AEP for file-system tools"); Java/Python/Go libraries with policy composition and versioning
+- [ ] Continuous Trust Monitoring service — daemon that watches agent runtime BOM drift, detects permission escalation attempts, and alerts on trust boundary violations; integrates with existing observability stacks (Prometheus, OpenTelemetry)
+- [ ] Major agent framework integrations — official LangChain, LlamaIndex, and AutoGen plugins that auto-generate AgentBOM manifests from agent definitions; publish to respective package registries
+- [ ] Multi-party trust negotiation protocol — RFC for federated Trust Passport exchange between organizations, enabling cross-org agent deployment with mutual attestation and policy reconciliation
+- [ ] Production trust-cli hardening — SIGSTORE verification for signed artifacts, air-gapped installation mode, FIPS-compliant crypto backends, and enterprise SSO integration for attestation workflows
+- [ ] Trust analytics dashboard — web UI for visualizing trust posture across agent fleets, BOM dependency graphs, compliance heatmaps, and audit log search with temporal filtering
+- [ ] BOM versioning and migration framework — semver-compatible schema evolution tooling with automated migration scripts, backward compatibility shims, and deprecation warnings for legacy AgentBOM/MCP Posture versions
+- [ ] Performance benchmarks and SLIs — published throughput/latency benchmarks for validation operations, SLO guidance for production deployments, and regression test suite for performance degradation
+- [ ] Enterprise onboarding and certification guide — runbooks for security teams adopting trust infra, attestation collection procedures, and trustworthiness review checklist before agent deployment to production
