@@ -74,6 +74,10 @@ func main() {
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) (int, error) {
+	if len(args) > 0 && args[0] == benchSubcommand {
+		return runBenchCommand(args[1:], stdout, stderr)
+	}
+
 	flags := flag.NewFlagSet("policy-engine", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 
