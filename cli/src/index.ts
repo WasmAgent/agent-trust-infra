@@ -35,6 +35,7 @@ import { trustDiffCommand } from './trust-diff.js';
 import { publishCommand } from './trust-publish.js';
 import { pullCommand } from './trust-pull.js';
 import { subscribeCommand } from './trust-subscribe.js';
+import { verifyChainCommand } from './trust-verify-chain.js';
 
 const USAGE = [
   'Usage: agent-trust <command> [args]',
@@ -66,6 +67,7 @@ const USAGE = [
   '  publish <artifact.json> [--registry <dir>] [--tag <tag>]  Publish trust artifact to registry with CAS identifier',
   '  pull <artifact-id> [--registry <dir>] [--output <path>] [--with-deps]  Retrieve trust artifact from registry with integrity verification',
   '  diff <artifact-a.json> <artifact-b.json> [--json]  Structured diff of trust artifacts (auto-detects type)',
+  '  verify-chain <passport.jwt> --depth N [--key <pubkey>] [--registry <dir>]  Recursive trust chain verification with configurable depth and caching',
 ].join('\n');
 
 /** Parse --target and --dry-run flags from a CLI arg slice. */
@@ -357,6 +359,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'subscribe') {
     return subscribeCommand(args.slice(1));
+  }
+
+  if (args[0] === 'verify-chain') {
+    return verifyChainCommand(args.slice(1));
   }
 
   console.error(`Error: unknown command "${args[0]}"`);
