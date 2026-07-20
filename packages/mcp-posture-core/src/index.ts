@@ -420,6 +420,19 @@ export function validateMCPPosture(data: unknown): ValidationResult {
     );
   }
 
+  // Validate verification_endpoint if present
+  if ('verification_endpoint' in d && typeof d.verification_endpoint === 'string') {
+    const url = d.verification_endpoint as string;
+    if (!/^https:\/\//.test(url)) {
+      errors.push('verification_endpoint must use HTTPS scheme');
+    }
+    try {
+      new URL(url);
+    } catch {
+      errors.push('verification_endpoint must be a valid URL');
+    }
+  }
+
   return { valid: errors.length === 0, errors };
 }
 

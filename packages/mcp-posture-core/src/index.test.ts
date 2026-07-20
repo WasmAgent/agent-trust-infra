@@ -216,6 +216,67 @@ describe('schema covers MCP 2026-07-28 fields', () => {
   });
 });
 
+describe('verification_endpoint field', () => {
+  it('accepts valid HTTPS verification_endpoint', () => {
+    const posture = {
+      ...VALID_POSTURE,
+      verification_endpoint: 'https://verification.trust.example.com/posture/check',
+    };
+    const result = validateMCPPosture(posture);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('accepts posture without verification_endpoint (optional)', () => {
+    const result = validateMCPPosture(VALID_POSTURE);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects HTTP verification_endpoint', () => {
+    const posture = {
+      ...VALID_POSTURE,
+      verification_endpoint: 'http://verification.trust.example.com/posture/check',
+    };
+    const result = validateMCPPosture(posture);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('verification_endpoint must use HTTPS scheme');
+  });
+
+  it('rejects malformed URL verification_endpoint', () => {
+    const posture = {
+      ...VALID_POSTURE,
+      verification_endpoint: 'not-a-url',
+    };
+    const result = validateMCPPosture(posture);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('verification_endpoint'))).toBe(true);
+  });
+
+  it('rejects empty string verification_endpoint', () => {
+    const posture = {
+      ...VALID_POSTURE,
+      verification_endpoint: '',
+    };
+    const result = validateMCPPosture(posture);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('verification_endpoint'))).toBe(true);
+  });
+});
+
+describe('schema has verification_endpoint field', () => {
+  it('schema includes verification_endpoint as an optional string property', () => {
+    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
+    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    expect(schema.properties).toHaveProperty('verification_endpoint');
+    const prop = schema.properties.verification_endpoint;
+    expect(prop.type).toBe('string');
+    expect(prop.format).toBe('uri');
+    expect(prop.pattern).toBe('^https://.+');
+    expect(schema.required).not.toContain('verification_endpoint');
+  });
+});
+
 describe('schema covers all fields from posture-model-v0.1.md', () => {
   it('has top-level fields: identity, servers, permission_graph, risk_summary, drift, attestation', () => {
     const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');

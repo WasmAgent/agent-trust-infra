@@ -386,6 +386,33 @@
         }
       }
     },
+    "distribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Artifact lifecycle management — registry location, publication metadata, deprecation, and supersession",
+      "properties": {
+        "registry_uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "URI of the distribution registry where this artifact is published"
+        },
+        "publication_timestamp": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "Timestamp when the artifact was published to the registry, in ISO 8601 format"
+        },
+        "deprecation_status": {
+          "type": "string",
+          "enum": ["active", "deprecated", "superseded", "withdrawn"],
+          "description": "Current deprecation status of the artifact in the registry"
+        },
+        "supersedes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Artifact IDs that this distribution supersedes"
+        }
+      }
+    },
     "attestation": {
       "type": "object",
       "required": ["generator"],
