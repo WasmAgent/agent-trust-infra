@@ -630,6 +630,731 @@ export function validateAgentBOMWithVersioning(data: unknown): VersionedValidati
   };
 }
 
+// --- Compliance Profile Schema Compatibility ---
+
+/** Describes a field in the AgentBOM schema for compatibility tracking. */
+export interface SchemaFieldDescriptor {
+  /** Dot-path to the field, e.g. "identity.agent_version" */
+  path: string;
+  /** JSON schema type */
+  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
+  /** Whether required in the schema */
+  required: boolean;
+  /** Schema version where this field was introduced */
+  since: string;
+  /** If removed/deprecated, the schema version */
+  removed_in?: string;
+  /** Human-readable description */
+  description: string;
+}
+
+/** A suggested mapping update for a compliance profile. */
+export interface MappingUpdate {
+  /** Severity of the update needed */
+  type: 'breaking' | 'recommended' | 'optional';
+  /** The profile rule section affected */
+  profile_section: string;
+  /** Human-readable description of what changed */
+  description: string;
+  /** Suggested action to update the profile */
+  action: string;
+}
+
+/** Result of checking a compliance profile against an AgentBOM schema version. */
+export interface ProfileCompatibilityResult {
+  /** Whether the profile is fully compatible (no breaking issues) */
+  compatible: boolean;
+  /** The profile's declared version */
+  profile_version: string;
+  /** The AgentBOM schema version checked against */
+  agentbom_version: string;
+  /** Breaking issues — profile references fields removed from the schema */
+  breaking: Array<{ field: string; section: string; message: string }>;
+  /** Coverage gaps — schema fields/sections not covered by any profile rule */
+  gaps: Array<{ path: string; description: string }>;
+  /** Suggested mapping updates to bring the profile in line with the schema */
+  mapping_updates: MappingUpdate[];
+}
+
+/**
+ * Minimal profile shape accepted by compatibility checking.
+ *
+ * Designed to accept both the CLI's `ComplianceProfile` and raw JSON objects
+ * without coupling to the CLI module.
+ */
+export interface CompatibilityProfileInput {
+  profile_version?: string;
+  rules: {
+    identity?: {
+      required_fields?: string[];
+      allowed_contexts?: string[];
+      requires_version?: boolean;
+      [key: string]: unknown;
+    };
+    tool_layer?: {
+      max_severity?: string;
+      requires_tool_inventory?: boolean;
+      blocked_permissions?: string[];
+      blocked_sources?: string[];
+      [key: string]: unknown;
+    };
+    risk_layer?: {
+      requires_risk_assessment?: boolean;
+      max_unmitigated_critical?: number;
+      max_unmitigated_high?: number;
+      max_unmitigated_medium?: number;
+      requires_mitigation_for?: string[];
+      [key: string]: unknown;
+    };
+    attestation?: {
+      requires_signature?: boolean;
+      requires_timestamp?: boolean;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+}
+
+/** Known schema fields for AgentBOM v0.1. */
+const SCHEMA_FIELDS_V0_1: SchemaFieldDescriptor[] = [
+  {
+    path: 'agentbom_version',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Schema version identifier',
+  },
+  {
+    path: 'identity',
+    type: 'object',
+    required: true,
+    since: '0.1',
+    description: 'Agent identity section',
+  },
+  {
+    path: 'identity.agent_id',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Unique agent identifier',
+  },
+  {
+    path: 'identity.agent_name',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Human-readable agent name',
+  },
+  {
+    path: 'identity.agent_version',
+    type: 'string',
+    required: false,
+    since: '0.1',
+    description: 'Semantic version',
+  },
+  {
+    path: 'identity.deployment_context',
+    type: 'string',
+    required: false,
+    since: '0.1',
+    description: 'Deployment environment',
+  },
+  {
+    path: 'identity.generated_at',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Generation timestamp',
+  },
+  {
+    path: 'model_layer',
+    type: 'object',
+    required: false,
+    since: '0.1',
+    description: 'Model provider and capabilities',
+  },
+  {
+    path: 'tool_layer',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Registered tools and permissions',
+  },
+  {
+    path: 'tool_layer[].tool_id',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Tool identifier',
+  },
+  {
+    path: 'tool_layer[].tool_name',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Tool name',
+  },
+  {
+    path: 'tool_layer[].source',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Tool source type',
+  },
+  {
+    path: 'tool_layer[].permissions',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Tool permission scopes',
+  },
+  {
+    path: 'tool_layer[].risk_signals',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Tool risk signals',
+  },
+  {
+    path: 'prompt_layer',
+    type: 'object',
+    required: false,
+    since: '0.1',
+    description: 'System prompt references',
+  },
+  {
+    path: 'permission_layer',
+    type: 'object',
+    required: false,
+    since: '0.1',
+    description: 'Granted permission scopes',
+  },
+  {
+    path: 'policy_definitions',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Governance policies',
+  },
+  {
+    path: 'evidence_layer',
+    type: 'object',
+    required: false,
+    since: '0.1',
+    description: 'AEP event references',
+  },
+  {
+    path: 'audit_log',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Audit trail entries',
+  },
+  {
+    path: 'risk_layer',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Known risk signals',
+  },
+  {
+    path: 'risk_layer[].risk_id',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Risk identifier',
+  },
+  {
+    path: 'risk_layer[].severity',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Risk severity level',
+  },
+  {
+    path: 'risk_layer[].category',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Risk category',
+  },
+  {
+    path: 'risk_layer[].description',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Risk description',
+  },
+  {
+    path: 'risk_layer[].status',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'Risk status',
+  },
+  {
+    path: 'workflow_layer',
+    type: 'array',
+    required: false,
+    since: '0.1',
+    description: 'Workflow definitions',
+  },
+  {
+    path: 'distribution',
+    type: 'object',
+    required: false,
+    since: '0.1',
+    description: 'Artifact lifecycle management',
+  },
+  {
+    path: 'attestation',
+    type: 'object',
+    required: true,
+    since: '0.1',
+    description: 'Generator, timestamp, hash, signature',
+  },
+  {
+    path: 'attestation.generator',
+    type: 'string',
+    required: true,
+    since: '0.1',
+    description: 'BOM generator tool',
+  },
+  {
+    path: 'attestation.signature',
+    type: 'string',
+    required: false,
+    since: '0.1',
+    description: 'Cryptographic signature',
+  },
+  {
+    path: 'attestation.timestamp',
+    type: 'string',
+    required: false,
+    since: '0.1',
+    description: 'Attestation timestamp',
+  },
+];
+
+const SCHEMA_FIELDS_MAP = new Map<string, SchemaFieldDescriptor[]>([['0.1', SCHEMA_FIELDS_V0_1]]);
+
+/**
+ * Get schema field descriptors for a given AgentBOM version.
+ * Returns empty array if the version is unknown.
+ */
+export function getSchemaFieldDescriptors(version: string): SchemaFieldDescriptor[] {
+  return SCHEMA_FIELDS_MAP.get(version) ?? [];
+}
+
+/**
+ * Check backward compatibility of a compliance profile against an AgentBOM schema version.
+ *
+ * Verifies that all fields referenced by profile rules exist in the target schema,
+ * reports coverage gaps for schema sections not checked by the profile, and produces
+ * suggested mapping updates to align the profile with the current schema.
+ *
+ * This enables automated detection of breaking changes when the AgentBOM schema evolves
+ * and provides actionable recommendations for updating compliance profiles.
+ */
+export function checkProfileSchemaCompatibility(
+  profile: CompatibilityProfileInput,
+  agentbomVersion: string,
+): ProfileCompatibilityResult {
+  const fields = getSchemaFieldDescriptors(agentbomVersion);
+  const fieldSet = new Map(fields.map((f) => [f.path, f]));
+
+  const breaking: ProfileCompatibilityResult['breaking'] = [];
+  const gaps: ProfileCompatibilityResult['gaps'] = [];
+  const mappingUpdates: MappingUpdate[] = [];
+
+  // --- Check identity rules ---
+  const identityRules = profile.rules.identity;
+  if (identityRules?.required_fields) {
+    for (const fieldName of identityRules.required_fields) {
+      const fieldPath = `identity.${fieldName}`;
+      const descriptor = fieldSet.get(fieldPath);
+      if (!descriptor) {
+        breaking.push({
+          field: fieldPath,
+          section: 'identity',
+          message: `Profile requires field "${fieldPath}" which does not exist in AgentBOM schema v${agentbomVersion}`,
+        });
+        mappingUpdates.push({
+          type: 'breaking',
+          profile_section: 'identity',
+          description: `Field "${fieldPath}" does not exist in schema v${agentbomVersion}`,
+          action: `Remove "${fieldName}" from identity.required_fields or map it to an equivalent field`,
+        });
+      } else if (descriptor.removed_in) {
+        breaking.push({
+          field: fieldPath,
+          section: 'identity',
+          message: `Profile requires field "${fieldPath}" which was removed in schema v${descriptor.removed_in}`,
+        });
+        mappingUpdates.push({
+          type: 'breaking',
+          profile_section: 'identity',
+          description: `Field "${fieldPath}" was removed in schema v${descriptor.removed_in}`,
+          action: `Remove "${fieldName}" from identity.required_fields or update the mapping to an equivalent field`,
+        });
+      }
+    }
+  }
+
+  // --- Check attestation rules ---
+  const attestationRules = profile.rules.attestation;
+  if (attestationRules?.requires_signature) {
+    const sigField = fieldSet.get('attestation.signature');
+    if (!sigField) {
+      breaking.push({
+        field: 'attestation.signature',
+        section: 'attestation',
+        message: `Profile requires attestation.signature but it does not exist in AgentBOM schema v${agentbomVersion}`,
+      });
+      mappingUpdates.push({
+        type: 'breaking',
+        profile_section: 'attestation',
+        description: `attestation.signature does not exist in schema v${agentbomVersion}`,
+        action: 'Disable requires_signature or update to the replacement attestation mechanism',
+      });
+    } else if (sigField.removed_in) {
+      breaking.push({
+        field: 'attestation.signature',
+        section: 'attestation',
+        message: `Profile requires attestation.signature which was removed in schema v${sigField.removed_in}`,
+      });
+      mappingUpdates.push({
+        type: 'breaking',
+        profile_section: 'attestation',
+        description: `attestation.signature was removed in schema v${sigField.removed_in}`,
+        action: 'Disable requires_signature or update to the replacement attestation mechanism',
+      });
+    }
+  }
+
+  if (attestationRules?.requires_timestamp) {
+    const tsField = fieldSet.get('attestation.timestamp');
+    if (!tsField) {
+      breaking.push({
+        field: 'attestation.timestamp',
+        section: 'attestation',
+        message: `Profile requires attestation.timestamp but it does not exist in AgentBOM schema v${agentbomVersion}`,
+      });
+      mappingUpdates.push({
+        type: 'breaking',
+        profile_section: 'attestation',
+        description: `attestation.timestamp does not exist in schema v${agentbomVersion}`,
+        action: 'Disable requires_timestamp or update to the replacement timestamp mechanism',
+      });
+    } else if (tsField.removed_in) {
+      breaking.push({
+        field: 'attestation.timestamp',
+        section: 'attestation',
+        message: `Profile requires attestation.timestamp which was removed in schema v${tsField.removed_in}`,
+      });
+      mappingUpdates.push({
+        type: 'breaking',
+        profile_section: 'attestation',
+        description: `attestation.timestamp was removed in schema v${tsField.removed_in}`,
+        action: 'Disable requires_timestamp or update to the replacement timestamp mechanism',
+      });
+    }
+  }
+
+  // --- Check tool_layer rules ---
+  const toolRules = profile.rules.tool_layer;
+  if (toolRules) {
+    if (!fieldSet.has('tool_layer')) {
+      breaking.push({
+        field: 'tool_layer',
+        section: 'tool_layer',
+        message: `Profile has tool_layer rules but tool_layer does not exist in AgentBOM schema v${agentbomVersion}`,
+      });
+      mappingUpdates.push({
+        type: 'breaking',
+        profile_section: 'tool_layer',
+        description: `tool_layer section does not exist in schema v${agentbomVersion}`,
+        action: 'Remove tool_layer rules or map them to the replacement section in the new schema',
+      });
+    } else {
+      if (toolRules.blocked_permissions?.length && !fieldSet.get('tool_layer[].permissions')) {
+        breaking.push({
+          field: 'tool_layer[].permissions',
+          section: 'tool_layer',
+          message: `Profile checks tool permissions but tool_layer[].permissions does not exist in schema v${agentbomVersion}`,
+        });
+        mappingUpdates.push({
+          type: 'breaking',
+          profile_section: 'tool_layer',
+          description: `tool_layer[].permissions does not exist in schema v${agentbomVersion}`,
+          action: 'Remove blocked_permissions rules or map to the new permissions field',
+        });
+      }
+      if (toolRules.blocked_sources?.length && !fieldSet.get('tool_layer[].source')) {
+        breaking.push({
+          field: 'tool_layer[].source',
+          section: 'tool_layer',
+          message: `Profile checks tool sources but tool_layer[].source does not exist in schema v${agentbomVersion}`,
+        });
+        mappingUpdates.push({
+          type: 'breaking',
+          profile_section: 'tool_layer',
+          description: `tool_layer[].source does not exist in schema v${agentbomVersion}`,
+          action: 'Remove blocked_sources rules or map to the new source field',
+        });
+      }
+      if (toolRules.max_severity && !fieldSet.get('tool_layer[].risk_signals')) {
+        breaking.push({
+          field: 'tool_layer[].risk_signals',
+          section: 'tool_layer',
+          message: `Profile checks tool severity but tool_layer[].risk_signals does not exist in schema v${agentbomVersion}`,
+        });
+        mappingUpdates.push({
+          type: 'breaking',
+          profile_section: 'tool_layer',
+          description: `tool_layer[].risk_signals does not exist in schema v${agentbomVersion}`,
+          action: 'Remove max_severity rule or map to the new risk signal field',
+        });
+      }
+    }
+  }
+
+  // --- Check risk_layer rules ---
+  const riskRules = profile.rules.risk_layer;
+  if (riskRules) {
+    if (!fieldSet.has('risk_layer')) {
+      breaking.push({
+        field: 'risk_layer',
+        section: 'risk_layer',
+        message: `Profile has risk_layer rules but risk_layer does not exist in AgentBOM schema v${agentbomVersion}`,
+      });
+      mappingUpdates.push({
+        type: 'breaking',
+        profile_section: 'risk_layer',
+        description: `risk_layer section does not exist in schema v${agentbomVersion}`,
+        action: 'Remove risk_layer rules or map them to the replacement section in the new schema',
+      });
+    } else {
+      if (riskRules.requires_mitigation_for?.length && !fieldSet.get('risk_layer[].status')) {
+        breaking.push({
+          field: 'risk_layer[].status',
+          section: 'risk_layer',
+          message: `Profile checks risk status but risk_layer[].status does not exist in schema v${agentbomVersion}`,
+        });
+        mappingUpdates.push({
+          type: 'breaking',
+          profile_section: 'risk_layer',
+          description: `risk_layer[].status does not exist in schema v${agentbomVersion}`,
+          action: 'Remove requires_mitigation_for rules or map to the new status field',
+        });
+      }
+    }
+  }
+
+  // --- Coverage gaps: schema sections not covered by profile rules ---
+  const coveredSections = new Set<string>();
+  if (profile.rules.identity) coveredSections.add('identity');
+  if (profile.rules.tool_layer) coveredSections.add('tool_layer');
+  if (profile.rules.risk_layer) coveredSections.add('risk_layer');
+  if (profile.rules.attestation) coveredSections.add('attestation');
+
+  const governableSections = [
+    'model_layer',
+    'prompt_layer',
+    'permission_layer',
+    'policy_definitions',
+    'evidence_layer',
+    'audit_log',
+    'workflow_layer',
+    'distribution',
+  ];
+
+  for (const section of governableSections) {
+    const desc = fieldSet.get(section);
+    if (!coveredSections.has(section) && desc) {
+      gaps.push({
+        path: section,
+        description: desc.description,
+      });
+      mappingUpdates.push({
+        type: 'optional',
+        profile_section: section,
+        description: `Schema includes "${section}" section (${desc.description}) not covered by any profile rule`,
+        action: `Consider adding a "${section}" rule section to the profile to govern ${desc.description.toLowerCase()}`,
+      });
+    }
+  }
+
+  return {
+    compatible: breaking.length === 0,
+    profile_version: profile.profile_version ?? 'unknown',
+    agentbom_version: agentbomVersion,
+    breaking,
+    gaps,
+    mapping_updates: mappingUpdates,
+  };
+}
+
+// --- Automated Profile Mapping Upgrade ---
+
+/** Result of automatically upgrading a compliance profile's mappings. */
+export interface ProfileUpgradeResult {
+  /** Whether any breaking-change fixes were applied. */
+  changes_applied: boolean;
+  /** The upgraded profile with breaking mappings resolved. */
+  upgraded_profile: CompatibilityProfileInput;
+  /** Compatibility check performed *before* the upgrade. */
+  compatibility: ProfileCompatibilityResult;
+  /** Human-readable descriptions of each auto-applied fix. */
+  applied_updates: string[];
+  /** Mapping updates that could not be auto-resolved (need manual review). */
+  unresolved: MappingUpdate[];
+}
+
+/**
+ * Automatically upgrade a compliance profile's mappings to be compatible with
+ * a target AgentBOM schema version.
+ *
+ * Runs `checkProfileSchemaCompatibility` and then resolves every breaking issue
+ * that has a known automated fix:
+ *
+ * - `identity.required_fields` referencing removed/deprecated fields → removed
+ * - `attestation.requires_signature` when `attestation.signature` gone → `false`
+ * - `attestation.requires_timestamp` when `attestation.timestamp` gone → `false`
+ * - `tool_layer` rules when the section itself is removed → cleared
+ * - `tool_layer.blocked_permissions` when `tool_layer[].permissions` gone → `[]`
+ * - `tool_layer.blocked_sources` when `tool_layer[].source` gone → `[]`
+ * - `tool_layer.max_severity` when `tool_layer[].risk_signals` gone → removed
+ * - `risk_layer` rules when the section itself is removed → cleared
+ * - `risk_layer.requires_mitigation_for` when `risk_layer[].status` gone → `[]`
+ *
+ * Returns the upgraded profile together with a summary of applied fixes and any
+ * issues that still require manual review.
+ */
+export function upgradeProfileMappings(
+  profile: CompatibilityProfileInput,
+  agentbomVersion: string,
+): ProfileUpgradeResult {
+  const compatibility = checkProfileSchemaCompatibility(profile, agentbomVersion);
+
+  if (compatibility.compatible) {
+    return {
+      changes_applied: false,
+      upgraded_profile: profile,
+      compatibility,
+      applied_updates: [],
+      unresolved: [],
+    };
+  }
+
+  // Deep-clone for mutation
+  const upgraded: CompatibilityProfileInput = JSON.parse(JSON.stringify(profile));
+  const applied: string[] = [];
+
+  const fields = getSchemaFieldDescriptors(agentbomVersion);
+  const fieldSet = new Map(fields.map((f) => [f.path, f]));
+
+  // --- Auto-resolve identity.required_fields ---
+  if (upgraded.rules.identity?.required_fields?.length) {
+    const before = upgraded.rules.identity.required_fields.length;
+    upgraded.rules.identity.required_fields = upgraded.rules.identity.required_fields.filter(
+      (fieldName: string) => {
+        const descriptor = fieldSet.get(`identity.${fieldName}`);
+        return descriptor && !descriptor.removed_in;
+      },
+    );
+    const removed = before - upgraded.rules.identity.required_fields.length;
+    if (removed > 0) {
+      applied.push(
+        `identity.required_fields: removed ${removed} reference(s) to non-existent fields`,
+      );
+    }
+  }
+
+  // --- Auto-resolve attestation rules ---
+  if (upgraded.rules.attestation?.requires_signature) {
+    const sigField = fieldSet.get('attestation.signature');
+    if (!sigField || sigField.removed_in) {
+      upgraded.rules.attestation.requires_signature = false;
+      applied.push('attestation.requires_signature: set to false (field removed from schema)');
+    }
+  }
+
+  if (upgraded.rules.attestation?.requires_timestamp) {
+    const tsField = fieldSet.get('attestation.timestamp');
+    if (!tsField || tsField.removed_in) {
+      upgraded.rules.attestation.requires_timestamp = false;
+      applied.push('attestation.requires_timestamp: set to false (field removed from schema)');
+    }
+  }
+
+  // --- Auto-resolve tool_layer rules ---
+  if (upgraded.rules.tool_layer) {
+    if (!fieldSet.has('tool_layer')) {
+      upgraded.rules.tool_layer = undefined;
+      applied.push('tool_layer: cleared all rules (section removed from schema)');
+    } else {
+      if (
+        upgraded.rules.tool_layer.blocked_permissions?.length &&
+        !fieldSet.get('tool_layer[].permissions')
+      ) {
+        upgraded.rules.tool_layer.blocked_permissions = [];
+        applied.push(
+          'tool_layer.blocked_permissions: cleared (tool_layer[].permissions removed from schema)',
+        );
+      }
+      if (
+        upgraded.rules.tool_layer.blocked_sources?.length &&
+        !fieldSet.get('tool_layer[].source')
+      ) {
+        upgraded.rules.tool_layer.blocked_sources = [];
+        applied.push(
+          'tool_layer.blocked_sources: cleared (tool_layer[].source removed from schema)',
+        );
+      }
+      if (upgraded.rules.tool_layer.max_severity && !fieldSet.get('tool_layer[].risk_signals')) {
+        upgraded.rules.tool_layer.max_severity = undefined;
+        applied.push(
+          'tool_layer.max_severity: removed (tool_layer[].risk_signals removed from schema)',
+        );
+      }
+    }
+  }
+
+  // --- Auto-resolve risk_layer rules ---
+  if (upgraded.rules.risk_layer) {
+    if (!fieldSet.has('risk_layer')) {
+      upgraded.rules.risk_layer = undefined;
+      applied.push('risk_layer: cleared all rules (section removed from schema)');
+    } else if (
+      upgraded.rules.risk_layer.requires_mitigation_for?.length &&
+      !fieldSet.get('risk_layer[].status')
+    ) {
+      upgraded.rules.risk_layer.requires_mitigation_for = [];
+      applied.push(
+        'risk_layer.requires_mitigation_for: cleared (risk_layer[].status removed from schema)',
+      );
+    }
+  }
+
+  // Re-check to find anything still unresolved after auto-fixes
+  const afterCheck = checkProfileSchemaCompatibility(upgraded, agentbomVersion);
+  const unresolved: MappingUpdate[] = [];
+  for (const update of afterCheck.mapping_updates) {
+    if (update.type === 'breaking') {
+      unresolved.push(update);
+    }
+  }
+
+  return {
+    changes_applied: applied.length > 0,
+    upgraded_profile: upgraded,
+    compatibility,
+    applied_updates: applied,
+    unresolved,
+  };
+}
+
 // --- Continuous Trust Monitoring ---
 
 /** Severity levels for trust monitoring events. */

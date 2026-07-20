@@ -17,7 +17,11 @@ import { agentbomPipelineCommand } from './agentbom-pipeline.js';
 import { auditReportCommand } from './audit-report.js';
 import { generateAgentBOMCommand } from './bom-generate.js';
 import { chainCommand } from './chain.js';
-import { complianceCheckCommand } from './compliance-check.js';
+import {
+  complianceCheckCommand,
+  upgradeProfileCommand,
+  verifyProfileCommand,
+} from './compliance-check.js';
 import { exportDashboardCommand } from './export-dashboard.js';
 import { diffMCPPostureCommand } from './mcp-posture-diff.js';
 import { inspectMCPPostureCommand } from './mcp-posture-inspect.js';
@@ -53,6 +57,8 @@ const USAGE = [
   '  mcp-posture migrate <path> [--target <ver>] [--dry-run]  Migrate MCP Posture to target schema version',
   '  audit-report <bom.json>    Generate human-readable audit summary with evidence citations',
   '  compliance-check <bom.json> --profile <name> [--min-score <score>]  Validate AgentBOM against compliance profile with adaptive weighted scoring',
+  '  compliance-verify-profile <profile-id> [--schema-version <ver>]  Check profile backward compatibility against AgentBOM schema',
+  '  compliance-upgrade-profile <profile-id> [--schema-version <ver>] [--dry-run]  Auto-resolve breaking mapping changes in a compliance profile',
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
   '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
   '  subscribe <agent-id> --baseline <path> [--watch <dir>] [--callback <url>] [--interval <s>] [--once]  Monitor trust artifact drift for an agent',
@@ -321,6 +327,14 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'compliance-check') {
     return complianceCheckCommand(args.slice(1));
+  }
+
+  if (args[0] === 'compliance-verify-profile') {
+    return verifyProfileCommand(args.slice(1));
+  }
+
+  if (args[0] === 'compliance-upgrade-profile') {
+    return upgradeProfileCommand(args.slice(1));
   }
 
   if (args[0] === 'export-dashboard') {
