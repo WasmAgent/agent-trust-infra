@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-20 09:51 UTC by patrol_
+_Last updated: 2026-07-20 09:59 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-20 09:51 UTC by patrol_
 
 ## Waiting for Human
 
+- #263: Fix WasmAgent/agent-trust-infra#262 ([milestone Milestone 6 ] `@wasmagent/trust-cli` npm publish with binary builds for 
 - #245: [milestone Milestone 9 ] Trust Passport schema: add `revocation` object with `revoked_at`, `revocation_re...
 
 ---
