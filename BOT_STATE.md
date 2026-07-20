@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-20 19:02 UTC by patrol_
+_Last updated: 2026-07-20 20:51 UTC by patrol_
 
 ## Queue
 
@@ -9,17 +9,17 @@ _Last updated: 2026-07-20 19:02 UTC by patrol_
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 3 |
-| Completed/Merged (all time) | 1230 |
+| Completed/Merged (all time) | 1231 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #277 | [milestone Milestone 6 ] @wasmagent/trust-cli npm publish... | completed/complexity_gate_split | 2026-07-20 |
 | #276 | [milestone Milestone 6 ] @wasmagent/trust-cli npm publish... | completed/complexity_gate_split | 2026-07-20 |
 | #272 | chore: add lint and typecheck to .claude-bot/verify.yml | merged/merged | 2026-07-20 |
 | #271 | [milestone Milestone 6 ] `@wasmagent/trust-cli` npm publi... | completed/complexity_gate_split | 2026-07-20 |
 | #270 | [milestone Milestone 6 ] `@wasmagent/trust-cli` npm publi... | completed/complexity_gate_split | 2026-07-20 |
-| #269 | [milestone Milestone 6 ] @wasmagent/trust-cli npm publish... | completed/complexity_gate_split | 2026-07-20 |
 
 ## Waiting for Human
 
