@@ -8,6 +8,14 @@ commands:
     cmd: npm run build
     timeout: 3m
     level: 1
+  - name: typecheck
+    cmd: npm run typecheck
+    timeout: 3m
+    level: 2
+  - name: lint
+    cmd: npm run lint
+    timeout: 2m
+    level: 2
   - name: test
     cmd: npm test
     timeout: 3m
