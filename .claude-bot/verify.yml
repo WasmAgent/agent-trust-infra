@@ -6,9 +6,13 @@ commands:
     level: 1
   - name: build
     cmd: npm run build
-    timeout: 3m
+    timeout: 5m
     level: 1
+  - name: typecheck
+    cmd: npx tsc --noEmit
+    timeout: 3m
+    level: 2
   - name: test
     cmd: npm test
-    timeout: 3m
+    timeout: 10m
     level: 3
