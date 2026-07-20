@@ -259,6 +259,15 @@
         }
       }
     },
+    "verification_endpoint": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional URL for real-time posture verification. Must use HTTPS scheme. Supports token-based authentication (Bearer token in Authorization header). Called with POST method; tokens are managed separately by the verification system.",
+      "pattern": "^https://.+",
+      "examples": [
+        "https://verification.trust.example.com/posture/check"
+      ]
+    },
     "attestation": {
       "type": "object",
       "required": [
