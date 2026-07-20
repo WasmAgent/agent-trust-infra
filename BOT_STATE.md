@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-20 09:04 UTC by patrol_
+_Last updated: 2026-07-20 09:34 UTC by patrol_
 
 ## Queue
 
@@ -8,18 +8,18 @@ _Last updated: 2026-07-20 09:04 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
-| Blocked | 2 |
-| Completed/Merged (all time) | 1219 |
+| Blocked | 3 |
+| Completed/Merged (all time) | 1220 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #262 | [milestone Milestone 6 ] `@wasmagent/trust-cli` npm publi... | completed/complexity_gate_split | 2026-07-20 |
 | #247 | [milestone Milestone 9 ] Registry service reference imple... | merged/merged | 2026-07-20 |
 | #246 | [milestone Milestone 9 ] `trust-cli verify-chain <passpor... | merged/merged | 2026-07-20 |
 | #252 | [milestone Milestone 9 ] Compliance framework integration... | merged/merged | 2026-07-20 |
 | #251 | Fix WasmAgent/agent-trust-infra#243 ([milestone Milestone... | merged/auto_closed_resolved | 2026-07-20 |
-| #250 | Fix WasmAgent/agent-trust-infra#244 ([milestone Milestone... | merged/merged | 2026-07-20 |
 
 ## Waiting for Human
 
