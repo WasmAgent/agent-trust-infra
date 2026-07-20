@@ -1,5 +1,5 @@
 {
-  "name": "@wasmagent/agent-trust-cli",
+  "name": "@wasmagent/trust-cli",
   "version": "0.0.0-research",
   "description": "CLI for Agent Trust Infrastructure — experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
   "type": "module",
@@ -8,7 +8,7 @@
     "agent-trust": "./dist/index.js",
     "trust-cli": "./dist/index.js"
   },
-  "files": ["dist/"],
+  "files": ["dist/", "scripts/", "README.md"],
   "keywords": [
     "agent-trust",
     "agentbom",
@@ -30,6 +30,10 @@
   "engines": {
     "node": ">=18.0.0"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "dependencies": {
     "@wasmagent/aep": "^1.8.0",
     "@wasmagent/agentbom-core": "workspace:*",
@@ -37,7 +41,13 @@
     "@wasmagent/trust-passport-core": "workspace:*"
   },
   "scripts": {
-    "build": "mkdir -p dist && bun build ./src/index.ts --target node --outfile dist/index.js && sed -i '1s|#!/usr/bin/env bun|#!/usr/bin/env node|' dist/index.js",
+    "build": "mkdir -p dist && bun build ./src/index.ts --target node --outfile dist/index.js && node scripts/fix-shebang.mjs dist/index.js",
+    "build:binary:linux-x64": "bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile dist/trust-cli-linux-x64",
+    "build:binary:linux-arm64": "bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile dist/trust-cli-linux-arm64",
+    "build:binary:darwin-x64": "bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile dist/trust-cli-darwin-x64",
+    "build:binary:darwin-arm64": "bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile dist/trust-cli-darwin-arm64",
+    "build:binary:win32-x64": "bun build --compile --target=bun-windows-x64 ./src/index.ts --outfile dist/trust-cli-win32-x64.exe",
+    "build:binaries": "bun run build:binary:linux-x64 && bun run build:binary:linux-arm64 && bun run build:binary:darwin-x64 && bun run build:binary:darwin-arm64 && bun run build:binary:win32-x64",
     "prepack": "bun run build",
     "test": "bun test src/",
     "typecheck": "echo 'typecheck: stub'"

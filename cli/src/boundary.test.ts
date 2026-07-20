@@ -21,7 +21,7 @@ const PACKAGES_DIR = resolve(__dirname, '../../packages');
 const REPO_ROOT = resolve(__dirname, '../..');
 
 /** Import specifiers that would mean a package depends on the CLI layer. */
-const FORBIDDEN_SPECIFIERS = ['@wasmagent/agent-trust-cli'];
+const FORBIDDEN_SPECIFIERS = ['@wasmagent/agent-trust-cli', '@wasmagent/trust-cli'];
 
 function listTsFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
@@ -82,6 +82,7 @@ describe('package boundary: packages/ must not depend on cli/', () => {
     const pkgFile = resolve(PACKAGES_DIR, 'agentbom-core/src/index.ts');
     expect(reachesCli('../../cli/src/index.js', pkgFile)).toBe(true);
     expect(reachesCli('@wasmagent/agent-trust-cli', pkgFile)).toBe(true);
+    expect(reachesCli('@wasmagent/trust-cli', pkgFile)).toBe(true);
     expect(reachesCli('ajv', pkgFile)).toBe(false);
     expect(reachesCli('node:fs', pkgFile)).toBe(false);
   });
