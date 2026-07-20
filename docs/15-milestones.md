@@ -87,7 +87,7 @@ Begins when research preview graduates to production. **No Trust Passport work h
 - [ ] MCP Posture schema: add `verification_endpoint` field specifying URL for real-time posture verification with token-based authentication
 - [ ] Trust Passport schema: add `revocation` object with `revoked_at`, `revocation_reason`, and `revoking_authority` fields for trust chain invalidation
 - [ ] `trust-cli verify-chain <passport.jwt> --depth N` — performs recursive trust chain verification with configurable depth and caching for multi-hop trust relationships
-- [ ] Registry service reference implementation with REST API for artifact publish/pull, query by agent identity, and GCAS-based deduplication
+- [x] Registry service reference implementation with REST API for artifact publish/pull, query by agent identity, and GCAS-based deduplication — Go service at `cmd/registry-service/` with `net/http` stdlib (issue #247)
 - [ ] `trust-cli diff <artifact-a.json> <artifact-b.json>` — generates structured diff report for trust artifacts highlighting permission changes, tool additions, and policy modifications
 - [ ] Compliance framework integration: automated mapping updates when AgentBOM schema evolves, with backward compatibility checking for existing compliance profiles
 - [ ] `trust-cli audit-stream <agent-identity>` — continuous audit log streaming with real-time compliance violation detection and alerting integration
