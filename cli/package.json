@@ -3,11 +3,12 @@
   "version": "0.0.0-research",
   "description": "CLI for Agent Trust Infrastructure — experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
   "type": "module",
+  "main": "./dist/index.js",
   "bin": {
-    "agent-trust": "./src/index.ts",
-    "trust-cli": "./src/index.ts"
+    "agent-trust": "./dist/index.js",
+    "trust-cli": "./dist/index.js"
   },
-  "files": ["src/"],
+  "files": ["dist/"],
   "keywords": [
     "agent-trust",
     "agentbom",
@@ -36,7 +37,8 @@
     "@wasmagent/trust-passport-core": "workspace:*"
   },
   "scripts": {
-    "build": "echo 'build: stub'",
+    "build": "mkdir -p dist && bun build ./src/index.ts --target node --outfile dist/index.js && sed -i '1s|#!/usr/bin/env bun|#!/usr/bin/env node|' dist/index.js",
+    "prepack": "bun run build",
     "test": "bun test src/",
     "typecheck": "echo 'typecheck: stub'"
   }
