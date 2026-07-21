@@ -1,5 +1,13 @@
 # Agent Trust Infrastructure
 
+| | |
+|---|---|
+| **Status** | Research Preview |
+| **Contract stability** | Evolving |
+| **Recommended for** | Compliance researchers, spec implementers, conformance testing |
+| **Not recommended for** | Production deployments; compliance certification claims |
+
+
 Public research preview for Agent Trust Infrastructure: shipped AgentBOM, MCP Posture, and Trust Passport specifications for auditable AI agents.
 
 > **Status: experimental research preview — AgentBOM, MCP Posture, Trust Passport, and the end-to-end trust-chain demo are shipped.**
