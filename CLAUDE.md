@@ -65,7 +65,7 @@ downstream.
 ### This repository owns
 - AgentBOM specification and JSON schema (`specs/agentbom/`)
 - MCP Posture specification and risk taxonomy (`specs/mcp-posture/`)
-- Trust Passport specification (`specs/trust-passport/`)
+- Trust Passport specification (`specs/trust-passport/`) — **frozen; ownership migrated to `open-agent-audit`**
 - Compliance profiles (`profiles/`)
 - Active reference implementations: `agentbom-core`, `mcp-posture-core`
 - CLI validator (`cli/`)
@@ -77,14 +77,14 @@ downstream.
 | AEP schema, AEP emitter, runtime evidence signing | `wasmagent-js` (`@wasmagent/aep`) |
 | MCP traffic filtering, capability attestation | `wasmagent-js` (`@wasmagent/mcp-gateway`, `@wasmagent/mcp-attestation`) |
 | Audit report generation, regulatory control mapping (OWASP/EU AI Act/NIST/ISO) | `open-agent-audit` |
-| Trust Passport product: issuance, renewal, revocation | `open-agent-audit` (`@openagentaudit/passport`) |
+| Trust Passport specification and product (issuance, renewal, revocation) | `open-agent-audit` (`@openagentaudit/passport`) |
 | Evidence admission, benchmark claim audit, training data pipeline | `trace-pipeline` |
 | Dynamic evaluation protocol (FAEP) | `fresharena` |
 
 ### Allowed cross-repo patterns
 - Specs in `specs/` define canonical schemas; downstream packages implement and consume them.
 - Consume AEP records via `@wasmagent/aep` — never redefine the AEP schema here.
-- Reference Trust Passport issuance via `@openagentaudit/passport` — not a local reimplementation.
+- Trust Passport specification has migrated to `open-agent-audit`; the `specs/trust-passport/` directory here is frozen. Consume via `@openagentaudit/passport`.
 - Conformance fixtures may be referenced by any repo for compliance testing.
 - New public specs require: external review, at least one independent consumer, and explicit versioning policy.
 
