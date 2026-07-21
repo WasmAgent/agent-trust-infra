@@ -30,6 +30,7 @@ import { inspectPassportCommand } from './passport-inspect.js';
 import { signPassportCommand } from './passport-sign.js';
 import { validatePassportCommand } from './passport-validate.js';
 import { verifySignedPassportCommand } from './passport-verify-signed.js';
+import { reportCommand } from './regulatory-report.js';
 import { verifySigstoreCommand } from './sigstore-verify.js';
 import { trustDiffCommand } from './trust-diff.js';
 import { publishCommand } from './trust-publish.js';
@@ -69,6 +70,7 @@ const USAGE = [
   '  pull <artifact-id> [--registry <dir>] [--output <path>] [--with-deps]  Retrieve trust artifact from registry with integrity verification',
   '  diff <artifact-a.json> <artifact-b.json> [--json]  Structured diff of trust artifacts (auto-detects type)',
   '  verify-chain <passport.jwt> --depth N [--key <pubkey>] [--registry <dir>]  Recursive trust chain verification with configurable depth and caching',
+  '  report <bom.json> --framework <soc2|iso27001|ai-act> [--period <period>] [--format text|json] [--evidence-level summary|detailed]  Generate compliance-ready regulatory report with evidence citations',
 ].join('\n');
 
 /** Parse --target and --dry-run flags from a CLI arg slice. */
@@ -786,6 +788,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'verify-chain') {
     return verifyChainCommand(args.slice(1));
+  }
+
+  if (args[0] === 'report') {
+    return reportCommand(args.slice(1));
   }
 
   console.error(`Error: unknown command "${args[0]}"`);
