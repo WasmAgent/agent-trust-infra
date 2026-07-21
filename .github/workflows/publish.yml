@@ -1,121 +1,21 @@
-name: Publish
+name: Incubation release boundary
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  id-token: write
+  contents: read
 
 jobs:
-  build-binaries:
-    name: Build binaries
+  boundary:
+    name: Publishing disabled in incubation repo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build JS bundle
-        run: bun run build
-        working-directory: cli
-
-      - name: Build Linux x64 binary
-        run: bun run build:binary:linux-x64
-        working-directory: cli
-
-      - name: Build Linux arm64 binary
-        run: bun run build:binary:linux-arm64
-        working-directory: cli
-
-      - name: Build macOS x64 binary
-        run: bun run build:binary:darwin-x64
-        working-directory: cli
-
-      - name: Build macOS arm64 binary
-        run: bun run build:binary:darwin-arm64
-        working-directory: cli
-
-      - name: Build Windows x64 binary
-        run: bun run build:binary:win32-x64
-        working-directory: cli
-
-      - name: Upload CLI bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-bundle
-          path: cli/dist/index.js
-          retention-days: 1
-
-      - name: Upload binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-binaries
-          path: |
-            cli/dist/trust-cli-linux-x64
-            cli/dist/trust-cli-linux-arm64
-            cli/dist/trust-cli-darwin-x64
-            cli/dist/trust-cli-darwin-arm64
-            cli/dist/trust-cli-win32-x64.exe
-          retention-days: 1
-
-  publish-npm:
-    name: Publish to npm
-    needs: build-binaries
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Download CLI bundle
-        uses: actions/download-artifact@v4
-        with:
-          name: cli-bundle
-          path: cli/dist/
-
-      - name: Publish to npm
-        uses: JS-DevTools/npm-publish@v3
-        with:
-          package: cli/package.json
-          token: ${{ secrets.NPM_TOKEN }}
-          prove-ownership: false
-
-  create-release:
-    name: Create GitHub Release
-    needs: [build-binaries, publish-npm]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download binaries
-        uses: actions/download-artifact@v4
-        with:
-          name: cli-binaries
-          path: cli/dist/
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Explain release boundary
         run: |
-          TAG="${GITHUB_REF#refs/tags/}"
-          gh release create "$TAG" \
-            cli/dist/trust-cli-linux-x64 \
-            cli/dist/trust-cli-linux-arm64 \
-            cli/dist/trust-cli-darwin-x64 \
-            cli/dist/trust-cli-darwin-arm64 \
-            cli/dist/trust-cli-win32-x64.exe \
-            --title "@wasmagent/trust-cli ${TAG}" \
-            --notes "Automated release for ${TAG}. AgentBOM and MCP Posture CLI binaries for Linux, macOS, and Windows."
+          echo "npm and binary publishing are disabled in agent-trust-infra."
+          echo "This repository incubates specs and prototypes only."
+          echo "AgentBOM CLI release moves to WasmAgent/agentbom after schema stabilization."
+          echo "MCP Posture CLI release moves to WasmAgent/wasmagent-js after runtime scanning primitives stabilize."

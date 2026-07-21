@@ -18,6 +18,7 @@ This document defines what belongs in this repository and what belongs elsewhere
 
 - Trustavo production SaaS backend
 - Production passport issuance and verification service
+- Direct npm package publishing or binary release automation
 - `open-agent-audit` stable audit engine
 - `wasmagent-js` runtime code
 - Private customer data
@@ -52,3 +53,9 @@ Trust Passport is expected to become a Trustavo product module only after its sc
 MCP Posture may feed Trustavo dashboards and reports in the future, but runtime scanning primitives should be owned by `wasmagent-js`.
 
 AgentBOM may become a standalone specification repository if the schema stabilizes and external adoption or standardization needs emerge.
+
+## CLI release migration path
+
+This repository may keep reference CLI prototypes for local validation, examples, and demos, but it must not publish `@wasmagent/trust-cli` or attach production binaries from this incubation repo.
+
+AgentBOM CLI release automation belongs in a standalone `WasmAgent/agentbom` repository after the AgentBOM schema stabilizes. MCP Posture CLI release automation belongs in `WasmAgent/wasmagent-js` after runtime scanning primitives stabilize.

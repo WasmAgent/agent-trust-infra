@@ -89,7 +89,7 @@ The following items are **cancelled** for this repo (implement in open-agent-aud
 
 ### Phase 6 — Production hardening (when research preview graduates)
 
-- [ ] `@wasmagent/trust-cli` npm publish with binary builds (Linux/macOS/Windows) — AgentBOM/MCP Posture CLI only; Trust Passport CLI moves to open-agent-audit
+- [x] ~~`@wasmagent/trust-cli` npm publish with binary builds (Linux/macOS/Windows)~~ — disabled for this incubation repo; AgentBOM CLI release moves to standalone `WasmAgent/agentbom` after schema stabilization, and MCP Posture CLI release moves to `wasmagent-js` after runtime scanning primitives stabilize.
 - ~~`@wasmagent/trust-runtime` npm publish~~ — frozen; implement in open-agent-audit
 - ~~Renewal and revocation model for Trust Passport~~ — implement in open-agent-audit (see [#52](https://github.com/WasmAgent/open-agent-audit/issues/52)–[#54](https://github.com/WasmAgent/open-agent-audit/issues/54))
 - ~~Trust Passport integration with `open-agent-audit` audit report pipeline~~ — Trust Passport product lives in open-agent-audit directly
