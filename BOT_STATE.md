@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-21 07:57 UTC by patrol_
+_Last updated: 2026-07-21 07:59 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 6 |
+| Pending | 5 |
 | Active (running/reviewing) | 1 |
-| Blocked | 2 |
+| Blocked | 3 |
 | Completed/Merged (all time) | 1255 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-21 07:57 UTC by patrol_
 
 ## Waiting for Human
 
+- #314: Fix WasmAgent/agent-trust-infra#304 ([milestone Milestone 10] **Graduated Staging Environments** — staging/promotion p
 - #313: Fix WasmAgent/agent-trust-infra#305 ([milestone Milestone 10] **Legacy Agent Migration Tooling** — trust artifact gene
 - #310: Fix WasmAgent/agent-trust-infra#299 ([milestone Milestone 10] **Multi-Tenant Isolation** — secure storage that keeps e
 - #309: Fix WasmAgent/agent-trust-infra#300 ([milestone Milestone 10] **Operational Observability Stack** — Prometheus metrics
