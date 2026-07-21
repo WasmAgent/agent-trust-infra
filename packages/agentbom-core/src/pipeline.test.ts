@@ -364,7 +364,9 @@ describe('PartitionedArtifactQueue', () => {
 describe('BOMProcessingPipeline', () => {
   it('processes a stream of valid BOMs', async () => {
     const results: ArtifactResult[] = [];
-    const pipeline = new BOMProcessingPipeline({}, (r) => results.push(r));
+    const pipeline = new BOMProcessingPipeline({}, (r) => {
+      results.push(r);
+    });
 
     async function* source(): AsyncGenerator<BOMArtifact> {
       yield { id: 'a', data: VALID_BOM, partitionKey: '0', sizeBytes: 100 };
@@ -380,7 +382,9 @@ describe('BOMProcessingPipeline', () => {
 
   it('counts validation errors', async () => {
     const results: ArtifactResult[] = [];
-    const pipeline = new BOMProcessingPipeline({}, (r) => results.push(r));
+    const pipeline = new BOMProcessingPipeline({}, (r) => {
+      results.push(r);
+    });
 
     async function* source(): AsyncGenerator<BOMArtifact> {
       yield { id: 'valid', data: VALID_BOM, partitionKey: '0', sizeBytes: 100 };
@@ -408,7 +412,9 @@ describe('BOMProcessingPipeline', () => {
 
   it('distributes work across partitions', async () => {
     const results: ArtifactResult[] = [];
-    const pipeline = new BOMProcessingPipeline({ partitionCount: 2 }, (r) => results.push(r));
+    const pipeline = new BOMProcessingPipeline({ partitionCount: 2 }, (r) => {
+      results.push(r);
+    });
 
     async function* source(): AsyncGenerator<BOMArtifact> {
       yield { id: 'a', data: VALID_BOM, partitionKey: '0', sizeBytes: 100 };
@@ -434,7 +440,9 @@ describe('BOMProcessingPipeline', () => {
 
   it('includes validation error details in results', async () => {
     const results: ArtifactResult[] = [];
-    const pipeline = new BOMProcessingPipeline({}, (r) => results.push(r));
+    const pipeline = new BOMProcessingPipeline({}, (r) => {
+      results.push(r);
+    });
 
     async function* source(): AsyncGenerator<BOMArtifact> {
       yield { id: 'bad', data: INVALID_BOM, partitionKey: '0', sizeBytes: 50 };
@@ -461,7 +469,9 @@ describe('BOMProcessingPipeline', () => {
 
   it('works with synchronous iterables', async () => {
     const results: ArtifactResult[] = [];
-    const pipeline = new BOMProcessingPipeline({}, (r) => results.push(r));
+    const pipeline = new BOMProcessingPipeline({}, (r) => {
+      results.push(r);
+    });
 
     const artifacts: BOMArtifact[] = [
       { id: 'a', data: VALID_BOM, partitionKey: '0', sizeBytes: 100 },
@@ -480,7 +490,9 @@ describe('backpressure behavior', () => {
     const results: ArtifactResult[] = [];
     const pipeline = new BOMProcessingPipeline(
       { maxMemoryBytes: 1 }, // 1 byte — triggers backpressure on every artifact
-      (r) => results.push(r),
+      (r) => {
+        results.push(r);
+      },
     );
 
     async function* source(): AsyncGenerator<BOMArtifact> {

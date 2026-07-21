@@ -22,7 +22,7 @@
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.65.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.9.0"
   },
   "dependencies": {
     "@wasmagent/aep": "^1.8.0"
