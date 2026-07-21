@@ -38,7 +38,8 @@
     "@wasmagent/aep": "^1.8.0",
     "@wasmagent/agentbom-core": "workspace:*",
     "@wasmagent/mcp-posture-core": "workspace:*",
-    "@wasmagent/trust-passport-core": "workspace:*"
+    "@wasmagent/trust-passport-core": "workspace:*",
+    "prom-client": "^15.1.0"
   },
   "scripts": {
     "build": "mkdir -p dist && bun build ./src/index.ts --target node --outfile dist/index.js && node scripts/fix-shebang.mjs dist/index.js",
