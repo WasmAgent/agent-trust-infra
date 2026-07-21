@@ -6,13 +6,18 @@ CLI for Agent Trust Infrastructure — AgentBOM generation, MCP Posture analysis
 > [main repo README](https://github.com/WasmAgent/agent-trust-infra) for the
 > full project overview.
 
-## Install
+## Local development
+
+This CLI is an experimental reference prototype in the `agent-trust-infra`
+incubation repo. It is not published to npm from this repository.
 
 ```sh
-npm install -g @wasmagent/trust-cli
+npm install --frozen-lockfile
+npm run build
+bun cli/src/index.ts <command> [args]
 ```
 
-Requires Node.js >= 18.
+Requires Node.js >= 18 and Bun.
 
 Two binary names are provided:
 
@@ -53,17 +58,16 @@ agent-trust compliance-check <artifact.json>  # Run compliance profile checks
 agent-trust chain                             # Run the full trust chain demo
 ```
 
-## Standalone binaries
+## Release boundary
 
-Pre-compiled standalone binaries are attached to each [GitHub Release](https://github.com/WasmAgent/agent-trust-infra/releases). Download the binary for your platform:
+This repository may keep reference CLI prototypes for local validation,
+examples, and demos, but direct npm publishing and production binary releases
+belong in target repositories after the relevant schemas and runtime scanning
+primitives stabilize.
 
-| Platform | Binary |
-|---|---|
-| Linux x64 | `trust-cli-linux-x64` |
-| Linux arm64 | `trust-cli-linux-arm64` |
-| macOS x64 | `trust-cli-darwin-x64` |
-| macOS arm64 (Apple Silicon) | `trust-cli-darwin-arm64` |
-| Windows x64 | `trust-cli-win32-x64.exe` |
+AgentBOM CLI release automation moves to standalone `WasmAgent/agentbom` after
+schema stabilization. MCP Posture CLI release automation moves to
+`WasmAgent/wasmagent-js` after runtime scanning primitives stabilize.
 
 ## License
 

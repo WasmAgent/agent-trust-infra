@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'bun:test';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   classifyDriftEvents,
   createDriftAlert,
@@ -7,6 +10,9 @@ import {
   formatDriftAlert,
   validateAgentBOM,
 } from './index.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = resolve(__dirname, '../../..');
 
 const VALID_AGENTBOM = {
   agentbom_version: '0.1',
@@ -18,6 +24,20 @@ const VALID_AGENTBOM = {
   },
   attestation: { generator: 'test' },
 };
+
+describe('repository boundary: incubation repo must not publish releases', () => {
+  it('keeps the publish workflow free of npm and binary release automation', () => {
+    const workflow = resolve(REPO_ROOT, '.github/workflows/publish.yml');
+    if (!existsSync(workflow)) return;
+
+    const src = readFileSync(workflow, 'utf-8');
+    expect(src).not.toContain('JS-DevTools/npm-publish');
+    expect(src).not.toContain('NPM_TOKEN');
+    expect(src).not.toContain('gh release create');
+    expect(src).not.toContain('build:binary');
+    expect(src).not.toContain('id-token: write');
+  });
+});
 
 describe('validateAgentBOM', () => {
   it('accepts valid AgentBOM', () => {
