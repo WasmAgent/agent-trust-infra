@@ -63,6 +63,7 @@ const USAGE = [
   '  compliance-upgrade-profile <profile-id> [--schema-version <ver>] [--dry-run]  Auto-resolve breaking mapping changes in a compliance profile',
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
   '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
+  '  enforce-policy <bom.json> --policy <policy.json> [--enforcement warn|block|quarantine] [--format json|text]  Validate agent artifacts against organization trust rules',
   '  subscribe <agent-id> --baseline <path> [--watch <dir>] [--callback <url>] [--interval <s>] [--once]  Monitor trust artifact drift for an agent',
   '  publish <artifact.json> [--registry <dir>] [--tag <tag>]  Publish trust artifact to registry with CAS identifier',
   '  pull <artifact-id> [--registry <dir>] [--output <path>] [--with-deps]  Retrieve trust artifact from registry with integrity verification',
@@ -210,6 +211,424 @@ function postureMigrateCommand(args: string[]): number {
   return 0;
 }
 
+// --- Policy enforcement engine (mirrors cmd/policy-engine/main.go) ---
+
+type EnforcementLevel = 'warn' | 'block' | 'quarantine';
+
+interface PolicyCondition {
+  path: string;
+  op: string;
+  value?: unknown;
+  values?: string[];
+}
+
+interface PolicyRule {
+  id: string;
+  description?: string;
+  effect: string;
+  when?: PolicyCondition;
+  assert?: PolicyCondition;
+  message?: string;
+  severity?: string;
+}
+
+interface PolicyDocument {
+  dsl_version?: string;
+  policy_set_id: string;
+  version: string;
+  rules: PolicyRule[];
+  includes?: PolicyDocument[];
+}
+
+interface RuleFinding {
+  policy_set_id?: string;
+  version?: string;
+  rule_id: string;
+  severity?: string;
+  description?: string;
+  message: string;
+}
+
+interface EvaluationResult {
+  policy_set_id: string;
+  version: string;
+  allowed: boolean;
+  violations: RuleFinding[];
+  warnings: RuleFinding[];
+  passed_rules: string[];
+  metadata: Record<string, number>;
+}
+
+const SUPPORTED_DSL_VERSION = '1.0';
+
+function scalarString(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+function appendScalarValues(values: string[], node: unknown): string[] {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      appendScalarValues(values, item);
+    }
+  } else if (typeof node === 'object' && node !== null) {
+    // nested object — not a scalar leaf
+  } else {
+    values.push(scalarString(node));
+  }
+  return values;
+}
+
+function appendArrayItems(items: unknown[], value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return items.concat(value);
+  }
+  return items;
+}
+
+function valuesAtPath(root: unknown, path: string): string[] {
+  if (!path) throw new Error('condition path is required');
+
+  let nodes: unknown[] = [root];
+  for (const segment of path.split('.')) {
+    if (!segment) throw new Error(`invalid empty path segment in "${path}"`);
+
+    const arrayMode = segment.endsWith('[]');
+    const key = segment.slice(0, -2);
+    const next: unknown[] = [];
+
+    for (const node of nodes) {
+      if (typeof node !== 'object' || node === null || Array.isArray(node)) continue;
+      const obj = node as Record<string, unknown>;
+      const value = obj[key];
+      if (value === undefined) continue;
+      if (arrayMode) {
+        appendArrayItems(next, value);
+      } else {
+        next.push(value);
+      }
+    }
+    nodes = next;
+  }
+
+  const values: string[] = [];
+  for (const node of nodes) {
+    appendScalarValues(values, node);
+  }
+  return values;
+}
+
+function anyValueIn(values: string[], expected: Set<string>): boolean {
+  for (const v of values) {
+    if (expected.has(v)) return true;
+  }
+  return false;
+}
+
+function allValuesIn(values: string[], expected: Set<string>): boolean {
+  for (const v of values) {
+    if (!expected.has(v)) return false;
+  }
+  return true;
+}
+
+function anyValueOutside(values: string[], expected: Set<string>): boolean {
+  for (const v of values) {
+    if (!expected.has(v)) return true;
+  }
+  return false;
+}
+
+function anyStringContains(values: string[], expected: Set<string>): boolean {
+  for (const v of values) {
+    for (const needle of expected) {
+      if (v.includes(needle)) return true;
+    }
+  }
+  return false;
+}
+
+function evaluateCondition(cond: PolicyCondition, artifact: unknown): boolean {
+  const values = valuesAtPath(artifact, cond.path);
+
+  const expected = cond.values ? new Set(cond.values) : null;
+  const singleValue = cond.value !== undefined ? scalarString(cond.value) : null;
+
+  switch (cond.op) {
+    case 'exists':
+      return values.length > 0;
+    case 'missing':
+      return values.length === 0;
+    case 'equals': {
+      const set = new Set<string>();
+      if (expected) for (const v of expected) set.add(v);
+      if (singleValue !== null) set.add(singleValue);
+      return anyValueIn(values, set);
+    }
+    case 'not_equals': {
+      const set = new Set<string>();
+      if (expected) for (const v of expected) set.add(v);
+      if (singleValue !== null) set.add(singleValue);
+      return values.length > 0 && !anyValueIn(values, set);
+    }
+    case 'in': {
+      const set = new Set<string>();
+      if (expected) for (const v of expected) set.add(v);
+      if (singleValue !== null) set.add(singleValue);
+      return values.length > 0 && allValuesIn(values, set);
+    }
+    case 'not_in': {
+      const set = new Set<string>();
+      if (expected) for (const v of expected) set.add(v);
+      if (singleValue !== null) set.add(singleValue);
+      return anyValueOutside(values, set);
+    }
+    case 'contains': {
+      const set = new Set<string>();
+      if (expected) for (const v of expected) set.add(v);
+      if (singleValue !== null) set.add(singleValue);
+      return anyStringContains(values, set);
+    }
+    case 'intersects': {
+      const set = new Set<string>();
+      if (expected) for (const v of expected) set.add(v);
+      if (singleValue !== null) set.add(singleValue);
+      return anyValueIn(values, set);
+    }
+    default:
+      throw new Error(`unsupported op "${cond.op}"`);
+  }
+}
+
+function composePolicyRules(
+  policy: PolicyDocument,
+): { policySetId: string; version: string; rule: PolicyRule }[] {
+  const rules: { policySetId: string; version: string; rule: PolicyRule }[] = [];
+  if (policy.includes) {
+    for (const included of policy.includes) {
+      rules.push(...composePolicyRules(included));
+    }
+  }
+  for (const rule of policy.rules) {
+    rules.push({ policySetId: policy.policy_set_id, version: policy.version, rule });
+  }
+  return rules;
+}
+
+function countPolicyDocuments(policy: PolicyDocument): number {
+  let count = 1;
+  if (policy.includes) {
+    for (const included of policy.includes) {
+      count += countPolicyDocuments(included);
+    }
+  }
+  return count;
+}
+
+function findingForRule(
+  composed: { policySetId: string; version: string; rule: PolicyRule },
+  fallback: string,
+): RuleFinding {
+  return {
+    policy_set_id: composed.policySetId,
+    version: composed.version,
+    rule_id: composed.rule.id,
+    severity: composed.rule.severity,
+    description: composed.rule.description,
+    message: composed.rule.message || fallback,
+  };
+}
+
+function evaluatePolicy(policy: PolicyDocument, artifact: unknown): EvaluationResult {
+  const rules = composePolicyRules(policy);
+  const result: EvaluationResult = {
+    policy_set_id: policy.policy_set_id,
+    version: policy.version,
+    allowed: true,
+    violations: [],
+    warnings: [],
+    passed_rules: [],
+    metadata: {
+      policy_sets_composed: countPolicyDocuments(policy),
+      rules_evaluated: rules.length,
+    },
+  };
+
+  for (const composed of rules) {
+    const rule = composed.rule;
+    if (!rule.when) continue;
+
+    const matches = evaluateCondition(rule.when, artifact);
+    if (!matches) {
+      result.passed_rules.push(rule.id);
+      continue;
+    }
+
+    switch (rule.effect) {
+      case 'deny':
+        result.allowed = false;
+        result.violations.push(findingForRule(composed, 'deny condition matched'));
+        break;
+      case 'warn':
+        result.warnings.push(findingForRule(composed, 'warn condition matched'));
+        result.passed_rules.push(rule.id);
+        break;
+      case 'require':
+        if (!rule.assert) {
+          result.allowed = false;
+          result.violations.push(
+            findingForRule(composed, 'required rule missing assert condition'),
+          );
+          break;
+        }
+        if (evaluateCondition(rule.assert, artifact)) {
+          result.passed_rules.push(rule.id);
+        } else {
+          result.allowed = false;
+          result.violations.push(findingForRule(composed, 'required assertion failed'));
+        }
+        break;
+    }
+  }
+
+  result.passed_rules.sort();
+  result.metadata.rules_passed = result.passed_rules.length;
+  result.metadata.violations = result.violations.length;
+  result.metadata.warnings = result.warnings.length;
+  return result;
+}
+
+function validatePolicyDocument(policy: PolicyDocument): string | null {
+  if (policy.dsl_version && policy.dsl_version !== SUPPORTED_DSL_VERSION) {
+    return `policy "${policy.policy_set_id}" has unsupported dsl_version "${policy.dsl_version}"`;
+  }
+  if (!policy.policy_set_id) return 'policy missing policy_set_id';
+  if (!policy.version) return 'policy missing version';
+  if (
+    (!policy.rules || policy.rules.length === 0) &&
+    (!policy.includes || policy.includes.length === 0)
+  ) {
+    return 'policy must contain at least one rule';
+  }
+  for (let i = 0; i < policy.rules.length; i++) {
+    const rule = policy.rules[i] as PolicyRule;
+    if (!rule.id) return `policy rule ${i} missing id`;
+    switch (rule.effect) {
+      case 'deny':
+      case 'warn':
+        if (!rule.when) return `policy rule "${rule.id}" missing when condition`;
+        break;
+      case 'require':
+        if (!rule.when || !rule.assert)
+          return `policy rule "${rule.id}" requires both when and assert conditions`;
+        break;
+      default:
+        return `policy rule "${rule.id}" has unsupported effect "${rule.effect}"`;
+    }
+  }
+  if (policy.includes) {
+    for (let i = 0; i < policy.includes.length; i++) {
+      const err = validatePolicyDocument(policy.includes[i] as PolicyDocument);
+      if (err) return `included policy ${i}: ${err}`;
+    }
+  }
+  return null;
+}
+
+function enforcePolicyCommand(args: string[]): number {
+  let artifactPath = '';
+  let policyPath = '';
+  let enforcement: EnforcementLevel = 'block';
+  let format = 'json';
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--policy' && i + 1 < args.length) {
+      policyPath = args[++i];
+    } else if (args[i] === '--enforcement' && i + 1 < args.length) {
+      const val = args[++i];
+      if (val !== 'warn' && val !== 'block' && val !== 'quarantine') {
+        console.error(`Error: invalid --enforcement "${val}"; must be warn, block, or quarantine`);
+        return 1;
+      }
+      enforcement = val as EnforcementLevel;
+    } else if (args[i] === '--format' && i + 1 < args.length) {
+      format = args[++i];
+    } else if (!args[i].startsWith('--')) {
+      artifactPath = args[i];
+    }
+  }
+
+  if (!artifactPath) {
+    console.error('Error: enforce-policy requires a <bom.json> argument');
+    return 1;
+  }
+  if (!policyPath) {
+    console.error('Error: enforce-policy requires --policy <policy.json>');
+    return 1;
+  }
+
+  const { data: policyData, error: policyErr } = readJsonFile(policyPath);
+  if (policyErr) return policyErr;
+
+  const { data: artifactData, error: artifactErr } = readJsonFile(artifactPath);
+  if (artifactErr) return artifactErr;
+
+  const policy = policyData as unknown as PolicyDocument;
+  const artifact = artifactData;
+
+  const validationErr = validatePolicyDocument(policy);
+  if (validationErr) {
+    console.error(`Error: ${validationErr}`);
+    return 1;
+  }
+
+  let result: EvaluationResult;
+  try {
+    result = evaluatePolicy(policy, artifact);
+  } catch (err) {
+    console.error(`Error: policy evaluation failed: ${(err as Error).message}`);
+    return 1;
+  }
+
+  switch (format) {
+    case 'json':
+      console.log(JSON.stringify(result, null, 2));
+      break;
+    case 'text': {
+      const status = result.allowed ? 'allowed' : 'rejected';
+      console.log(`${status} ${result.policy_set_id}@${result.version}`);
+      for (const v of result.violations) {
+        console.log(`violation ${v.rule_id}: ${v.message}`);
+      }
+      for (const w of result.warnings) {
+        console.log(`warning ${w.rule_id}: ${w.message}`);
+      }
+      console.log(
+        `  ${result.passed_rules.length} rules passed, ${result.violations.length} violations, ${result.warnings.length} warnings`,
+      );
+      break;
+    }
+    default:
+      console.error(`Error: unsupported --format "${format}"; use json or text`);
+      return 1;
+  }
+
+  if (!result.allowed) {
+    switch (enforcement) {
+      case 'warn':
+        console.warn('Policy violations detected (enforcement=warn: proceeding anyway)');
+        return 0;
+      case 'quarantine':
+        console.error('Policy violations detected (enforcement=quarantine: artifact quarantined)');
+        return 2;
+      default:
+        return 1;
+    }
+  }
+
+  return 0;
+}
+
 export function runCommand(args: string[]): number | Promise<number> {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     console.log(USAGE);
@@ -343,6 +762,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'export-dashboard') {
     return exportDashboardCommand(args.slice(1));
+  }
+
+  if (args[0] === 'enforce-policy' || args[0] === 'enf') {
+    return enforcePolicyCommand(args.slice(1));
   }
 
   if (args[0] === 'publish') {
