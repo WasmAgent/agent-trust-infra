@@ -723,3 +723,411 @@ func TestSchemaMethodNotAllowed(t *testing.T) {
 		}
 	}
 }
+
+// ---- Multi-tenant isolation tests ----
+
+// newMultiTenantTestServer creates a Registry with MultiTenant enabled
+// backed by t.TempDir() and an httptest.Server.
+func newMultiTenantTestServer(t *testing.T) (*Registry, *httptest.Server) {
+	t.Helper()
+	reg, err := NewRegistry(t.TempDir(), "", false)
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	reg.MultiTenant = true
+	srv := httptest.NewServer(NewRouter(reg))
+	t.Cleanup(srv.Close)
+	return reg, srv
+}
+
+func TestMultiTenantRejectMissingHeader(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	cases := []struct {
+		method string
+		path   string
+		body   string
+	}{
+		{"POST", "/v1/artifacts", `{"artifact": {"agentbom_version": "0.1"}}`},
+		{"GET", "/v1/artifacts/sha256:abcd1234", ""},
+		{"GET", "/v1/agents/my-agent/artifacts", ""},
+	}
+
+	for _, c := range cases {
+		req, err := http.NewRequest(c.method, srv.URL+c.path, strings.NewReader(c.body))
+		if err != nil {
+			t.Fatalf("NewRequest: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("%s %s: %v", c.method, c.path, err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("%s %s: status = %d, want 401 Unauthorized", c.method, c.path, resp.StatusCode)
+		}
+		var errResp ErrorResponse
+		if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			t.Fatalf("decode error: %v", err)
+		}
+		if !strings.Contains(errResp.Error, "X-Tenant-ID") {
+			t.Errorf("%s %s: error = %q, want to mention X-Tenant-ID", c.method, c.path, errResp.Error)
+		}
+	}
+}
+
+func TestMultiTenantRejectInvalidTenantID(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	cases := []string{
+		"../etc/passwd",
+		"foo/bar",
+		"..",
+		".",
+	}
+
+	for _, badID := range cases {
+		body := mustMarshalJSON(t, PublishRequest{
+			Artifact: mustMarshalJSON(t, map[string]string{"agentbom_version": "0.1"}),
+		})
+		req, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+		if err != nil {
+			t.Fatalf("NewRequest: %v", err)
+		}
+		req.Header.Set("X-Tenant-ID", badID)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("POST with tenant %q: %v", badID, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("tenant %q: status = %d, want 401", badID, resp.StatusCode)
+		}
+	}
+}
+
+func TestMultiTenantPublishAndPull(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	artifact := map[string]interface{}{
+		"agentbom_version": "0.1",
+		"agent":            map[string]interface{}{"name": "tenant-a-agent"},
+	}
+
+	body := mustMarshalJSON(t, PublishRequest{
+		Artifact:      mustMarshalJSON(t, artifact),
+		Tag:           "latest",
+		AgentIdentity: "agent-a",
+	})
+	req, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set("X-Tenant-ID", "tenant-acme")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", resp.StatusCode)
+	}
+
+	var pubResp PublishResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pubResp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !strings.HasPrefix(pubResp.CasID, "sha256:") {
+		t.Errorf("cas_id = %q, want sha256: prefix", pubResp.CasID)
+	}
+	if pubResp.ArtifactType != "agentbom" {
+		t.Errorf("artifact_type = %q, want \"agentbom\"", pubResp.ArtifactType)
+	}
+
+	// Pull by CAS ID from the same tenant
+	req2, err := http.NewRequest("GET", srv.URL+"/v1/artifacts/"+pubResp.CasID, nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req2.Header.Set("X-Tenant-ID", "tenant-acme")
+
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("GET artifact: %v", err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp2.StatusCode)
+	}
+
+	var artResp ArtifactResponse
+	if err := json.NewDecoder(resp2.Body).Decode(&artResp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if artResp.CasID != pubResp.CasID {
+		t.Errorf("cas_id = %q, want %q", artResp.CasID, pubResp.CasID)
+	}
+	if !artResp.IntegrityVerified {
+		t.Error("integrity_verified = false, want true")
+	}
+}
+
+func TestMultiTenantIsolation(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	artifact := map[string]interface{}{"agentbom_version": "0.1", "name": "isolated-artifact"}
+
+	// Publish to tenant-alpha
+	body := mustMarshalJSON(t, PublishRequest{
+		Artifact:      mustMarshalJSON(t, artifact),
+		AgentIdentity: "shared-agent",
+	})
+	req, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set("X-Tenant-ID", "tenant-alpha")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST tenant-alpha: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", resp.StatusCode)
+	}
+
+	var pubResp PublishResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pubResp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// tenant-beta should NOT be able to pull this artifact
+	req2, err := http.NewRequest("GET", srv.URL+"/v1/artifacts/"+pubResp.CasID, nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req2.Header.Set("X-Tenant-ID", "tenant-beta")
+
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("GET tenant-beta: %v", err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusNotFound {
+		t.Errorf("cross-tenant pull: status = %d, want 404 (isolated)", resp2.StatusCode)
+	}
+
+	// tenant-alpha SHOULD be able to pull this artifact
+	req3, err := http.NewRequest("GET", srv.URL+"/v1/artifacts/"+pubResp.CasID, nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req3.Header.Set("X-Tenant-ID", "tenant-alpha")
+
+	resp3, err := http.DefaultClient.Do(req3)
+	if err != nil {
+		t.Fatalf("GET tenant-alpha: %v", err)
+	}
+	defer resp3.Body.Close()
+	if resp3.StatusCode != http.StatusOK {
+		t.Errorf("same-tenant pull: status = %d, want 200", resp3.StatusCode)
+	}
+}
+
+func TestMultiTenantQueryAgentIsolation(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	// Publish artifact for "shared-agent" in tenant-x
+	body := mustMarshalJSON(t, PublishRequest{
+		Artifact:      mustMarshalJSON(t, map[string]string{"agentbom_version": "0.1"}),
+		AgentIdentity: "shared-agent",
+	})
+	req, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set("X-Tenant-ID", "tenant-x")
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want 201", resp.StatusCode)
+	}
+
+	// Query shared-agent from tenant-x → should return 1 artifact
+	req2, err := http.NewRequest("GET", srv.URL+"/v1/agents/shared-agent/artifacts", nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req2.Header.Set("X-Tenant-ID", "tenant-x")
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("GET tenant-x: %v", err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp2.StatusCode)
+	}
+	var agentRespX AgentArtifactsResponse
+	if err := json.NewDecoder(resp2.Body).Decode(&agentRespX); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(agentRespX.Artifacts) != 1 {
+		t.Fatalf("tenant-x: len(artifacts) = %d, want 1", len(agentRespX.Artifacts))
+	}
+
+	// Query shared-agent from tenant-y → should return 0 artifacts (isolated)
+	req3, err := http.NewRequest("GET", srv.URL+"/v1/agents/shared-agent/artifacts", nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req3.Header.Set("X-Tenant-ID", "tenant-y")
+	resp3, err := http.DefaultClient.Do(req3)
+	if err != nil {
+		t.Fatalf("GET tenant-y: %v", err)
+	}
+	defer resp3.Body.Close()
+	if resp3.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp3.StatusCode)
+	}
+	var agentRespY AgentArtifactsResponse
+	if err := json.NewDecoder(resp3.Body).Decode(&agentRespY); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(agentRespY.Artifacts) != 0 {
+		t.Errorf("tenant-y: len(artifacts) = %d, want 0 (isolated from tenant-x)", len(agentRespY.Artifacts))
+	}
+}
+
+func TestMultiTenantDeduplication(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	artifact := map[string]interface{}{"agentbom_version": "0.1"}
+	body := mustMarshalJSON(t, PublishRequest{Artifact: mustMarshalJSON(t, artifact)})
+
+	// First publish to tenant-acme
+	req1, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req1.Header.Set("X-Tenant-ID", "tenant-acme")
+	req1.Header.Set("Content-Type", "application/json")
+	resp1, err := http.DefaultClient.Do(req1)
+	if err != nil {
+		t.Fatalf("POST 1: %v", err)
+	}
+	defer resp1.Body.Close()
+	if resp1.StatusCode != http.StatusCreated {
+		t.Fatalf("status 1 = %d, want 201", resp1.StatusCode)
+	}
+	var pub1 PublishResponse
+	if err := json.NewDecoder(resp1.Body).Decode(&pub1); err != nil {
+		t.Fatalf("decode 1: %v", err)
+	}
+
+	// Same content to same tenant → deduplicated
+	req2, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req2.Header.Set("X-Tenant-ID", "tenant-acme")
+	req2.Header.Set("Content-Type", "application/json")
+	resp2, err := http.DefaultClient.Do(req2)
+	if err != nil {
+		t.Fatalf("POST 2: %v", err)
+	}
+	defer resp2.Body.Close()
+	if resp2.StatusCode != http.StatusCreated {
+		t.Fatalf("status 2 = %d, want 201", resp2.StatusCode)
+	}
+	var pub2 PublishResponse
+	if err := json.NewDecoder(resp2.Body).Decode(&pub2); err != nil {
+		t.Fatalf("decode 2: %v", err)
+	}
+	if !pub2.Deduplicated {
+		t.Error("same tenant dedup: deduplicated = false, want true")
+	}
+
+	// Same content to DIFFERENT tenant → NOT deduplicated (different tenant dir)
+	req3, err := http.NewRequest("POST", srv.URL+"/v1/artifacts", strings.NewReader(string(body)))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req3.Header.Set("X-Tenant-ID", "tenant-other")
+	req3.Header.Set("Content-Type", "application/json")
+	resp3, err := http.DefaultClient.Do(req3)
+	if err != nil {
+		t.Fatalf("POST 3: %v", err)
+	}
+	defer resp3.Body.Close()
+	if resp3.StatusCode != http.StatusCreated {
+		t.Fatalf("status 3 = %d, want 201", resp3.StatusCode)
+	}
+	var pub3 PublishResponse
+	if err := json.NewDecoder(resp3.Body).Decode(&pub3); err != nil {
+		t.Fatalf("decode 3: %v", err)
+	}
+	if pub3.Deduplicated {
+		t.Error("cross-tenant dedup: deduplicated = true, want false (isolated tenant storage)")
+	}
+	if pub3.CasID != pub1.CasID {
+		t.Errorf("cross-tenant cas_id = %q, want %q (same content, same CAS ID)", pub3.CasID, pub1.CasID)
+	}
+}
+
+func TestMultiTenantHealthUnaffected(t *testing.T) {
+	_, srv := newMultiTenantTestServer(t)
+
+	// Health endpoint should work without X-Tenant-ID even in multi-tenant mode
+	resp, err := http.Get(srv.URL + "/health")
+	if err != nil {
+		t.Fatalf("GET /health: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("status = %d, want 200", resp.StatusCode)
+	}
+}
+
+func TestValidateTenantID(t *testing.T) {
+	tests := []struct {
+		id    string
+		valid bool
+	}{
+		{"", false},
+		{"acme-corp", true},
+		{"tenant_123", true},
+		{"org.example.com", true},
+		{"abc/def", false},
+		{"abc\\def", false},
+		{".", false},
+		{"..", false},
+		{strings.Repeat("a", 128), true},
+		{strings.Repeat("a", 129), false},
+	}
+	for _, tt := range tests {
+		err := validateTenantID(tt.id)
+		if tt.valid && err != nil {
+			t.Errorf("validateTenantID(%q): unexpected error: %v", tt.id, err)
+		}
+		if !tt.valid && err == nil {
+			t.Errorf("validateTenantID(%q): expected error, got nil", tt.id)
+		}
+	}
+}
+
+func TestTenantDir(t *testing.T) {
+	got := tenantDir("/reg", "acme")
+	want := "/reg/tenants/acme"
+	if got != want {
+		t.Errorf("tenantDir = %q, want %q", got, want)
+	}
+}

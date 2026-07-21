@@ -288,15 +288,41 @@ func detectSchemaVersion(data []byte) string {
 	return "unknown"
 }
 
+// ---- Multi-tenant helpers ----
+
+// validateTenantID checks that a tenant ID is safe to use as a filesystem
+// component (no path traversal, no dots-only, bounded length).
+func validateTenantID(tenantID string) error {
+	if tenantID == "" {
+		return fmt.Errorf("X-Tenant-ID header is required for multi-tenant operations")
+	}
+	if strings.ContainsAny(tenantID, "/\\") || tenantID == "." || tenantID == ".." || len(tenantID) > 128 {
+		return fmt.Errorf("invalid tenant ID: must be 1-128 characters without path separators")
+	}
+	return nil
+}
+
+// tenantDir returns the per-tenant subdirectory under the registry root.
+//
+//	<registry>/tenants/<tenantID>/
+func tenantDir(registryDir, tenantID string) string {
+	return filepath.Join(registryDir, "tenants", tenantID)
+}
+
 // ---- Registry ----
 
 // Registry manages the on-disk registry with thread-safe access.
 type Registry struct {
-	dir        string
-	schemasDir string // local schema files directory for CDN-backed distribution (empty = disabled)
-	offline    bool   // true = serve only local schemas, no external fetch
-	mu         sync.Mutex
-	schemas    map[string]schemaEntry // schema name → cached entry
+	dir         string
+	schemasDir  string // local schema files directory for CDN-backed distribution (empty = disabled)
+	offline     bool   // true = serve only local schemas, no external fetch
+	mu          sync.Mutex
+	schemas     map[string]schemaEntry // schema name → cached entry
+	// MultiTenant enables per-tenant data isolation. When true, all artifact
+	// operations require an X-Tenant-ID header and store data in per-tenant
+	// subdirectories under <registry>/tenants/<id>/. When false (default),
+	// the registry operates in single-tenant mode.
+	MultiTenant bool
 }
 
 // NewRegistry creates or opens a registry at the given directory.
@@ -315,6 +341,29 @@ func NewRegistry(dir, schemasDir string, offline bool) (*Registry, error) {
 		return nil, fmt.Errorf("load schemas: %w", err)
 	}
 	return reg, nil
+}
+
+// scopedDir returns the effective directory for the given tenant.
+// In multi-tenant mode with a non-empty tenantID, returns the per-tenant
+// subdirectory. Otherwise returns the base registry directory.
+func (r *Registry) scopedDir(tenantID string) string {
+	if r.MultiTenant && tenantID != "" {
+		return tenantDir(r.dir, tenantID)
+	}
+	return r.dir
+}
+
+// tenantFromRequest extracts and validates the X-Tenant-ID header.
+// Returns empty string (no tenant scoping) in single-tenant mode.
+func (r *Registry) tenantFromRequest(req *http.Request) (string, error) {
+	if !r.MultiTenant {
+		return "", nil
+	}
+	tid := strings.TrimSpace(req.Header.Get("X-Tenant-ID"))
+	if err := validateTenantID(tid); err != nil {
+		return "", err
+	}
+	return tid, nil
 }
 
 // loadSchemas walks the schemas directory and caches all schema files.
@@ -367,7 +416,8 @@ func (r *Registry) loadSchemas() error {
 // Publish stores an artifact in the registry with CAS-based deduplication.
 // If the content already exists (same SHA-256 digest), the existing entry is
 // returned with Deduplicated set to true and no storage is duplicated.
-func (r *Registry) Publish(artifact json.RawMessage, tag, agentID string) (*PublishResponse, error) {
+// In multi-tenant mode, tenantID scopes all storage to a per-tenant directory.
+func (r *Registry) Publish(artifact json.RawMessage, tag, agentID, tenantID string) (*PublishResponse, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -376,10 +426,11 @@ func (r *Registry) Publish(artifact json.RawMessage, tag, agentID string) (*Publ
 		return nil, fmt.Errorf("invalid artifact JSON: %w", err)
 	}
 
+	dir := r.scopedDir(tenantID)
 	casID := computeCasID(artifact)
-	objPath := objectPathForCasID(r.dir, casID)
+	objPath := objectPathForCasID(dir, casID)
 
-	manifest, err := readManifest(r.dir)
+	manifest, err := readManifest(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -397,26 +448,26 @@ func (r *Registry) Publish(artifact json.RawMessage, tag, agentID string) (*Publ
 		if err := os.WriteFile(objPath, artifact, 0o644); err != nil {
 			return nil, err
 		}
-		if err := writeManifest(r.dir, manifest); err != nil {
+		if err := writeManifest(dir, manifest); err != nil {
 			return nil, err
 		}
 	}
 
 	if tag != "" {
-		if err := writeTagPointer(r.dir, tag, casID); err != nil {
+		if err := writeTagPointer(dir, tag, casID); err != nil {
 			return nil, err
 		}
 	}
 
 	if agentID != "" {
-		ids, err := readAgentIndex(r.dir, agentID)
+		ids, err := readAgentIndex(dir, agentID)
 		if err != nil {
 			return nil, err
 		}
 		if !sliceContains(ids, casID) {
 			ids = append(ids, casID)
 			sort.Strings(ids)
-			if err := writeAgentIndex(r.dir, agentID, ids); err != nil {
+			if err := writeAgentIndex(dir, agentID, ids); err != nil {
 				return nil, err
 			}
 		}
@@ -439,11 +490,13 @@ func (r *Registry) Publish(artifact json.RawMessage, tag, agentID string) (*Publ
 }
 
 // Pull retrieves an artifact by CAS ID with integrity verification.
-func (r *Registry) Pull(casID string) (*ArtifactResponse, error) {
+// In multi-tenant mode, tenantID scopes retrieval to the per-tenant directory.
+func (r *Registry) Pull(casID, tenantID string) (*ArtifactResponse, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	objPath := objectPathForCasID(r.dir, casID)
+	dir := r.scopedDir(tenantID)
+	objPath := objectPathForCasID(dir, casID)
 	raw, err := os.ReadFile(objPath)
 	if err != nil {
 		return nil, fmt.Errorf("artifact not found: %s", casID)
@@ -453,7 +506,7 @@ func (r *Registry) Pull(casID string) (*ArtifactResponse, error) {
 	var parsed map[string]interface{}
 	json.Unmarshal(raw, &parsed)
 
-	manifest, _ := readManifest(r.dir)
+	manifest, _ := readManifest(dir)
 
 	return &ArtifactResponse{
 		CasID:            casID,
@@ -465,21 +518,23 @@ func (r *Registry) Pull(casID string) (*ArtifactResponse, error) {
 }
 
 // QueryByAgent returns artifacts associated with an agent identity.
-func (r *Registry) QueryByAgent(agentID string) (*AgentArtifactsResponse, error) {
+// In multi-tenant mode, tenantID scopes the query to the per-tenant directory.
+func (r *Registry) QueryByAgent(agentID, tenantID string) (*AgentArtifactsResponse, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	ids, err := readAgentIndex(r.dir, agentID)
+	dir := r.scopedDir(tenantID)
+	ids, err := readAgentIndex(dir, agentID)
 	if err != nil {
 		return nil, err
 	}
 
-	manifest, _ := readManifest(r.dir)
+	manifest, _ := readManifest(dir)
 	artifacts := make([]ArtifactSummary, 0, len(ids))
 
 	for _, casID := range ids {
 		s := ArtifactSummary{CasID: casID, Version: manifest[casID]}
-		if raw, err := os.ReadFile(objectPathForCasID(r.dir, casID)); err == nil {
+		if raw, err := os.ReadFile(objectPathForCasID(dir, casID)); err == nil {
 			var parsed map[string]interface{}
 			if json.Unmarshal(raw, &parsed) == nil {
 				s.ArtifactType = detectArtifactType(parsed)
@@ -576,6 +631,11 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func (r *Registry) handlePublish(w http.ResponseWriter, req *http.Request) {
+	tenantID, err := r.tenantFromRequest(req)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
 	var pub PublishRequest
 	if err := json.NewDecoder(req.Body).Decode(&pub); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
@@ -585,7 +645,7 @@ func (r *Registry) handlePublish(w http.ResponseWriter, req *http.Request) {
 		writeError(w, http.StatusBadRequest, "artifact field is required")
 		return
 	}
-	resp, err := r.Publish(pub.Artifact, pub.Tag, pub.AgentIdentity)
+	resp, err := r.Publish(pub.Artifact, pub.Tag, pub.AgentIdentity, tenantID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -594,12 +654,17 @@ func (r *Registry) handlePublish(w http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Registry) handleGetArtifact(w http.ResponseWriter, req *http.Request) {
+	tenantID, err := r.tenantFromRequest(req)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
 	casID := strings.TrimPrefix(req.URL.Path, "/v1/artifacts/")
 	if casID == "" || !strings.HasPrefix(casID, "sha256:") {
 		writeError(w, http.StatusBadRequest, "invalid CAS identifier")
 		return
 	}
-	resp, err := r.Pull(casID)
+	resp, err := r.Pull(casID, tenantID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -620,7 +685,12 @@ func (r *Registry) handleQueryAgent(w http.ResponseWriter, req *http.Request) {
 		writeError(w, http.StatusBadRequest, "agent identity is required")
 		return
 	}
-	resp, err := r.QueryByAgent(agentID)
+	tenantID, err := r.tenantFromRequest(req)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	resp, err := r.QueryByAgent(agentID, tenantID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -777,6 +847,7 @@ func Run(args []string, stdout, stderr io.Writer) (int, error) {
 	registryDir := fs.String("registry", defaultRegistryDir(), "registry directory")
 	schemasDir := fs.String("schemas-dir", "", "local schemas directory for CDN-backed distribution (empty = disabled)")
 	offline := fs.Bool("offline", false, "enable offline/fallback mode (serve only local schemas)")
+	multiTenant := fs.Bool("multi-tenant", false, "enable multi-tenant isolation (requires X-Tenant-ID header for artifact operations)")
 
 	if err := fs.Parse(args); err != nil {
 		return 2, nil
@@ -786,6 +857,7 @@ func Run(args []string, stdout, stderr io.Writer) (int, error) {
 	if err != nil {
 		return 1, fmt.Errorf("init registry: %w", err)
 	}
+	reg.MultiTenant = *multiTenant
 
 	ln, err := net.Listen("tcp", *addr)
 	if err != nil {
