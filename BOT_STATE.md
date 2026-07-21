@@ -1,29 +1,28 @@
 # Bot State
 
-_Last updated: 2026-07-21 12:49 UTC by patrol_
+_Last updated: 2026-07-21 12:57 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
+| Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 2 |
-| Completed/Merged (all time) | 1262 |
+| Completed/Merged (all time) | 1263 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #294 | Fix WasmAgent/agent-trust-infra#291 ([milestone Milestone... | merged/auto_closed_resolved | 2026-07-21 |
 | #320 | Fix WasmAgent/agent-trust-infra#301 ([milestone Milestone... | merged/merged | 2026-07-21 |
 | #309 | Fix WasmAgent/agent-trust-infra#300 ([milestone Milestone... | merged/merged | 2026-07-21 |
 | #301 | [milestone Milestone 10] **Regulatory Reporting Automatio... | completed/complexity_gate_split | 2026-07-21 |
 | #314 | Fix WasmAgent/agent-trust-infra#304 ([milestone Milestone... | merged/auto_closed_resolved | 2026-07-21 |
-| #310 | Fix WasmAgent/agent-trust-infra#299 ([milestone Milestone... | merged/merged | 2026-07-21 |
 
 ## Waiting for Human
 
-- #294: Fix WasmAgent/agent-trust-infra#291 ([milestone Milestone 10] **Continuous Compliance Monitoring** — daemon service th
 - #293: Fix WasmAgent/agent-trust-infra#292 ([milestone Milestone 10] **Federated Trust Chain Protocol** — specification for c
 
 ---
