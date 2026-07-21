@@ -20,3 +20,11 @@ commands:
     cmd: npm test
     timeout: 3m
     level: 3
+  - name: strict-typecheck
+    cmd: npx tsc --noEmit --strict
+    timeout: 3m
+    level: 4
+  - name: no-explicit-any
+    cmd: npx eslint .
+    timeout: 2m
+    level: 4
