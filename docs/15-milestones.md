@@ -93,3 +93,20 @@ Begins when research preview graduates to production. **No Trust Passport work h
 - [ ] `trust-cli audit-stream <agent-identity>` — continuous audit log streaming with real-time compliance violation detection and alerting integration
 
 This milestone transforms the trust infrastructure from a static artifact system into an operational distribution and verification platform, enabling multi-agent ecosystems to publish, discover, and verify trust artifacts at scale.
+
+## Milestone 10 — Production Operations & Federation (Phase 10)
+
+**Focus:** Transition from research preview to production-ready infrastructure supporting multi-org trust chains and continuous compliance operations.
+
+- [ ] **Performance Baselines & SLA Targets** — define throughput/latency SLAs for AgentBOM generation (10k-agent repos in <60s), Trust Passport validation (<100ms p99), and audit trail queries; publish benchmark suite with per-component performance regression guards
+- [ ] **High-Availability Schema Distribution** — CDN-backed JSON schema distribution with geo-replication, version pinning via content-addressable URIs, and graceful fallback for offline environments (supports air-gapped enterprise deployments)
+- [ ] **Automated Policy Enforcement Engine** — `trust-cli enforce-policy <bom.json> --policy <org-policy.yaml>` — validates agent artifacts against organization-specific trust rules (tool allowlists, MCP server whitelists, data handling classifications) with configurable enforcement levels (warn/block/quarantine)
+- [ ] **Continuous Compliance Monitoring** — daemon service that watches agent registries for drift, validates new commits against established trust baselines, surfaces violations via webhooks (PagerDuty, Slack, GitHub Security); enables compliance-as-code for agent fleets
+- [ ] **Federated Trust Chain Protocol** — specification for cross-organization trust propagation (Agent A from Org X invokes Agent B from Org Y); defines trust-passport chaining, liability boundaries, and evidence aggregation; enables B2B agent collaboration with auditability
+- [ ] **Certificate Authority Integration** — PKI integration for Trust Passport signing (enterprise CA support, certificate rotation automation, revocation checking via OCSP/CRLs); replaces dev-mode key generation with production-grade key management
+- [ ] **Multi-Tenant Isolation** — tenant-scoped trust artifact storage with RBAC, audit trail segregation per organization, and resource quotas; supports SaaS deployments serving multiple customers from single infrastructure
+- [ ] **Operational Observability Stack** — Prometheus metrics, Grafana dashboards, and structured logging for all trust-cli operations; operational insights into validation failures, schema usage, performance degradation, and security events
+- [ ] **Regulatory Reporting Automation** — `trust-cli report --framework <soc2|iso27001|ai-act> --period Q1-2026` — generates compliance-ready reports from Trust Passport and audit trail data; maps trust artifacts to control objectives with evidence citations
+- [ ] **Webhook & Event System** — extensible webhook framework for trust lifecycle events (passport issued/revoked, policy violation, compliance drift); supports custom payloads, retry logic with exponential backoff, and signature verification
+- [ ] **Graduated Staging Environments** — staging/promotion pipeline mirroring production; supports blue-green schema rollouts, canary validation rules, and automated rollback on regression detection
+- [ ] **Legacy Agent Migration Tooling** — trust artifact generation for pre-AgentBOM agents via static analysis and behavioral fingerprinting; enables onboarding of existing agent fleets without manual intervention
