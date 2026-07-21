@@ -98,7 +98,7 @@ This milestone transforms the trust infrastructure from a static artifact system
 
 **Focus:** Transition from research preview to production-ready infrastructure supporting multi-org trust chains and continuous compliance operations.
 
-- [ ] **Performance Baselines & SLA Targets** — define throughput/latency SLAs for AgentBOM generation (10k-agent repos in <60s), Trust Passport validation (<100ms p99), and audit trail queries; publish benchmark suite with per-component performance regression guards
+- [x] **Performance Baselines & SLA Targets** — define throughput/latency SLAs for AgentBOM generation (10k-agent repos in <60s), Trust Passport validation (<100ms p99), and audit trail queries; publish benchmark suite with per-component performance regression guards — guidance at `docs/slo-guidance.md` (issue #288)
 - [ ] **High-Availability Schema Distribution** — CDN-backed JSON schema distribution with geo-replication, version pinning via content-addressable URIs, and graceful fallback for offline environments (supports air-gapped enterprise deployments)
 - [ ] **Automated Policy Enforcement Engine** — `trust-cli enforce-policy <bom.json> --policy <org-policy.yaml>` — validates agent artifacts against organization-specific trust rules (tool allowlists, MCP server whitelists, data handling classifications) with configurable enforcement levels (warn/block/quarantine)
 - [ ] **Continuous Compliance Monitoring** — daemon service that watches agent registries for drift, validates new commits against established trust baselines, surfaces violations via webhooks (PagerDuty, Slack, GitHub Security); enables compliance-as-code for agent fleets

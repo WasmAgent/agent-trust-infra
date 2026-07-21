@@ -1,8 +1,8 @@
 # SLO Guidance for Production Deployments
 
 > **Status:** Research preview guidance — targets are advisory, not contractual SLAs.
-> **Last updated:** 2026-07-20
-> **Tracking:** WasmAgent/agent-trust-infra#233 (Milestone 8)
+> **Last updated:** 2026-07-21
+> **Tracking:** WasmAgent/agent-trust-infra#233 (Milestone 8), WasmAgent/agent-trust-infra#288 (Milestone 10)
 
 ## 1. Purpose and scope
 
@@ -21,6 +21,9 @@ where trust-artifact validation is on the critical path.
 | `BOMProcessingPipeline` | Streaming throughput, memory bounds, backpressure behavior |
 | `trust-cli` commands | CLI startup time, `agentbom pipeline` throughput |
 | `trust-cli generate` | AgentBOM generation from live agent directories |
+| AgentBOM generation (bulk) | Throughput at scale — 10k-agent repo batch generation |
+| Trust Passport validation | Signature/expiry/chain validation latency |
+| Audit trail queries | Query latency and throughput for audit log search |
 
 **Out of scope (frozen or moved downstream):**
 
@@ -74,6 +77,40 @@ End-to-end wall-clock time for interactive CLI commands.
 | CR-02 | `trust-cli agentbom pipeline` startup | milliseconds | Time to first artifact output |
 | CR-03 | `trust-cli generate bom` exit latency | milliseconds | CLI wall-clock (external) |
 
+### 2.5 AgentBOM generation throughput
+
+Bulk AgentBOM generation performance — the rate at which `trust-cli generate bom`
+processes agent repositories at scale (Milestone 10).
+
+| SLI ID | Indicator | Unit | Collection point |
+|---|---|---|---|
+| AG-01 | Bulk BOM generation throughput | repos/second | `trust-cli generate bom --batch` wall-clock / repo count |
+| AG-02 | Per-repo generation latency | milliseconds | Per-repo `durationMs` from batch output |
+| AG-03 | Generation error rate | % | Failed generations / total repos in batch |
+
+### 2.6 Trust Passport validation latency
+
+Time to validate a signed Trust Passport artifact — signature verification,
+expiry check, and chain-of-trust resolution (Milestone 10). Note: the
+implementation lives in `WasmAgent/open-agent-audit` (`@openagentaudit/passport`);
+this SLI defines the target for the downstream service.
+
+| SLI ID | Indicator | Unit | Collection point |
+|---|---|---|---|
+| TP-01 | Single Passport validation latency | milliseconds | `validatePassport(signedJWT)` — end to end |
+| TP-02 | Passport chain validation latency | milliseconds | `verifyChain(passport, depth=N)` — multi-hop |
+
+### 2.7 Audit trail query performance
+
+Latency and throughput for querying the structured audit log (Milestone 10).
+Covers both single-artifact lookups and fleet-wide search operations.
+
+| SLI ID | Indicator | Unit | Collection point |
+|---|---|---|---|
+| AQ-01 | Single-audit-entry query latency | milliseconds | `auditQuery(id)` — primary key lookup |
+| AQ-02 | Fleet-wide audit search latency | milliseconds | `auditQuery({filter, timeRange}) — range scan |
+| AQ-03 | Audit query throughput | queries/second | Sustained query rate under concurrent load |
+
 ## 3. Service Level Objectives (SLOs)
 
 SLOs are **quantitative targets** attached to the SLIs above. These are advisory targets
@@ -114,6 +151,33 @@ these will be tightened and formalized into contractual SLAs.
 | **SLO-CR-01** | `trust-cli validate <file>` ≤ 200 ms exit time | Single BOM file ≤ 100 KB, warm cache |
 | **SLO-CR-02** | Pipeline first-artifact output ≤ 500 ms | Any input format, default configuration |
 | **SLO-CR-03** | `trust-cli generate bom --agent <dir>` ≤ 2 s | Agent directory with ≤ 20 tool definitions |
+
+### 3.5 AgentBOM generation throughput SLOs (Milestone 10)
+
+| SLO | Target | Conditions |
+|---|---|---|
+| **SLO-AG-01** | ≥ 167 repos/second (10k repos in ≤ 60 s) | Batch generation, repos with ≤ 20 tool definitions each, warm cache |
+| **SLO-AG-02** | p99 per-repo generation ≤ 50 ms | Same conditions as SLO-AG-01 |
+| **SLO-AG-03** | Error rate ≤ 0.1% | Batch run on 10k representative agent repos |
+
+### 3.6 Trust Passport validation SLOs (Milestone 10)
+
+| SLO | Target | Conditions |
+|---|---|---|
+| **SLO-TP-01** | p99 Passport validation ≤ 100 ms | Single Passport, warm JVM, signature + expiry + chain |
+| **SLO-TP-02** | p99 chain validation (depth 3) ≤ 500 ms | Multi-hop verification with 3 intermediate Passports |
+
+> **Note:** Trust Passport validation is implemented in `open-agent-audit`
+> (`@openagentaudit/passport`). These SLOs define targets the downstream service
+> must meet; the specification-layer defines the validation schema.
+
+### 3.7 Audit trail query SLOs (Milestone 10)
+
+| SLO | Target | Conditions |
+|---|---|---|
+| **SLO-AQ-01** | p99 single-entry query ≤ 50 ms | Primary key lookup, cold cache |
+| **SLO-AQ-02** | p99 fleet-wide search ≤ 500 ms | Filtered query over ≤ 100k audit entries, 30-day range |
+| **SLO-AQ-03** | ≥ 100 queries/second sustained throughput | 10 concurrent query clients, mixed workload |
 
 ## 4. Measurement methodology
 
@@ -203,6 +267,71 @@ validation pipeline under representative load.
 
 **Definition of done:** Baseline document committed with p50/p95/p99 latency,
 peak memory, and throughput numbers for the deployment environment.
+
+### 4.4 Bulk AgentBOM generation benchmark
+
+To measure AgentBOM generation throughput at scale (SLO-AG-01):
+
+1. Prepare a corpus of ≥ 10,000 representative agent directory structures
+   (each with ≤ 20 tool definitions and typical permission mappings).
+2. Run batch generation:
+
+   ```bash
+   trust-cli generate bom --batch ./agent-corpus/ --output ./generated-boms/ \
+     --timing generation-timings.jsonl
+   ```
+
+3. Extract per-repo durations and compute throughput:
+
+   ```bash
+   # Throughput: repos/second
+   total=$(wc -l < generation-timings.jsonl)
+   wall_ms=$(jq -s 'add(.[].durationMs)' generation-timings.jsonl)
+   echo "scale=1; $total / ($wall_ms / 1000)" | bc
+
+   # Percentiles
+   jq -r '.durationMs' generation-timings.jsonl | sort -n | awk '
+     BEGIN { n=0 }
+     { vals[n++] = $1 }
+     END {
+       print "p50:", vals[int(n*0.50)]
+       print "p95:", vals[int(n*0.95)]
+       print "p99:", vals[int(n*0.99)]
+     }'
+   ```
+
+4. Record error rate from the exit code and error summary line.
+
+### 4.5 Per-component benchmark suite (Milestone 10)
+
+The `policy-engine bench` subcommand (`cmd/policy-engine/main_bench.go`) provides
+automated, CLI-driven benchmarks for core validation operations with throughput
+(ops/s) and latency (ns/op, p50/p95/p99) reporting:
+
+```bash
+# Run all validation workloads
+policy-engine bench
+
+# Single workload
+policy-engine bench -workload large
+
+# Persist results and override iterations
+policy-engine bench -results bench-results.json -iterations 5000
+```
+
+The published JSON document feeds the SLO regression baseline (§8.1). Each
+workload exercises a distinct component:
+
+| Workload | Component | SLI coverage |
+|---|---|---|
+| `validatePolicy` | Structural policy validation | VL-01, VL-02 |
+| `composePolicyRules` | Policy composition across nested includes | VL-03 |
+| `evaluateCondition` | Single condition evaluation | PT-01 |
+| `evaluatePolicy` | Full policy evaluation against an artifact | VL-01, VL-02, PT-01 |
+
+**Per-component regression guards:** Benchmark results are committed to
+`docs/performance-baselines.json`. The CI performance gate (§8.3) compares
+new runs against committed baselines and fails on regression threshold breach.
 
 ## 5. Production deployment guidance
 
@@ -350,6 +479,10 @@ from the baseline:
 | p99 validation latency | > 2× baseline | Investigate schema changes, dependency updates |
 | Pipeline throughput | < 0.5× baseline | Investigate memory pressure, backpressure frequency |
 | Peak heap | > 2× baseline | Investigate memory leaks, new object allocations |
+| p99 BOM generation latency | > 2× baseline | Investigate template resolution, I/O bottlenecks |
+| p99 Passport validation | > 2× baseline | Investigate crypto library updates, chain resolution |
+| p99 audit query latency | > 2× baseline | Investigate index degradation, query plan changes |
+| Bulk generation throughput | < 0.5× baseline | Investigate concurrency, serialization overhead |
 
 ### 8.3 CI performance gate
 
@@ -369,14 +502,30 @@ jq -r '.durationMs' ci-perf-results.jsonl | sort -n | awk '
 '
 ```
 
+For per-component benchmark regression guards (Milestone 10), run the
+`policy-engine bench` suite and assert against committed baselines:
+
+```bash
+# Per-component benchmark gate — fail on regression
+policy-engine bench -results ci-bench-results.json -iterations 1000
+
+# Compare against committed baseline (simplified assertion)
+jq -s '.[0] as $base | .[1] as $new |
+  ($new.metrics | to_entries[] | select(.value.p99Ns > ($base.metrics[.key].p99Ns * 2)))
+  | "REGRESSION: \(.key) p99 degraded from \($base.metrics[.key].p99Ns)ns to \(.value.p99Ns)ns"
+' docs/performance-baselines.json ci-bench-results.json
+```
+
 ## 9. Related references
 
 | Reference | Description |
 |---|---|
-| [docs/15-milestones.md](./15-milestones.md) | Milestone 8 — production readiness deliverables |
+| [docs/15-milestones.md](./15-milestones.md) | Milestone 8 — production readiness; Milestone 10 — performance baselines & SLA targets |
 | [docs/enterprise-onboarding.md](./enterprise-onboarding.md) | Enterprise adoption runbooks and certification guide |
 | [docs/architecture.md](./architecture.md) | Trust artifact chain and component responsibilities |
 | [packages/agentbom-core/src/pipeline.ts](../packages/agentbom-core/src/pipeline.ts) | Pipeline implementation with `PipelineMetrics` and `BOMProcessingPipelineConfig` |
 | [packages/agentbom-core/src/index.ts](../packages/agentbom-core/src/index.ts) | `validateAgentBOM()` with cached Ajv schema compilation |
 | [packages/mcp-posture-core/src/index.ts](../packages/mcp-posture-core/src/index.ts) | `validateMCPPosture()` with cached Ajv schema compilation |
 | [cli/src/agentbom-pipeline.ts](../cli/src/agentbom-pipeline.ts) | CLI `agentbom pipeline` command with built-in metrics output |
+| [cmd/policy-engine/main_bench.go](../cmd/policy-engine/main_bench.go) | Per-component benchmark suite — throughput/latency regression guards |
+| [internal/performance/performance.go](../internal/performance/performance.go) | Performance threshold types and baseline storage |
