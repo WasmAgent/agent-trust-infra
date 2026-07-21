@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-21 06:54 UTC by patrol_
+_Last updated: 2026-07-21 07:05 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-21 06:54 UTC by patrol_
 
 ## Waiting for Human
 
+- #312: Fix WasmAgent/agent-trust-infra#298 ([milestone Milestone 10] **Certificate Authority Integration** — PKI integration 
 - #310: Fix WasmAgent/agent-trust-infra#299 ([milestone Milestone 10] **Multi-Tenant Isolation** — secure storage that keeps e
 - #309: Fix WasmAgent/agent-trust-infra#300 ([milestone Milestone 10] **Operational Observability Stack** — Prometheus metrics
 - #301: [milestone Milestone 10] **Regulatory Reporting Automation** — `trust-cli report --framework <soc2|iso2...
