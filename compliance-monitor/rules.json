@@ -1,0 +1,57 @@
+{
+  "$comment": "Default compliance rules for the continuous compliance monitor (issue #294, Milestone 10). Rule types: security, trust_chain, artifact_verification. Operators: eq, ne, gte, lte, gt, lt, exists, not_exists, contains, not_contains, in, not_in.",
+  "rules": [
+    {
+      "id": "require-identity",
+      "description": "Agent must declare a stable identity for traceability.",
+      "check_type": "security",
+      "field": "identity",
+      "operator": "exists",
+      "severity": "high"
+    },
+    {
+      "id": "require-signing",
+      "description": "Agent artifacts must be cryptographically signed.",
+      "check_type": "trust_chain",
+      "field": "signed",
+      "operator": "eq",
+      "threshold": "true",
+      "severity": "critical"
+    },
+    {
+      "id": "max-severity-high",
+      "description": "Unmitigated risk severity must not exceed high.",
+      "check_type": "security",
+      "field": "max_severity",
+      "operator": "lte",
+      "threshold": "high",
+      "severity": "medium"
+    },
+    {
+      "id": "limit-permission-count",
+      "description": "Agent must not exceed 10 declared permissions.",
+      "check_type": "security",
+      "field": "permissions.count",
+      "operator": "lte",
+      "threshold": "10",
+      "severity": "medium"
+    },
+    {
+      "id": "forbid-admin-permissions",
+      "description": "Agent must not hold admin-scoped permissions.",
+      "check_type": "security",
+      "field": "permissions",
+      "operator": "not_contains",
+      "threshold": "admin:",
+      "severity": "critical"
+    },
+    {
+      "id": "require-version",
+      "description": "Agent must publish a version for reproducibility.",
+      "check_type": "artifact_verification",
+      "field": "version",
+      "operator": "exists",
+      "severity": "low"
+    }
+  ]
+}
