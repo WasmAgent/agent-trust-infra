@@ -50,6 +50,44 @@ downstream.
 - Open issues tracking the migration: WasmAgent/open-agent-audit#52, #53, #54
 - PRs or issues touching these packages will be closed without merge
 
+
+## Repository maturity
+
+| | |
+|---|---|
+| **Status** | Research Preview |
+| **Contract stability** | Evolving |
+| **Recommended for** | Compliance researchers, specification implementers, conformance testing |
+| **Not recommended for** | Production deployments; compliance certification claims |
+
+## Repository Boundaries
+
+### This repository owns
+- AgentBOM specification and JSON schema (`specs/agentbom/`)
+- MCP Posture specification and risk taxonomy (`specs/mcp-posture/`)
+- Trust Passport specification (`specs/trust-passport/`)
+- Compliance profiles (`profiles/`)
+- Active reference implementations: `agentbom-core`, `mcp-posture-core`
+- CLI validator (`cli/`)
+- Conformance fixtures and compatibility tests
+
+### Other repositories own — do not duplicate here
+| Capability | Owner |
+|---|---|
+| AEP schema, AEP emitter, runtime evidence signing | `wasmagent-js` (`@wasmagent/aep`) |
+| MCP traffic filtering, capability attestation | `wasmagent-js` (`@wasmagent/mcp-gateway`, `@wasmagent/mcp-attestation`) |
+| Audit report generation, regulatory control mapping (OWASP/EU AI Act/NIST/ISO) | `open-agent-audit` |
+| Trust Passport product: issuance, renewal, revocation | `open-agent-audit` (`@openagentaudit/passport`) |
+| Evidence admission, benchmark claim audit, training data pipeline | `trace-pipeline` |
+| Dynamic evaluation protocol (FAEP) | `fresharena` |
+
+### Allowed cross-repo patterns
+- Specs in `specs/` define canonical schemas; downstream packages implement and consume them.
+- Consume AEP records via `@wasmagent/aep` — never redefine the AEP schema here.
+- Reference Trust Passport issuance via `@openagentaudit/passport` — not a local reimplementation.
+- Conformance fixtures may be referenced by any repo for compliance testing.
+- New public specs require: external review, at least one independent consumer, and explicit versioning policy.
+
 ## Tech stack
 - TypeScript + Bun monorepo (turbo)
 - Packages: `agentbom-core`, `mcp-posture-core` (active) · `trust-passport-core`, `trust-runtime` (**frozen — see above**)
@@ -148,7 +186,7 @@ When items complete, update the checkboxes in `docs/roadmap.md`.
 
 ### Phase 6 — Production hardening (when research preview graduates)
 - [ ] `@wasmagent/trust-cli` npm publish with binary builds (Linux/macOS/Windows)
-- [ ] `@wasmagent/trust-runtime` npm publish with TypeScript definitions
+- ~~`@wasmagent/trust-runtime` npm publish~~ — package frozen; Trust Passport product lives in `open-agent-audit`
 - [ ] Renewal and revocation model for Trust Passport (Sigstore/in-toto integration, not self-rolled)
 - [ ] Trust Passport integration with `open-agent-audit` audit report pipeline
 - [ ] Compliance profile registry — verified regulatory mapping for `soc2-2024`, `iso27001-2022`, `eidas-controlled`
