@@ -26,6 +26,12 @@ package main
 //	GET  /v1/artifacts/{casId}         Pull by CAS id
 //	GET  /v1/agents/{identity}/artifacts  Query by agent identity
 //	GET  /health                       Health check
+//
+// Schema distribution (when -schemas-dir is set):
+//
+//	GET  /v1/schemas                   List available schemas
+//	GET  /v1/schemas/{name}            Serve schema by name (CDN-cached)
+//	GET  /v1/schemas/cas/{casId}       Serve schema by content-addressable URI
 
 import (
 	"crypto/sha256"
@@ -98,6 +104,28 @@ type HealthResponse struct {
 // ErrorResponse is a JSON error response.
 type ErrorResponse struct {
 	Error string `json:"error"`
+}
+
+// SchemaInfo describes a distributable schema available from the registry.
+type SchemaInfo struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	CasID   string `json:"cas_id"`
+	Size    int64  `json:"size_bytes"`
+	URI     string `json:"uri"`
+}
+
+// SchemaIndexResponse is the JSON response for GET /v1/schemas.
+type SchemaIndexResponse struct {
+	Schemas []SchemaInfo `json:"schemas"`
+	Offline bool         `json:"offline"`
+}
+
+// schemaEntry holds a loaded schema's raw bytes and computed metadata.
+type schemaEntry struct {
+	data  []byte
+	casID string
+	info  SchemaInfo
 }
 
 // ---- Pure helpers ----
@@ -218,20 +246,122 @@ func sliceContains(ss []string, s string) bool {
 	return false
 }
 
+// schemaCacheControl is the Cache-Control header value for schema responses.
+// Long TTL with stale-while-revalidate enables CDN geo-replication while
+// allowing clients to refresh in the background.
+const schemaCacheControl = "public, max-age=86400, stale-while-revalidate=3600, immutable"
+
+// schemaNameFromPath derives a URL-safe schema name from a file path
+// relative to the schemas directory.
+//
+//	"agentbom/schema.json" → "agentbom"
+//	"agentbom/agent-listing-schema.json" → "agentbom-agent-listing-schema"
+//	"mcp-posture/schema.json" → "mcp-posture"
+func schemaNameFromPath(relPath string) string {
+	bare := strings.TrimSuffix(filepath.ToSlash(relPath), ".json")
+	parts := strings.Split(bare, "/")
+	// "agentbom/schema" → "agentbom" (the canonical schema.json in a spec dir)
+	if len(parts) == 2 && parts[1] == "schema" {
+		return parts[0]
+	}
+	// Flatten deeper paths: "agentbom/agent-listing-schema" → "agentbom-agent-listing-schema"
+	return strings.Join(parts, "-")
+}
+
+// detectSchemaVersion extracts a version string from schema JSON content.
+// Checks common version field names used across the trust infra specs.
+func detectSchemaVersion(data []byte) string {
+	var raw map[string]interface{}
+	if json.Unmarshal(data, &raw) != nil {
+		return "unknown"
+	}
+	for _, key := range []string{
+		"agentbom_version", "posture_version", "passport_version",
+		"profile_version", "listing_version",
+	} {
+		if v, ok := raw[key]; ok {
+			if s, ok := v.(string); ok {
+				return s
+			}
+		}
+	}
+	return "unknown"
+}
+
 // ---- Registry ----
 
 // Registry manages the on-disk registry with thread-safe access.
 type Registry struct {
-	dir string
-	mu  sync.Mutex
+	dir        string
+	schemasDir string // local schema files directory for CDN-backed distribution (empty = disabled)
+	offline    bool   // true = serve only local schemas, no external fetch
+	mu         sync.Mutex
+	schemas    map[string]schemaEntry // schema name → cached entry
 }
 
 // NewRegistry creates or opens a registry at the given directory.
-func NewRegistry(dir string) (*Registry, error) {
+// schemasDir activates CDN-backed schema distribution when non-empty.
+// offline enables air-gapped/fallback mode where only local schemas are served.
+func NewRegistry(dir, schemasDir string, offline bool) (*Registry, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create registry: %w", err)
 	}
-	return &Registry{dir: dir}, nil
+	reg := &Registry{
+		dir:        dir,
+		schemasDir: schemasDir,
+		offline:    offline,
+	}
+	if err := reg.loadSchemas(); err != nil {
+		return nil, fmt.Errorf("load schemas: %w", err)
+	}
+	return reg, nil
+}
+
+// loadSchemas walks the schemas directory and caches all schema files.
+// Each schema.json in a subdirectory is named after that directory.
+// Other *-schema.json files use their full relative path (flattened).
+func (r *Registry) loadSchemas() error {
+	if r.schemasDir == "" {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.schemas = make(map[string]schemaEntry)
+
+	err := filepath.Walk(r.schemasDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		if !strings.HasSuffix(info.Name(), ".json") {
+			return nil
+		}
+
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			return nil // skip unreadable files
+		}
+
+		rel, _ := filepath.Rel(r.schemasDir, p)
+		name := schemaNameFromPath(rel)
+		casID := computeCasID(raw)
+		version := detectSchemaVersion(raw)
+
+		r.schemas[name] = schemaEntry{
+			data:  raw,
+			casID: casID,
+			info: SchemaInfo{
+				Name:    name,
+				Version: version,
+				CasID:   casID,
+				Size:    int64(len(raw)),
+				URI:     "/v1/schemas/cas/" + casID,
+			},
+		}
+		return nil
+	})
+
+	return err
 }
 
 // Publish stores an artifact in the registry with CAS-based deduplication.
@@ -364,7 +494,76 @@ func (r *Registry) QueryByAgent(agentID string) (*AgentArtifactsResponse, error)
 	}, nil
 }
 
-// ---- HTTP handlers ----
+// SchemaIndex returns metadata for all loaded schemas.
+func (r *Registry) SchemaIndex() *SchemaIndexResponse {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	infos := make([]SchemaInfo, 0, len(r.schemas))
+	for _, entry := range r.schemas {
+		infos = append(infos, entry.info)
+	}
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].Name < infos[j].Name
+	})
+
+	return &SchemaIndexResponse{
+		Schemas: infos,
+		Offline: r.offline,
+	}
+}
+
+// copySchemaEntry returns a deep copy of a schema entry so callers can safely
+// use the data after the mutex is released, even if loadSchemas() replaces the
+// underlying map concurrently.
+func copySchemaEntry(e schemaEntry) schemaEntry {
+	cp := e
+	if len(e.data) > 0 {
+		cp.data = make([]byte, len(e.data))
+		copy(cp.data, e.data)
+	}
+	return cp
+}
+
+// ServeSchema returns a deep copy of a schema entry by name, or nil if not found.
+// The returned entry is safe to use after the mutex is released.
+func (r *Registry) ServeSchema(name string) *schemaEntry {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if e, ok := r.schemas[name]; ok {
+		cp := copySchemaEntry(e)
+		return &cp
+	}
+	return nil
+}
+
+// ServeSchemaByCAS returns a deep copy of a schema entry by its
+// content-addressable ID, or nil. The returned entry is safe to use after the
+// mutex is released.
+func (r *Registry) ServeSchemaByCAS(casID string) *schemaEntry {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, e := range r.schemas {
+		if e.casID == casID {
+			cp := copySchemaEntry(e)
+			return &cp
+		}
+	}
+	return nil
+}
+
+// writeSchemaHeaders sets CDN-friendly HTTP headers for schema responses.
+// These headers enable geo-replication via CDN caches, content-addressable
+// version pinning, and efficient cache invalidation.
+func writeSchemaHeaders(w http.ResponseWriter, entry schemaEntry) {
+	w.Header().Set("Cache-Control", schemaCacheControl)
+	w.Header().Set("ETag", `"`+entry.casID+`"`)
+	w.Header().Set("Content-Location", "/v1/schemas/cas/"+entry.casID)
+	w.Header().Set("X-Content-Digest", entry.casID)
+	w.Header().Set("Surrogate-Key", "schema:"+entry.info.Name)
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Vary", "Accept-Encoding")
+}
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -433,6 +632,70 @@ func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, HealthResponse{Status: "ok", Version: "0.1.0"})
 }
 
+// ---- Schema distribution handlers ----
+
+func (r *Registry) handleSchemaIndex(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, r.SchemaIndex())
+}
+
+func (r *Registry) handleSchemaGet(w http.ResponseWriter, req *http.Request) {
+	name := strings.TrimPrefix(req.URL.Path, "/v1/schemas/")
+	// Reject CAS-style paths — those have their own handler.
+	if strings.HasPrefix(name, "cas/") {
+		writeError(w, http.StatusNotFound, "use /v1/schemas/cas/{casId} for content-addressed lookup")
+		return
+	}
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "schema name is required")
+		return
+	}
+
+	// Support If-None-Match for conditional GET (CDN revalidation).
+	entry := r.ServeSchema(name)
+	if entry == nil {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("schema %q not found", name))
+		return
+	}
+
+	if match := req.Header.Get("If-None-Match"); match != "" {
+		if match == `"`+entry.casID+`"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
+
+	writeSchemaHeaders(w, *entry)
+	w.Header().Set("Content-Type", "application/schema+json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(entry.data)
+}
+
+func (r *Registry) handleSchemaCAS(w http.ResponseWriter, req *http.Request) {
+	casID := strings.TrimPrefix(req.URL.Path, "/v1/schemas/cas/")
+	if casID == "" || !strings.HasPrefix(casID, "sha256:") {
+		writeError(w, http.StatusBadRequest, "invalid CAS identifier; expected sha256:<digest>")
+		return
+	}
+
+	entry := r.ServeSchemaByCAS(casID)
+	if entry == nil {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("no schema with CAS ID %s", casID))
+		return
+	}
+
+	if match := req.Header.Get("If-None-Match"); match != "" {
+		if match == `"`+entry.casID+`"` {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+	}
+
+	writeSchemaHeaders(w, *entry)
+	w.Header().Set("Content-Type", "application/schema+json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(entry.data)
+}
+
 // ---- Router ----
 
 // NewRouter creates an HTTP handler with all registry routes.
@@ -467,6 +730,31 @@ func NewRouter(reg *Registry) http.Handler {
 		}
 	})
 
+	// Schema distribution — CDN-backed with content-addressable URIs
+	// GET /v1/schemas — list available schemas
+	mux.HandleFunc("/v1/schemas", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			reg.handleSchemaIndex(w, r)
+		} else {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed; use GET")
+		}
+	})
+
+	// GET /v1/schemas/{name} — serve schema by name
+	mux.HandleFunc("/v1/schemas/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeError(w, http.StatusMethodNotAllowed, "method not allowed; use GET")
+			return
+		}
+		// Route CAS-style paths to the CAS handler.
+		if strings.TrimPrefix(r.URL.Path, "/v1/schemas/") == "cas/" ||
+			strings.HasPrefix(strings.TrimPrefix(r.URL.Path, "/v1/schemas/"), "cas/") {
+			reg.handleSchemaCAS(w, r)
+			return
+		}
+		reg.handleSchemaGet(w, r)
+	})
+
 	return mux
 }
 
@@ -487,12 +775,14 @@ func Run(args []string, stdout, stderr io.Writer) (int, error) {
 
 	addr := fs.String("addr", ":3279", "listen address (host:port)")
 	registryDir := fs.String("registry", defaultRegistryDir(), "registry directory")
+	schemasDir := fs.String("schemas-dir", "", "local schemas directory for CDN-backed distribution (empty = disabled)")
+	offline := fs.Bool("offline", false, "enable offline/fallback mode (serve only local schemas)")
 
 	if err := fs.Parse(args); err != nil {
 		return 2, nil
 	}
 
-	reg, err := NewRegistry(*registryDir)
+	reg, err := NewRegistry(*registryDir, *schemasDir, *offline)
 	if err != nil {
 		return 1, fmt.Errorf("init registry: %w", err)
 	}
@@ -509,6 +799,16 @@ func Run(args []string, stdout, stderr io.Writer) (int, error) {
 	fmt.Fprintf(stdout, "  GET  /v1/artifacts/{casId}     Retrieve artifact\n")
 	fmt.Fprintf(stdout, "  GET  /v1/agents/{id}/artifacts  Query by agent identity\n")
 	fmt.Fprintf(stdout, "  GET  /health                   Health check\n")
+	if *schemasDir != "" {
+		fmt.Fprintf(stdout, "Schema distribution:\n")
+		fmt.Fprintf(stdout, "  GET  /v1/schemas                  List available schemas\n")
+		fmt.Fprintf(stdout, "  GET  /v1/schemas/{name}           Serve schema by name\n")
+		fmt.Fprintf(stdout, "  GET  /v1/schemas/cas/{casId}     Serve schema by content-addressable URI\n")
+		fmt.Fprintf(stdout, "  Schemas directory: %s\n", *schemasDir)
+		if *offline {
+			fmt.Fprintf(stdout, "  Mode: offline (air-gapped, local schemas only)\n")
+		}
+	}
 
 	srv := &http.Server{Handler: NewRouter(reg)}
 	if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {

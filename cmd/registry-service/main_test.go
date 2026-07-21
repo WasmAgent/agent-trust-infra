@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -23,7 +25,42 @@ func mustMarshalJSON(t *testing.T, v interface{}) []byte {
 // The server is closed automatically when the test finishes.
 func newTestServer(t *testing.T) (*Registry, *httptest.Server) {
 	t.Helper()
-	reg, err := NewRegistry(t.TempDir())
+	reg, err := NewRegistry(t.TempDir(), "", false)
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	srv := httptest.NewServer(NewRouter(reg))
+	t.Cleanup(srv.Close)
+	return reg, srv
+}
+
+// newSchemaTestServer creates a Registry with schema distribution enabled,
+// backed by t.TempDir() with schema files written into a specs/ layout.
+func newSchemaTestServer(t *testing.T, offline bool) (*Registry, *httptest.Server) {
+	t.Helper()
+	regDir := t.TempDir()
+	schemasDir := filepath.Join(regDir, "specs")
+
+	// Create spec directories with schema.json files.
+	for _, spec := range []struct {
+		dir    string
+		schema string
+	}{
+		{"agentbom", `{"$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/agentbom/schema.json", "title": "AgentBOM", "type": "object", "properties": {"agentbom_version": {"type": "string", "enum": ["0.1"]}, "identity": {"type": "object"}}}`},
+		{"mcp-posture", `{"$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/mcp-posture/schema.json", "title": "MCPPosture", "type": "object", "properties": {"posture_version": {"type": "string", "enum": ["0.1"]}, "identity": {"type": "object"}}}`},
+		{"trust-passport", `{"$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/trust-passport/schema.json", "title": "TrustPassport", "type": "object", "properties": {"passport_version": {"type": "string", "enum": ["0.1"]}, "identity": {"type": "object"}}}`},
+		{"compliance-profile", `{"$schema": "http://json-schema.org/draft-07/schema#", "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/compliance-profile/schema.json", "title": "ComplianceProfile", "type": "object", "properties": {"profile_version": {"type": "string", "enum": ["0.1"]}}}`},
+	} {
+		dir := filepath.Join(schemasDir, spec.dir)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", dir, err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "schema.json"), []byte(spec.schema), 0o644); err != nil {
+			t.Fatalf("write schema: %v", err)
+		}
+	}
+
+	reg, err := NewRegistry(regDir, schemasDir, offline)
 	if err != nil {
 		t.Fatalf("NewRegistry: %v", err)
 	}
@@ -379,6 +416,310 @@ func TestDetectArtifactType(t *testing.T) {
 		got := detectArtifactType(tt.data)
 		if got != tt.want {
 			t.Errorf("detectArtifactType(%v) = %q, want %q", tt.data, got, tt.want)
+		}
+	}
+}
+
+// ---- Schema distribution tests ----
+
+func TestSchemaIndex(t *testing.T) {
+	_, srv := newSchemaTestServer(t, false)
+
+	resp, err := http.Get(srv.URL + "/v1/schemas")
+	if err != nil {
+		t.Fatalf("GET /v1/schemas: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var idx SchemaIndexResponse
+	if err := json.NewDecoder(resp.Body).Decode(&idx); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if idx.Offline {
+		t.Error("offline = true, want false")
+	}
+	if len(idx.Schemas) != 4 {
+		t.Fatalf("len(schemas) = %d, want 4", len(idx.Schemas))
+	}
+
+	// Check that expected schemas are present.
+	names := map[string]bool{}
+	for _, s := range idx.Schemas {
+		names[s.Name] = true
+		if s.CasID == "" {
+			t.Errorf("schema %q has empty cas_id", s.Name)
+		}
+		if s.Size == 0 {
+			t.Errorf("schema %q has size 0", s.Name)
+		}
+		if s.URI == "" {
+			t.Errorf("schema %q has empty uri", s.Name)
+		}
+	}
+	for _, want := range []string{"agentbom", "mcp-posture", "trust-passport", "compliance-profile"} {
+		if !names[want] {
+			t.Errorf("missing schema %q in index", want)
+		}
+	}
+}
+
+func TestSchemaIndexOffline(t *testing.T) {
+	_, srv := newSchemaTestServer(t, true)
+
+	resp, err := http.Get(srv.URL + "/v1/schemas")
+	if err != nil {
+		t.Fatalf("GET /v1/schemas: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var idx SchemaIndexResponse
+	if err := json.NewDecoder(resp.Body).Decode(&idx); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !idx.Offline {
+		t.Error("offline = false, want true in offline mode")
+	}
+}
+
+func TestSchemaGetByName(t *testing.T) {
+	_, srv := newSchemaTestServer(t, false)
+
+	resp, err := http.Get(srv.URL + "/v1/schemas/agentbom")
+	if err != nil {
+		t.Fatalf("GET /v1/schemas/agentbom: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	// Verify CDN headers.
+	if got := resp.Header.Get("Cache-Control"); got != schemaCacheControl {
+		t.Errorf("Cache-Control = %q, want %q", got, schemaCacheControl)
+	}
+	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+	if got := resp.Header.Get("Vary"); got != "Accept-Encoding" {
+		t.Errorf("Vary = %q, want Accept-Encoding", got)
+	}
+	etag := resp.Header.Get("ETag")
+	if etag == "" {
+		t.Error("ETag header is empty, want non-empty")
+	}
+	if etag != "" && !strings.HasPrefix(etag, `"sha256:`) {
+		t.Errorf("ETag = %q, want \"sha256:...\" quoted", etag)
+	}
+	contentLoc := resp.Header.Get("Content-Location")
+	if !strings.HasPrefix(contentLoc, "/v1/schemas/cas/sha256:") {
+		t.Errorf("Content-Location = %q, want /v1/schemas/cas/sha256:...", contentLoc)
+	}
+	digest := resp.Header.Get("X-Content-Digest")
+	if !strings.HasPrefix(digest, "sha256:") {
+		t.Errorf("X-Content-Digest = %q, want sha256:...", digest)
+	}
+	surrogate := resp.Header.Get("Surrogate-Key")
+	if surrogate != "schema:agentbom" {
+		t.Errorf("Surrogate-Key = %q, want schema:agentbom", surrogate)
+	}
+
+	// Verify body is valid JSON with the expected $id.
+	var body map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode schema body: %v", err)
+	}
+	if id, ok := body["$id"].(string); !ok || !strings.Contains(id, "agentbom") {
+		t.Errorf("$id = %v, want URL containing 'agentbom'", body["$id"])
+	}
+}
+
+func TestSchemaGetNotFound(t *testing.T) {
+	_, srv := newSchemaTestServer(t, false)
+
+	resp, err := http.Get(srv.URL + "/v1/schemas/nonexistent")
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", resp.StatusCode)
+	}
+}
+
+func TestSchemaCASLookup(t *testing.T) {
+	reg, srv := newSchemaTestServer(t, false)
+
+	// First, get the schema index to find the CAS ID for agentbom.
+	idx := reg.SchemaIndex()
+	var agentbomCAS string
+	for _, s := range idx.Schemas {
+		if s.Name == "agentbom" {
+			agentbomCAS = s.CasID
+			break
+		}
+	}
+	if agentbomCAS == "" {
+		t.Fatal("agentbom schema not found in index")
+	}
+
+	// Fetch by CAS ID.
+	resp, err := http.Get(srv.URL + "/v1/schemas/cas/" + agentbomCAS)
+	if err != nil {
+		t.Fatalf("GET /v1/schemas/cas/%s: %v", agentbomCAS, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body["title"] != "AgentBOM" {
+		t.Errorf("title = %v, want AgentBOM", body["title"])
+	}
+}
+
+func TestSchemaCASNotFound(t *testing.T) {
+	_, srv := newSchemaTestServer(t, false)
+
+	fakeCAS := "sha256:" + strings.Repeat("aa", 32)
+	resp, err := http.Get(srv.URL + "/v1/schemas/cas/" + fakeCAS)
+	if err != nil {
+		t.Fatalf("GET: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", resp.StatusCode)
+	}
+}
+
+func TestSchemaConditionalGET(t *testing.T) {
+	_, srv := newSchemaTestServer(t, false)
+
+	// First request — get the ETag.
+	resp1, err := http.Get(srv.URL + "/v1/schemas/trust-passport")
+	if err != nil {
+		t.Fatalf("GET 1: %v", err)
+	}
+	defer resp1.Body.Close()
+	etag := resp1.Header.Get("ETag")
+	if etag == "" {
+		t.Fatal("ETag is empty on first request")
+	}
+
+	// Second request — conditional with If-None-Match.
+	req, err := http.NewRequest("GET", srv.URL+"/v1/schemas/trust-passport", nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set("If-None-Match", etag)
+	resp2, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET 2: %v", err)
+	}
+	defer resp2.Body.Close()
+
+	if resp2.StatusCode != http.StatusNotModified {
+		t.Errorf("status = %d, want 304 Not Modified", resp2.StatusCode)
+	}
+}
+
+func TestSchemaDisabledWithoutSchemasDir(t *testing.T) {
+	// Default server without -schemas-dir — schema index should return empty list.
+	_, srv := newTestServer(t)
+
+	resp, err := http.Get(srv.URL + "/v1/schemas")
+	if err != nil {
+		t.Fatalf("GET /v1/schemas: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var idx SchemaIndexResponse
+	if err := json.NewDecoder(resp.Body).Decode(&idx); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(idx.Schemas) != 0 {
+		t.Errorf("len(schemas) = %d, want 0 (no schemas dir)", len(idx.Schemas))
+	}
+}
+
+func TestSchemaNameFromPath(t *testing.T) {
+	tests := []struct {
+		rel  string
+		want string
+	}{
+		{"agentbom/schema.json", "agentbom"},
+		{"agentbom/agent-listing-schema.json", "agentbom-agent-listing-schema"},
+		{"mcp-posture/schema.json", "mcp-posture"},
+		{"trust-passport/schema.json", "trust-passport"},
+		{"compliance-profile/schema.json", "compliance-profile"},
+	}
+	for _, tt := range tests {
+		got := schemaNameFromPath(tt.rel)
+		if got != tt.want {
+			t.Errorf("schemaNameFromPath(%q) = %q, want %q", tt.rel, got, tt.want)
+		}
+	}
+}
+
+func TestDetectSchemaVersion(t *testing.T) {
+	tests := []struct {
+		raw  string
+		want string
+	}{
+		{`{"agentbom_version": "0.1"}`, "0.1"},
+		{`{"posture_version": "2.0"}`, "2.0"},
+		{`{"passport_version": "1.3"}`, "1.3"},
+		{`{"profile_version": "0.5"}`, "0.5"},
+		{`{"other": "val"}`, "unknown"},
+		{`not json`, "unknown"},
+	}
+	for _, tt := range tests {
+		got := detectSchemaVersion([]byte(tt.raw))
+		if got != tt.want {
+			t.Errorf("detectSchemaVersion(%q) = %q, want %q", tt.raw, got, tt.want)
+		}
+	}
+}
+
+func TestSchemaMethodNotAllowed(t *testing.T) {
+	_, srv := newSchemaTestServer(t, false)
+
+	cases := []struct {
+		method string
+		path   string
+	}{
+		{"POST", "/v1/schemas"},
+		{"DELETE", "/v1/schemas/agentbom"},
+		{"PUT", "/v1/schemas/cas/sha256:abc"},
+	}
+
+	for _, c := range cases {
+		req, err := http.NewRequest(c.method, srv.URL+c.path, nil)
+		if err != nil {
+			t.Fatalf("NewRequest: %v", err)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("%s %s: %v", c.method, c.path, err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Errorf("%s %s: status = %d, want 405", c.method, c.path, resp.StatusCode)
 		}
 	}
 }
