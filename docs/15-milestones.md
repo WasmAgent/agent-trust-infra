@@ -110,3 +110,14 @@ This milestone transforms the trust infrastructure from a static artifact system
 - [ ] **Webhook & Event System** — extensible webhook framework for trust lifecycle events (passport issued/revoked, policy violation, compliance drift); supports custom payloads, retry logic with exponential backoff, and signature verification
 - [ ] **Graduated Staging Environments** — staging/promotion pipeline mirroring production; supports blue-green schema rollouts, canary validation rules, and automated rollback on regression detection
 - [ ] **Legacy Agent Migration Tooling** — trust artifact generation for pre-AgentBOM agents via static analysis and behavioral fingerprinting; enables onboarding of existing agent fleets without manual intervention
+
+## Milestone 11 — Multi-Agent Trust Orchestration
+
+- [ ] `specs/multi-agent-trust-chain.md` — trust propagation spec for agent-to-agent delegation, nested AgentBOM references, and transitive policy enforcement across agent teams
+- [ ] AgentBOM schema extension: `agent_collaboration` object defining peer agents, delegation boundaries, and shared resource access patterns for multi-agent workflows
+- [ ] `trust-cli compose-team <agent-boms...>` — generates composite trust manifest for multi-agent deployment with conflict detection and policy reconciliation
+- [ ] Trust Policy Language (TPL) — declarative policy syntax for "maximum tool risk," "required audit frequency," "data retention constraints" across agent teams with CI/CD integration hooks
+- [ ] `trust-policy-engine` library — policy evaluation engine with composable rule sets, real-time compliance scoring, and automated violation flagging for agent runtime monitoring
+- [ ] Multi-agent audit report generator — produces unified audit trail across agent teams with causal chain reconstruction ("Agent A delegated to Agent B which accessed tool C")
+- [ ] Agent marketplace trust export — standardized trust artifact packaging for agent publishing to marketplaces with one-click compliance verification for marketplace operators
+- [ ] Runtime policy enforcement hooks — integration points for wasmagent-js runtime to enforce trust policies at execution boundary (tool invocation, data access, delegation) with policy violation telemetry
