@@ -95,6 +95,16 @@ The following items are **cancelled** for this repo (implement in open-agent-aud
 - ~~Trust Passport integration with `open-agent-audit` audit report pipeline~~ — Trust Passport product lives in open-agent-audit directly
 - [ ] Compliance profile registry — `soc2-2024`, `iso27001-2022`, `eidas-controlled`
       with verified mapping to actual regulatory text (not just names)
+- [ ] **Conformance gate** — before AgentBOM or MCP Posture graduates from
+      research preview, require: (1) repository-owned deterministic conformance
+      fixtures (fixed inputs, expected validator verdicts), and (2) **at least one
+      independently-authored checker** — implemented from the spec text alone,
+      importing none of this repo's code — that reaches verdict parity on the
+      fixtures. Rationale: dependency-freedom removes code coupling but not
+      *assumption* coupling; a second checker written from `SPEC.md` surfaces
+      under-specified fields (e.g. argument canonicalization, `subject[]` binding)
+      before external adopters hit them. Bar adopted from the in-toto attestation
+      predicate-review process (in-toto/attestation#554).
 
 ### Phase 7 — Ecosystem
 
