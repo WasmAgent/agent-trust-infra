@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-21 08:01 UTC by patrol_
+_Last updated: 2026-07-21 08:12 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 5 |
+| Pending | 2 |
 | Active (running/reviewing) | 1 |
-| Blocked | 3 |
+| Blocked | 6 |
 | Completed/Merged (all time) | 1255 |
 
 ## Recent Activity (last 5)
@@ -28,6 +28,7 @@ _Last updated: 2026-07-21 08:01 UTC by patrol_
 - #310: Fix WasmAgent/agent-trust-infra#299 ([milestone Milestone 10] **Multi-Tenant Isolation** — secure storage that keeps e
 - #309: Fix WasmAgent/agent-trust-infra#300 ([milestone Milestone 10] **Operational Observability Stack** — Prometheus metrics
 - #301: [milestone Milestone 10] **Regulatory Reporting Automation** — `trust-cli report --framework <soc2|iso2...
+- #294: Fix WasmAgent/agent-trust-infra#291 ([milestone Milestone 10] **Continuous Compliance Monitoring** — daemon service th
 - #293: Fix WasmAgent/agent-trust-infra#292 ([milestone Milestone 10] **Federated Trust Chain Protocol** — specification for c
 
 ---
