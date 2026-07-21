@@ -54,7 +54,7 @@ External deadlines drive this milestone. All items have corresponding GitHub iss
 
 Begins when research preview graduates to production. **No Trust Passport work here** — `trust-passport-core` and `trust-runtime` are frozen; all Trust Passport work lives in `open-agent-audit`.
 
-- [ ] `@wasmagent/trust-cli` npm publish with binary builds for Linux, macOS, Windows — AgentBOM and MCP Posture CLI only (Trust Passport CLI lives in `open-agent-audit`)
+- [x] `@wasmagent/trust-cli` npm publish with binary builds for Linux, macOS, Windows — AgentBOM and MCP Posture CLI only (Trust Passport CLI lives in `open-agent-audit`) — publish workflow at `.github/workflows/publish.yml`, README at `cli/README.md` (issue #285)
 - [ ] Compliance profile registry: `soc2-2024`, `iso27001-2022`, `eidas-controlled` with verified mapping to actual regulatory text
 - [ ] `docs/cli.md` — complete command reference and examples for all shipped CLI commands
 - [x] Static site for `papers/` directory so technical reports are browseable on the web
