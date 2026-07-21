@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import Ajv from 'ajv';
+import { Ajv } from 'ajv';
 import type { ErrorObject, ValidateFunction } from 'ajv';
 
 export interface ValidationError {
@@ -35,6 +35,7 @@ function getValidator(): ValidateFunction {
   const ajv = new Ajv({ allErrors: true, strict: false });
   const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
   validateSchema = ajv.compile(schema);
+  if (!validateSchema) throw new Error('Failed to compile AgentBOM schema');
   return validateSchema;
 }
 
@@ -309,8 +310,8 @@ export function diffAgentBOM(
       risksModified.push({
         risk_id: id,
         field: 'status',
-        old: oldRisk.status,
-        new: newRisk.status,
+        old: oldRisk.status ?? '',
+        new: newRisk.status ?? '',
       });
     }
     if (oldRisk.category !== newRisk.category) {

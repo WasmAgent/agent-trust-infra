@@ -502,7 +502,9 @@ export async function runPipeline(
   config: Partial<PipelineConfig> = {},
 ): Promise<{ results: ArtifactResult[]; metrics: PipelineMetrics }> {
   const results: ArtifactResult[] = [];
-  const pipeline = new BOMProcessingPipeline(config, (r) => results.push(r));
+  const pipeline = new BOMProcessingPipeline(config, (r) => {
+    results.push(r);
+  });
   const source = readBOMAutoDetect(filePath, config.partitionCount ?? 1);
   const metrics = await pipeline.process(source);
   return { results, metrics };

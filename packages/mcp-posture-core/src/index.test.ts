@@ -313,7 +313,11 @@ describe('example file validation', () => {
   interface ExampleServer {
     tools?: ExampleTool[];
   }
-  let exampleData: { servers: ExampleServer[] };
+  let exampleData: {
+    servers: ExampleServer[];
+    permission_graph?: Record<string, unknown>;
+    risk_summary?: unknown[];
+  };
 
   function loadExample() {
     const raw = readFileSync(examplePath, 'utf-8');
@@ -348,7 +352,7 @@ describe('example file validation', () => {
 
   it('includes at least 2 risk_summary entries', () => {
     loadExample();
-    expect(exampleData.risk_summary.length).toBeGreaterThanOrEqual(2);
+    expect(exampleData.risk_summary?.length).toBeGreaterThanOrEqual(2);
   });
 });
 

@@ -9,5 +9,6 @@
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": ["cli", "packages/trust-passport-core", "packages/trust-runtime"]
 }
