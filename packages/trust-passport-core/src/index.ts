@@ -140,6 +140,34 @@ export function validateTrustPassport(data: unknown): ValidationResult {
     } else if (typeof revocation.revoked !== 'boolean') {
       errors.push('revocation.revoked must be a boolean');
     }
+
+    // When revoked, revoked_at, revocation_reason, and revoking_authority are required
+    const isRevoked = revocation.revoked === true;
+    if (isRevoked) {
+      if (!('revoked_at' in revocation)) {
+        errors.push('revocation: missing revoked_at (required when revoked=true)');
+      } else {
+        const revokedAt = revocation.revoked_at;
+        if (typeof revokedAt !== 'string') {
+          errors.push('revocation.revoked_at must be a string');
+        } else if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/.test(revokedAt)) {
+          errors.push('revocation.revoked_at must be an ISO 8601 UTC date string (ending in Z)');
+        }
+      }
+
+      if (!('revocation_reason' in revocation)) {
+        errors.push('revocation: missing revocation_reason (required when revoked=true)');
+      } else if (typeof revocation.revocation_reason !== 'string') {
+        errors.push('revocation.revocation_reason must be a string');
+      }
+
+      if (!('revoking_authority' in revocation)) {
+        errors.push('revocation: missing revoking_authority (required when revoked=true)');
+      } else if (typeof revocation.revoking_authority !== 'string') {
+        errors.push('revocation.revoking_authority must be a string');
+      }
+    }
+
     if (!('revocation_triggers' in revocation)) {
       errors.push('revocation: missing revocation_triggers');
     } else if (!Array.isArray(revocation.revocation_triggers)) {
@@ -188,15 +216,24 @@ export function inspectTrustPassport(data: Record<string, unknown>): string {
   const validity = data.validity as Record<string, string> | undefined;
   const risks = data.risk_summary as Record<string, number> | undefined;
   const revocation = data.revocation as Record<string, unknown> | undefined;
-  return [
+  const isRevoked = revocation?.revoked === true;
+  const lines = [
     `Trust Passport v${data.passport_version}`,
     `  Passport: ${identity?.passport_id ?? '?'}`,
     `  Agent:    ${identity?.agent_name ?? identity?.agent_id ?? '?'}`,
     `  Issued:   ${validity?.issued_at ?? '?'}`,
     `  Expires:  ${validity?.expires_at ?? '?'}`,
-    `  Revoked:  ${revocation?.revoked ?? false}`,
-    `  Risks:    critical=${risks?.critical ?? 0} high=${risks?.high ?? 0}`,
-  ].join('\n');
+    `  Revoked:  ${isRevoked}`,
+  ];
+  if (isRevoked) {
+    lines.push(
+      `  Revoked at:   ${revocation?.revoked_at ?? '?'}`,
+      `  Reason:       ${revocation?.revocation_reason ?? '?'}`,
+      `  Authority:    ${revocation?.revoking_authority ?? '?'}`,
+    );
+  }
+  lines.push(`  Risks:    critical=${risks?.critical ?? 0} high=${risks?.high ?? 0}`);
+  return lines.join('\n');
 }
 
 // ────────────────────────────────────────────────

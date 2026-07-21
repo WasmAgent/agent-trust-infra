@@ -85,6 +85,7 @@
         "revoked": { "type": "boolean" },
         "revoked_at": { "type": "string", "format": "date-time" },
         "revocation_reason": { "type": "string" },
+        "revoking_authority": { "type": "string" },
         "revocation_triggers": { "type": "array", "items": { "type": "string" } }
       }
     },

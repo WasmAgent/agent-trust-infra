@@ -2,10 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/WasmAgent/agent-trust-infra/internal/performance"
 )
 
 func TestPolicyEngineRejectsUnapprovedMCPServer(t *testing.T) {
@@ -212,6 +216,262 @@ func TestPolicyEngineRejectsUnsupportedDSLVersion(t *testing.T) {
 	if !strings.Contains(err.Error(), `unsupported dsl_version "9.0"`) {
 		t.Fatalf("validatePolicy error = %q, want unsupported dsl_version", err.Error())
 	}
+}
+
+// --- Benchmarks ---
+
+func BenchmarkEvaluatePolicySingleRule(b *testing.B) {
+	policy := policyDocument{
+		PolicySetID: "bench",
+		Version:     "1.0.0",
+		Rules: []policyRule{
+			{
+				ID:     "bench-rule",
+				Effect: "deny",
+				When: &condition{
+					Path: "agent_id",
+					Op:   "exists",
+				},
+			},
+		},
+	}
+	artifact := map[string]any{"agent_id": "agent-1"}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEvaluatePolicyTenRules(b *testing.B) {
+	policy := buildBenchPolicy(10, 0)
+	artifact := buildBenchArtifact(5)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEvaluatePolicyHundredRules(b *testing.B) {
+	policy := buildBenchPolicy(100, 0)
+	artifact := buildBenchArtifact(20)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEvaluatePolicyWithIncludes(b *testing.B) {
+	policy := policyDocument{
+		PolicySetID: "root",
+		Version:     "1.0.0",
+		Includes: []policyDocument{
+			buildBenchPolicyDoc("included-a", "1.0", 10),
+			buildBenchPolicyDoc("included-b", "2.0", 10),
+		},
+		Rules: buildBenchRules(10),
+	}
+	artifact := buildBenchArtifact(20)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkComposePolicyRules(b *testing.B) {
+	policy := policyDocument{
+		PolicySetID: "root",
+		Version:     "1.0.0",
+		Includes: []policyDocument{
+			buildBenchPolicyDoc("inc-a", "1.0", 10),
+			buildBenchPolicyDoc("inc-b", "2.0", 10),
+			buildBenchPolicyDoc("inc-c", "3.0", 10),
+		},
+		Rules: buildBenchRules(15),
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = composePolicyRules(policy)
+	}
+}
+
+func BenchmarkValuesAtPathShallow(b *testing.B) {
+	artifact := map[string]any{
+		"agent_id": "agent-1",
+		"name":     "test-agent",
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := valuesAtPath(artifact, "agent_id"); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkValuesAtPathArrayTraversal(b *testing.B) {
+	artifact := map[string]any{
+		"tools": buildBenchArtifactSlice(50),
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := valuesAtPath(artifact, "tools[].tool_id"); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkValuesAtPathDeep(b *testing.B) {
+	artifact := map[string]any{
+		"level1": map[string]any{
+			"level2": map[string]any{
+				"level3": map[string]any{
+					"level4": map[string]any{
+						"target": "deep-value",
+					},
+				},
+			},
+		},
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := valuesAtPath(artifact, "level1.level2.level3.level4.target"); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// --- Regression gate tests for the policy engine ---
+
+func TestPolicyEvaluationSingleRuleRegression(t *testing.T) {
+	policy := policyDocument{
+		PolicySetID: "regression-test",
+		Version:     "1.0.0",
+		Rules: []policyRule{
+			{
+				ID:     "test-rule",
+				Effect: "deny",
+				When: &condition{
+					Path: "agent_id",
+					Op:   "exists",
+				},
+			},
+		},
+	}
+	artifact := map[string]any{"agent_id": "agent-1"}
+	performance.CheckRegression(t, performance.Threshold{
+		Name:        "policy-eval-single-rule",
+		MaxDuration: 20 * time.Microsecond,
+		WarmupRuns:  100,
+		MeasureRuns: 1000,
+	}, func() {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestPolicyEvaluationHundredRulesRegression(t *testing.T) {
+	policy := buildBenchPolicy(100, 0)
+	artifact := buildBenchArtifact(20)
+	performance.CheckRegression(t, performance.Threshold{
+		Name:        "policy-eval-hundred-rules",
+		MaxDuration: 500 * time.Microsecond,
+		WarmupRuns:  50,
+		MeasureRuns: 500,
+	}, func() {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestPolicyEvaluationWithIncludesRegression(t *testing.T) {
+	policy := policyDocument{
+		PolicySetID: "root",
+		Version:     "1.0.0",
+		Includes: []policyDocument{
+			buildBenchPolicyDoc("inc-a", "1.0", 10),
+			buildBenchPolicyDoc("inc-b", "2.0", 10),
+		},
+		Rules: buildBenchRules(10),
+	}
+	artifact := buildBenchArtifact(20)
+	performance.CheckRegression(t, performance.Threshold{
+		Name:        "policy-eval-with-includes",
+		MaxDuration: 200 * time.Microsecond,
+		WarmupRuns:  50,
+		MeasureRuns: 500,
+	}, func() {
+		if _, err := evaluatePolicy(policy, artifact); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+// --- Helpers for benchmarks and regression tests ---
+
+func buildBenchPolicy(ruleCount, includeDepth int) policyDocument {
+	policy := policyDocument{
+		PolicySetID: "bench",
+		Version:     "1.0.0",
+		Rules:       buildBenchRules(ruleCount),
+	}
+	if includeDepth > 0 {
+		policy.Includes = []policyDocument{
+			buildBenchPolicy(ruleCount, includeDepth-1),
+		}
+	}
+	return policy
+}
+
+func buildBenchPolicyDoc(id, version string, ruleCount int) policyDocument {
+	return policyDocument{
+		DSLVersion:  "1.0",
+		PolicySetID: id,
+		Version:     version,
+		Rules:       buildBenchRules(ruleCount),
+	}
+}
+
+func buildBenchRules(n int) []policyRule {
+	rules := make([]policyRule, n)
+	for i := 0; i < n; i++ {
+		rules[i] = policyRule{
+			ID:     fmt.Sprintf("bench-rule-%04d", i),
+			Effect: "deny",
+			When: &condition{
+				Path:   fmt.Sprintf("tools[%d].permissions[]", i%10),
+				Op:     "contains",
+				Values: []string{"filesystem"},
+			},
+		}
+	}
+	return rules
+}
+
+func buildBenchArtifact(toolCount int) map[string]any {
+	return map[string]any{
+		"tools": buildBenchArtifactSlice(toolCount),
+	}
+}
+
+func buildBenchArtifactSlice(n int) []map[string]any {
+	tools := make([]map[string]any, n)
+	for i := range tools {
+		tools[i] = map[string]any{
+			"tool_id":     fmt.Sprintf("tool-%04d", i),
+			"permissions": []string{"filesystem:read", "network:write"},
+		}
+	}
+	return tools
 }
 
 func writeTempJSON(t *testing.T, name string, value any) string {
