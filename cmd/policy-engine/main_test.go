@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/WasmAgent/agent-trust-infra/internal/performance"
+	"github.com/WasmAgent/agent-trust-infra/trust-policy-engine"
 )
 
 func TestPolicyEngineRejectsUnapprovedMCPServer(t *testing.T) {
@@ -45,7 +46,7 @@ func TestPolicyEngineRejectsUnapprovedMCPServer(t *testing.T) {
 		t.Fatalf("exitCode = %d, want 1; stdout=%s stderr=%s", exitCode, stdout.String(), stderr.String())
 	}
 
-	var result evaluationResult
+	var result trustpolicyengine.EvaluationResult
 	if err := json.Unmarshal([]byte(stdout.String()), &result); err != nil {
 		t.Fatalf("decode result: %v", err)
 	}
@@ -58,19 +59,19 @@ func TestPolicyEngineRejectsUnapprovedMCPServer(t *testing.T) {
 }
 
 func TestPolicyEngineRequiresAEPForFileSystemTools(t *testing.T) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "org-governance",
 		Version:     "1.0.0",
-		Rules: []policyRule{
+		Rules: []trustpolicyengine.PolicyRule{
 			{
 				ID:     "filesystem-tools-require-aep",
 				Effect: "require",
-				When: &condition{
+				When: &trustpolicyengine.Condition{
 					Path:   "tools[].permissions[]",
 					Op:     "contains",
 					Values: []string{"filesystem"},
 				},
-				Assert: &condition{
+				Assert: &trustpolicyengine.Condition{
 					Path: "evidence_layer.aep_references[]",
 					Op:   "exists",
 				},
@@ -87,9 +88,9 @@ func TestPolicyEngineRequiresAEPForFileSystemTools(t *testing.T) {
 		"evidence_layer": map[string]any{},
 	}
 
-	result, err := evaluatePolicy(policy, artifact)
+	result, err := trustpolicyengine.EvaluatePolicy(policy, artifact)
 	if err != nil {
-		t.Fatalf("evaluatePolicy returned error: %v", err)
+		t.Fatalf("EvaluatePolicy returned error: %v", err)
 	}
 	if result.Allowed {
 		t.Fatal("result.Allowed = true, want false")
@@ -100,20 +101,20 @@ func TestPolicyEngineRequiresAEPForFileSystemTools(t *testing.T) {
 }
 
 func TestPolicyEngineComposesVersionedPolicySets(t *testing.T) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		DSLVersion:  "1.0",
 		PolicySetID: "org-governance",
 		Version:     "2026.07",
-		Includes: []policyDocument{
+		Includes: []trustpolicyengine.PolicyDocument{
 			{
 				DSLVersion:  "1.0",
 				PolicySetID: "mcp-baseline",
 				Version:     "1.2.0",
-				Rules: []policyRule{
+				Rules: []trustpolicyengine.PolicyRule{
 					{
 						ID:     "approved-mcp-servers",
 						Effect: "deny",
-						When: &condition{
+						When: &trustpolicyengine.Condition{
 							Path:   "servers[].server_id",
 							Op:     "not_in",
 							Values: []string{"filesystem-prod", "github-prod"},
@@ -125,16 +126,16 @@ func TestPolicyEngineComposesVersionedPolicySets(t *testing.T) {
 				DSLVersion:  "1.0",
 				PolicySetID: "aep-baseline",
 				Version:     "2.0.0",
-				Rules: []policyRule{
+				Rules: []trustpolicyengine.PolicyRule{
 					{
 						ID:     "filesystem-tools-require-aep",
 						Effect: "require",
-						When: &condition{
+						When: &trustpolicyengine.Condition{
 							Path:   "tools[].permissions[]",
 							Op:     "contains",
 							Values: []string{"filesystem"},
 						},
-						Assert: &condition{
+						Assert: &trustpolicyengine.Condition{
 							Path: "evidence_layer.aep_references[]",
 							Op:   "exists",
 						},
@@ -142,15 +143,15 @@ func TestPolicyEngineComposesVersionedPolicySets(t *testing.T) {
 				},
 			},
 		},
-		Rules: []policyRule{
+		Rules: []trustpolicyengine.PolicyRule{
 			{
 				ID:     "passport-expiry-present",
 				Effect: "require",
-				When: &condition{
+				When: &trustpolicyengine.Condition{
 					Path: "agent_id",
 					Op:   "exists",
 				},
-				Assert: &condition{
+				Assert: &trustpolicyengine.Condition{
 					Path: "passport.expires_at",
 					Op:   "exists",
 				},
@@ -176,9 +177,9 @@ func TestPolicyEngineComposesVersionedPolicySets(t *testing.T) {
 		},
 	}
 
-	result, err := evaluatePolicy(policy, artifact)
+	result, err := trustpolicyengine.EvaluatePolicy(policy, artifact)
 	if err != nil {
-		t.Fatalf("evaluatePolicy returned error: %v", err)
+		t.Fatalf("EvaluatePolicy returned error: %v", err)
 	}
 	if !result.Allowed {
 		t.Fatalf("result.Allowed = false, want true; violations=%#v", result.Violations)
@@ -195,15 +196,15 @@ func TestPolicyEngineComposesVersionedPolicySets(t *testing.T) {
 }
 
 func TestPolicyEngineRejectsUnsupportedDSLVersion(t *testing.T) {
-	err := validatePolicy(policyDocument{
+	err := trustpolicyengine.ValidatePolicy(trustpolicyengine.PolicyDocument{
 		DSLVersion:  "9.0",
 		PolicySetID: "future-policy",
 		Version:     "1.0.0",
-		Rules: []policyRule{
+		Rules: []trustpolicyengine.PolicyRule{
 			{
 				ID:     "future-rule",
 				Effect: "warn",
-				When: &condition{
+				When: &trustpolicyengine.Condition{
 					Path: "agent_id",
 					Op:   "exists",
 				},
@@ -211,24 +212,24 @@ func TestPolicyEngineRejectsUnsupportedDSLVersion(t *testing.T) {
 		},
 	})
 	if err == nil {
-		t.Fatal("validatePolicy returned nil, want unsupported dsl_version error")
+		t.Fatal("ValidatePolicy returned nil, want unsupported dsl_version error")
 	}
 	if !strings.Contains(err.Error(), `unsupported dsl_version "9.0"`) {
-		t.Fatalf("validatePolicy error = %q, want unsupported dsl_version", err.Error())
+		t.Fatalf("ValidatePolicy error = %q, want unsupported dsl_version", err.Error())
 	}
 }
 
 // --- Benchmarks ---
 
 func BenchmarkEvaluatePolicySingleRule(b *testing.B) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "bench",
 		Version:     "1.0.0",
-		Rules: []policyRule{
+		Rules: []trustpolicyengine.PolicyRule{
 			{
 				ID:     "bench-rule",
 				Effect: "deny",
-				When: &condition{
+				When: &trustpolicyengine.Condition{
 					Path: "agent_id",
 					Op:   "exists",
 				},
@@ -239,7 +240,7 @@ func BenchmarkEvaluatePolicySingleRule(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -250,7 +251,7 @@ func BenchmarkEvaluatePolicyTenRules(b *testing.B) {
 	artifact := buildBenchArtifact(5)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -261,17 +262,17 @@ func BenchmarkEvaluatePolicyHundredRules(b *testing.B) {
 	artifact := buildBenchArtifact(20)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkEvaluatePolicyWithIncludes(b *testing.B) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "root",
 		Version:     "1.0.0",
-		Includes: []policyDocument{
+		Includes: []trustpolicyengine.PolicyDocument{
 			buildBenchPolicyDoc("included-a", "1.0", 10),
 			buildBenchPolicyDoc("included-b", "2.0", 10),
 		},
@@ -280,17 +281,17 @@ func BenchmarkEvaluatePolicyWithIncludes(b *testing.B) {
 	artifact := buildBenchArtifact(20)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			b.Fatal(err)
 		}
 	}
 }
 
 func BenchmarkComposePolicyRules(b *testing.B) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "root",
 		Version:     "1.0.0",
-		Includes: []policyDocument{
+		Includes: []trustpolicyengine.PolicyDocument{
 			buildBenchPolicyDoc("inc-a", "1.0", 10),
 			buildBenchPolicyDoc("inc-b", "2.0", 10),
 			buildBenchPolicyDoc("inc-c", "3.0", 10),
@@ -299,7 +300,7 @@ func BenchmarkComposePolicyRules(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = composePolicyRules(policy)
+		_ = trustpolicyengine.ComposePolicyRules(policy)
 	}
 }
 
@@ -310,7 +311,7 @@ func BenchmarkValuesAtPathShallow(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := valuesAtPath(artifact, "agent_id"); err != nil {
+		if _, err := trustpolicyengine.ValuesAtPath(artifact, "agent_id"); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -322,7 +323,7 @@ func BenchmarkValuesAtPathArrayTraversal(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := valuesAtPath(artifact, "tools[].tool_id"); err != nil {
+		if _, err := trustpolicyengine.ValuesAtPath(artifact, "tools[].tool_id"); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -342,7 +343,7 @@ func BenchmarkValuesAtPathDeep(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := valuesAtPath(artifact, "level1.level2.level3.level4.target"); err != nil {
+		if _, err := trustpolicyengine.ValuesAtPath(artifact, "level1.level2.level3.level4.target"); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -351,14 +352,14 @@ func BenchmarkValuesAtPathDeep(b *testing.B) {
 // --- Regression gate tests for the policy engine ---
 
 func TestPolicyEvaluationSingleRuleRegression(t *testing.T) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "regression-test",
 		Version:     "1.0.0",
-		Rules: []policyRule{
+		Rules: []trustpolicyengine.PolicyRule{
 			{
 				ID:     "test-rule",
 				Effect: "deny",
-				When: &condition{
+				When: &trustpolicyengine.Condition{
 					Path: "agent_id",
 					Op:   "exists",
 				},
@@ -372,7 +373,7 @@ func TestPolicyEvaluationSingleRuleRegression(t *testing.T) {
 		WarmupRuns:  100,
 		MeasureRuns: 1000,
 	}, func() {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -387,17 +388,17 @@ func TestPolicyEvaluationHundredRulesRegression(t *testing.T) {
 		WarmupRuns:  50,
 		MeasureRuns: 500,
 	}, func() {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			t.Fatal(err)
 		}
 	})
 }
 
 func TestPolicyEvaluationWithIncludesRegression(t *testing.T) {
-	policy := policyDocument{
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "root",
 		Version:     "1.0.0",
-		Includes: []policyDocument{
+		Includes: []trustpolicyengine.PolicyDocument{
 			buildBenchPolicyDoc("inc-a", "1.0", 10),
 			buildBenchPolicyDoc("inc-b", "2.0", 10),
 		},
@@ -410,7 +411,7 @@ func TestPolicyEvaluationWithIncludesRegression(t *testing.T) {
 		WarmupRuns:  50,
 		MeasureRuns: 500,
 	}, func() {
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 			t.Fatal(err)
 		}
 	})
@@ -418,22 +419,22 @@ func TestPolicyEvaluationWithIncludesRegression(t *testing.T) {
 
 // --- Helpers for benchmarks and regression tests ---
 
-func buildBenchPolicy(ruleCount, includeDepth int) policyDocument {
-	policy := policyDocument{
+func buildBenchPolicy(ruleCount, includeDepth int) trustpolicyengine.PolicyDocument {
+	policy := trustpolicyengine.PolicyDocument{
 		PolicySetID: "bench",
 		Version:     "1.0.0",
 		Rules:       buildBenchRules(ruleCount),
 	}
 	if includeDepth > 0 {
-		policy.Includes = []policyDocument{
+		policy.Includes = []trustpolicyengine.PolicyDocument{
 			buildBenchPolicy(ruleCount, includeDepth-1),
 		}
 	}
 	return policy
 }
 
-func buildBenchPolicyDoc(id, version string, ruleCount int) policyDocument {
-	return policyDocument{
+func buildBenchPolicyDoc(id, version string, ruleCount int) trustpolicyengine.PolicyDocument {
+	return trustpolicyengine.PolicyDocument{
 		DSLVersion:  "1.0",
 		PolicySetID: id,
 		Version:     version,
@@ -441,13 +442,13 @@ func buildBenchPolicyDoc(id, version string, ruleCount int) policyDocument {
 	}
 }
 
-func buildBenchRules(n int) []policyRule {
-	rules := make([]policyRule, n)
+func buildBenchRules(n int) []trustpolicyengine.PolicyRule {
+	rules := make([]trustpolicyengine.PolicyRule, n)
 	for i := 0; i < n; i++ {
-		rules[i] = policyRule{
+		rules[i] = trustpolicyengine.PolicyRule{
 			ID:     fmt.Sprintf("bench-rule-%04d", i),
 			Effect: "deny",
-			When: &condition{
+			When: &trustpolicyengine.Condition{
 				Path:   fmt.Sprintf("tools[%d].permissions[]", i%10),
 				Op:     "contains",
 				Values: []string{"filesystem"},
@@ -491,13 +492,13 @@ func writeTempJSON(t *testing.T, name string, value any) string {
 func TestBenchWorkloadsProduceValidPolicies(t *testing.T) {
 	for _, workload := range []string{benchWorkloadSmall, benchWorkloadMedium, benchWorkloadLarge} {
 		policy := benchPolicyDocument(workload)
-		if err := validatePolicy(policy); err != nil {
-			t.Errorf("workload %s: validatePolicy failed: %v", workload, err)
+		if err := trustpolicyengine.ValidatePolicy(policy); err != nil {
+			t.Errorf("workload %s: ValidatePolicy failed: %v", workload, err)
 			continue
 		}
 		artifact := benchArtifact(workload)
-		if _, err := evaluatePolicy(policy, artifact); err != nil {
-			t.Errorf("workload %s: evaluatePolicy failed: %v", workload, err)
+		if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
+			t.Errorf("workload %s: EvaluatePolicy failed: %v", workload, err)
 		}
 	}
 }

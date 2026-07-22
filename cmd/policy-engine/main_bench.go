@@ -5,13 +5,13 @@ package main
 //
 // This file ships an automated, CLI-driven benchmark suite that measures
 // throughput (ops/s) and latency (ns/op, p50/p95/p99) for the core validation
-// operations defined in main.go:
+// operations defined in the trust-policy-engine package:
 //
-//   - validatePolicy       — structural policy validation
-//   - composePolicyRules   — policy composition across nested includes
-//   - evaluateCondition    — single condition evaluation
-//   - valuesAtPath         — JSON path resolution
-//   - evaluatePolicy       — full policy evaluation against an artifact
+//   - ValidatePolicy       — structural policy validation
+//   - ComposePolicyRules   — policy composition across nested includes
+//   - EvaluateCondition    — single condition evaluation
+//   - ValuesAtPath         — JSON path resolution
+//   - EvaluatePolicy       — full policy evaluation against an artifact
 //
 // Run the suite via the `bench` subcommand to publish results:
 //
@@ -33,6 +33,8 @@ import (
 	"runtime"
 	"sort"
 	"time"
+
+	"github.com/WasmAgent/agent-trust-infra/trust-policy-engine"
 )
 
 // benchSubcommand is the leading positional token that selects benchmark mode
@@ -192,17 +194,17 @@ func runValidationBenchmarksIter(workload string, iterations int) ([]benchMetric
 	policy := benchPolicyDocument(workload)
 	artifact := benchArtifact(workload)
 
-	if err := validatePolicy(policy); err != nil {
+	if err := trustpolicyengine.ValidatePolicy(policy); err != nil {
 		return nil, fmt.Errorf("bench policy %s invalid: %w", workload, err)
 	}
-	if _, err := evaluatePolicy(policy, artifact); err != nil {
+	if _, err := trustpolicyengine.EvaluatePolicy(policy, artifact); err != nil {
 		return nil, fmt.Errorf("bench evaluation %s failed: %w", workload, err)
 	}
 
 	// Representative condition + path reused across the hot loops. Values is a
-	// fixed non-nil slice and Value is unset, so evaluateCondition performs no
+	// fixed non-nil slice and Value is unset, so EvaluateCondition performs no
 	// backing-array mutation across iterations.
-	containsCond := condition{
+	containsCond := trustpolicyengine.Condition{
 		Path:   "tools[].permissions[]",
 		Op:     "contains",
 		Values: []string{"filesystem"},
@@ -211,19 +213,19 @@ func runValidationBenchmarksIter(workload string, iterations int) ([]benchMetric
 
 	return []benchMetric{
 		bench(benchOpValidatePolicy, workload, iterations, func() {
-			_ = validatePolicy(policy)
+			_ = trustpolicyengine.ValidatePolicy(policy)
 		}),
 		bench(benchOpComposePolicyRules, workload, iterations, func() {
-			_ = composePolicyRules(policy)
+			_ = trustpolicyengine.ComposePolicyRules(policy)
 		}),
 		bench(benchOpEvaluateCondition, workload, iterations, func() {
-			_, _ = evaluateCondition(containsCond, artifact)
+			_, _ = trustpolicyengine.EvaluateCondition(containsCond, artifact)
 		}),
 		bench(benchOpValuesAtPath, workload, iterations, func() {
-			_, _ = valuesAtPath(artifact, permissionsPath)
+			_, _ = trustpolicyengine.ValuesAtPath(artifact, permissionsPath)
 		}),
 		bench(benchOpEvaluatePolicy, workload, iterations, func() {
-			_, _ = evaluatePolicy(policy, artifact)
+			_, _ = trustpolicyengine.EvaluatePolicy(policy, artifact)
 		}),
 	}, nil
 }
@@ -318,17 +320,17 @@ func percentileDur(sorted []time.Duration, p float64) time.Duration {
 // benchPolicyDocument builds a valid policy whose rule count and include depth
 // scale with the workload. Every rule is a non-matching `warn` so evaluation
 // walks the full condition path without short-circuiting on violations.
-func benchPolicyDocument(workload string) policyDocument {
+func benchPolicyDocument(workload string) trustpolicyengine.PolicyDocument {
 	mainRules, baselineRules := benchWorkloadRuleCounts(workload)
-	policy := policyDocument{
-		DSLVersion:  supportedDSLVersion,
+	policy := trustpolicyengine.PolicyDocument{
+		DSLVersion:  trustpolicyengine.SupportedDSLVersion,
 		PolicySetID: "bench-" + workload,
 		Version:     "1.0.0",
 		Rules:       benchRules(mainRules, workload, 0),
 	}
 	if baselineRules > 0 {
-		policy.Includes = []policyDocument{{
-			DSLVersion:  supportedDSLVersion,
+		policy.Includes = []trustpolicyengine.PolicyDocument{{
+			DSLVersion:  trustpolicyengine.SupportedDSLVersion,
 			PolicySetID: "bench-" + workload + "-baseline",
 			Version:     "1.0.0",
 			Rules:       benchRules(baselineRules, workload, mainRules),
@@ -339,7 +341,7 @@ func benchPolicyDocument(workload string) policyDocument {
 
 // benchWorkloadRuleCounts returns (main policy rules, included baseline rules)
 // per workload. Keeping includes to a single level avoids exponential rule
-// blow-up while still exercising composePolicyRules and countPolicyDocuments.
+// blow-up while still exercising ComposePolicyRules and countPolicyDocuments.
 func benchWorkloadRuleCounts(workload string) (main, baseline int) {
 	switch workload {
 	case benchWorkloadSmall:
@@ -355,15 +357,15 @@ func benchWorkloadRuleCounts(workload string) (main, baseline int) {
 
 // benchRules generates count non-matching warn rules. offset seeds the rule ID
 // so included policies get distinct, deterministic names.
-func benchRules(count int, workload string, offset int) []policyRule {
-	rules := make([]policyRule, count)
+func benchRules(count int, workload string, offset int) []trustpolicyengine.PolicyRule {
+	rules := make([]trustpolicyengine.PolicyRule, count)
 	for i := 0; i < count; i++ {
 		idx := offset + i
-		rules[i] = policyRule{
+		rules[i] = trustpolicyengine.PolicyRule{
 			ID:          fmt.Sprintf("bench-%s-rule-%d", workload, idx),
 			Description: fmt.Sprintf("benchmark %s rule %d", workload, idx),
 			Effect:      "warn",
-			When: &condition{
+			When: &trustpolicyengine.Condition{
 				Path:  fmt.Sprintf("tags[%d]", idx%4),
 				Op:    "equals",
 				Value: fmt.Sprintf("no-match-%d", idx),
