@@ -386,6 +386,127 @@
         }
       }
     },
+    "agent_collaboration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Multi-agent collaboration topology — peer agents, delegation boundaries, and shared resource access patterns",
+      "properties": {
+        "peer_agents": {
+          "type": "array",
+          "description": "Known peer agents this agent collaborates with",
+          "items": {
+            "type": "object",
+            "required": ["agent_id", "role"],
+            "additionalProperties": false,
+            "properties": {
+              "agent_id": {
+                "type": "string",
+                "description": "Unique identifier of the peer agent"
+              },
+              "agent_name": {
+                "type": "string",
+                "description": "Human-readable name of the peer agent"
+              },
+              "role": {
+                "type": "string",
+                "enum": ["supervisor", "delegate", "peer", "subordinate"],
+                "description": "Collaboration role relative to this agent"
+              },
+              "trust_level": {
+                "type": "string",
+                "enum": ["full", "restricted", "minimal", "none"],
+                "description": "Trust level assigned to this peer agent"
+              },
+              "agentbom_ref": {
+                "type": "string",
+                "description": "URI or hash reference to the peer agent's AgentBOM"
+              }
+            }
+          }
+        },
+        "delegation_boundaries": {
+          "type": "array",
+          "description": "Rules governing what this agent can delegate to peers and what it accepts from them",
+          "items": {
+            "type": "object",
+            "required": ["boundary_id", "direction", "constraint_type"],
+            "additionalProperties": false,
+            "properties": {
+              "boundary_id": {
+                "type": "string",
+                "description": "Unique boundary identifier"
+              },
+              "direction": {
+                "type": "string",
+                "enum": ["outbound", "inbound", "bidirectional"],
+                "description": "Direction of the delegation boundary"
+              },
+              "constraint_type": {
+                "type": "string",
+                "description": "Type of constraint (e.g., tool_delegation, data_sharing, permission_propagation)"
+              },
+              "description": {
+                "type": "string",
+                "description": "Human-readable description of the boundary rule"
+              },
+              "target_agents": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Agent IDs this boundary applies to (empty means all peers)"
+              },
+              "allowed_actions": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Actions permitted within this boundary"
+              },
+              "max_delegation_depth": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Maximum depth of transitive delegation (0 = no transitive delegation)"
+              }
+            }
+          }
+        },
+        "shared_resources": {
+          "type": "array",
+          "description": "Resources shared across agent collaboration boundaries",
+          "items": {
+            "type": "object",
+            "required": ["resource_id", "resource_type", "access_pattern"],
+            "additionalProperties": false,
+            "properties": {
+              "resource_id": {
+                "type": "string",
+                "description": "Unique resource identifier"
+              },
+              "resource_type": {
+                "type": "string",
+                "description": "Type of shared resource (e.g., datastore, file_system, api_endpoint, message_queue)"
+              },
+              "access_pattern": {
+                "type": "string",
+                "enum": ["read_only", "write_only", "read_write", "exclusive"],
+                "description": "Access pattern for the shared resource"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the shared resource and its purpose"
+              },
+              "accessing_agents": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Agent IDs that access this resource"
+              },
+              "isolation_level": {
+                "type": "string",
+                "enum": ["shared", "partitioned", "isolated"],
+                "description": "Resource isolation level between agents"
+              }
+            }
+          }
+        }
+      }
+    },
     "distribution": {
       "type": "object",
       "additionalProperties": false,
