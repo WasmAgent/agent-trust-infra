@@ -59,6 +59,7 @@ const USAGE = [
   '  mcp-posture diff <old> <new> Diff two MCP posture snapshots',
   '  mcp-posture migrate <path> [--target <ver>] [--dry-run]  Migrate MCP Posture to target schema version',
   '  audit-report <bom.json>    Generate human-readable audit summary with evidence citations',
+  '  audit-report multi <boms...> [--dir <dir>]  Generate multi-agent audit report with causal chain reconstruction',
   '  compliance-check <bom.json> --profile <name> [--min-score <score>]  Validate AgentBOM against compliance profile with adaptive weighted scoring',
   '  compliance-verify-profile <profile-id> [--schema-version <ver>]  Check profile backward compatibility against AgentBOM schema',
   '  compliance-upgrade-profile <profile-id> [--schema-version <ver>] [--dry-run]  Auto-resolve breaking mapping changes in a compliance profile',
