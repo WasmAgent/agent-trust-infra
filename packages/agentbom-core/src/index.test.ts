@@ -888,6 +888,258 @@ describe('classifyDriftEvents', () => {
   });
 });
 
+describe('agent_collaboration schema extension', () => {
+  it('accepts valid agent_collaboration with all sub-objects', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [
+          {
+            agent_id: 'peer-001',
+            agent_name: 'Reviewer Agent',
+            role: 'supervisor',
+            trust_level: 'full',
+            agentbom_ref: 'https://example.com/boms/peer-001.json',
+          },
+          {
+            agent_id: 'peer-002',
+            role: 'delegate',
+            trust_level: 'restricted',
+          },
+        ],
+        delegation_boundaries: [
+          {
+            boundary_id: 'b-001',
+            direction: 'outbound',
+            constraint_type: 'tool_delegation',
+            description: 'Can delegate file read to reviewer',
+            target_agents: ['peer-001'],
+            allowed_actions: ['fs:read'],
+            max_delegation_depth: 0,
+          },
+        ],
+        shared_resources: [
+          {
+            resource_id: 'res-001',
+            resource_type: 'datastore',
+            access_pattern: 'read_write',
+            description: 'Shared task queue',
+            accessing_agents: ['peer-001', 'peer-002'],
+            isolation_level: 'partitioned',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('accepts minimal agent_collaboration (empty arrays)', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [],
+        delegation_boundaries: [],
+        shared_resources: [],
+      },
+    });
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('accepts agent_collaboration with only some sub-objects', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [
+          {
+            agent_id: 'peer-001',
+            role: 'peer',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it('rejects invalid peer agent role', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [
+          {
+            agent_id: 'peer-001',
+            role: 'unknown_role',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const roleErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(roleErr).toBeDefined();
+    expect(roleErr?.keyword).toBe('enum');
+  });
+
+  it('rejects missing required fields on peer_agents items', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [
+          {
+            agent_name: 'No ID or Role',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const errors = result.errorDetails.filter((e) => e.field.includes('agent_collaboration'));
+    expect(errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('rejects missing required fields on delegation_boundaries items', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        delegation_boundaries: [
+          {
+            boundary_id: 'b-001',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const errors = result.errorDetails.filter((e) => e.field.includes('agent_collaboration'));
+    expect(errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('rejects invalid direction in delegation_boundaries', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        delegation_boundaries: [
+          {
+            boundary_id: 'b-001',
+            direction: 'sideways',
+            constraint_type: 'tool_delegation',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const dirErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(dirErr).toBeDefined();
+    expect(dirErr?.keyword).toBe('enum');
+  });
+
+  it('rejects negative max_delegation_depth', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        delegation_boundaries: [
+          {
+            boundary_id: 'b-001',
+            direction: 'outbound',
+            constraint_type: 'tool_delegation',
+            max_delegation_depth: -1,
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const depthErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(depthErr).toBeDefined();
+    expect(depthErr?.keyword).toBe('minimum');
+  });
+
+  it('rejects missing required fields on shared_resources items', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        shared_resources: [
+          {
+            resource_id: 'res-001',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const errors = result.errorDetails.filter((e) => e.field.includes('agent_collaboration'));
+    expect(errors.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('rejects invalid access_pattern in shared_resources', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        shared_resources: [
+          {
+            resource_id: 'res-001',
+            resource_type: 'datastore',
+            access_pattern: 'full_access',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const patErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(patErr).toBeDefined();
+    expect(patErr?.keyword).toBe('enum');
+  });
+
+  it('rejects additional properties on agent_collaboration', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [],
+        extra_field: 'not_allowed',
+      },
+    });
+    expect(result.valid).toBe(false);
+    const extraErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(extraErr).toBeDefined();
+    expect(extraErr?.keyword).toBe('additionalProperties');
+  });
+
+  it('rejects invalid trust_level on peer agents', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        peer_agents: [
+          {
+            agent_id: 'peer-001',
+            role: 'peer',
+            trust_level: 'super_trusted',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const trustErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(trustErr).toBeDefined();
+    expect(trustErr?.keyword).toBe('enum');
+  });
+
+  it('rejects invalid isolation_level on shared_resources', () => {
+    const result = validateAgentBOM({
+      ...VALID_AGENTBOM,
+      agent_collaboration: {
+        shared_resources: [
+          {
+            resource_id: 'res-001',
+            resource_type: 'datastore',
+            access_pattern: 'read_only',
+            isolation_level: 'connected',
+          },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    const isoErr = result.errorDetails.find((e) => e.field.includes('agent_collaboration'));
+    expect(isoErr).toBeDefined();
+    expect(isoErr?.keyword).toBe('enum');
+  });
+});
+
 describe('formatDriftAlert', () => {
   it('formats empty alert with no drift message', () => {
     const alert = classifyDriftEvents(
