@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-22 02:28 UTC by patrol_
+_Last updated: 2026-07-22 02:31 UTC by patrol_
 
 ## Queue
 
@@ -20,10 +20,6 @@ _Last updated: 2026-07-22 02:28 UTC by patrol_
 | #331 | [milestone Milestone 11] Multi-agent audit report generat... | completed/complexity_gate_split | 2026-07-22 |
 | #329 | [milestone Milestone 11] Trust Policy Language (TPL) — ... | completed/complexity_gate_split | 2026-07-22 |
 | #333 | [milestone Milestone 11] Runtime policy enforcement hooks... | completed/complexity_gate_split | 2026-07-22 |
-
-## Waiting for Human
-
-- #332: [milestone Milestone 11] Agent marketplace trust export — standardized trust artifact packaging for age...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
