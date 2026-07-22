@@ -22,6 +22,7 @@ import {
   upgradeProfileCommand,
   verifyProfileCommand,
 } from './compliance-check.js';
+import { composeTeamCommand } from './compose-team.js';
 import { exportDashboardCommand } from './export-dashboard.js';
 import { diffMCPPostureCommand } from './mcp-posture-diff.js';
 import { inspectMCPPostureCommand } from './mcp-posture-inspect.js';
@@ -71,6 +72,7 @@ const USAGE = [
   '  pull <artifact-id> [--registry <dir>] [--output <path>] [--with-deps]  Retrieve trust artifact from registry with integrity verification',
   '  diff <artifact-a.json> <artifact-b.json> [--json]  Structured diff of trust artifacts (auto-detects type)',
   '  verify-chain <passport.jwt> --depth N [--key <pubkey>] [--registry <dir>]  Recursive trust chain verification with configurable depth and caching',
+  '  compose-team <bom1.json> <bom2.json> [<bom3.json>...]  Compose multiple AgentBOMs into a composite trust manifest',
   '  report <bom.json> --framework <soc2|iso27001|ai-act> [--period <period>] [--format text|json] [--evidence-level summary|detailed]  Generate compliance-ready regulatory report with evidence citations',
 ].join('\n');
 
@@ -793,6 +795,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'report') {
     return reportCommand(args.slice(1));
+  }
+
+  if (args[0] === 'compose-team') {
+    return composeTeamCommand(args.slice(1));
   }
 
   console.error(`Error: unknown command "${args[0]}"`);
