@@ -692,3 +692,20 @@ describe('diffAgentBOMCommand', () => {
     expect(diffAgentBOMCommand(oldPath, newPath)).toBe(1);
   });
 });
+
+describe('compose-team command routing', () => {
+  it('returns 1 when no args provided', () => {
+    expect(runCommand(['compose-team'])).toBe(1);
+  });
+
+  it('returns 1 when only one BOM provided', () => {
+    expect(runCommand(['compose-team', 'only-one.bom'])).toBe(1);
+  });
+
+  it('--help output includes compose-team', () => {
+    const spy = spyOn(console, 'log');
+    runCommand(['--help']);
+    const output = spy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(output).toContain('compose-team');
+  });
+});
