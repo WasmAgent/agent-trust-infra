@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-23 09:53 UTC by patrol_
+_Last updated: 2026-07-23 10:34 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 2 |
+| Pending | 1 |
 | Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 1278 |
+| Completed/Merged (all time) | 1279 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #350 | ci-health: main CI is red on WasmAgent/agent-trust-infra ... | completed/maintenance_done | 2026-07-23 |
 | #342 | feat(cli): add compose-team.ts — validate and aggregate... | merged/auto_closed_resolved | 2026-07-22 |
 | #343 | feat(cli): wire compose-team command into index.ts + add ... | merged/merged | 2026-07-22 |
 | #334 | Fix WasmAgent/agent-trust-infra#330 ([milestone Milestone... | merged/merged | 2026-07-22 |
 | #328 | [milestone Milestone 11] `trust-cli compose-team <agent-b... | completed/complexity_gate_split | 2026-07-22 |
-| #337 | Fix WasmAgent/agent-trust-infra#331 ([milestone Milestone... | merged/merged | 2026-07-22 |
 
 ## Waiting for Human
 
