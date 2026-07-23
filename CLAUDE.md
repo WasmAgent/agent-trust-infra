@@ -74,7 +74,8 @@ downstream.
 ### Other repositories own — do not duplicate here
 | Capability | Owner |
 |---|---|
-| AEP schema, AEP emitter, runtime evidence signing | `wasmagent-js` (`@wasmagent/aep`) |
+| AEP schema definition | `wasmagent-protocol` (`@wasmagent/protocol`) |
+| AEP emitter, runtime evidence signing | `wasmagent-js` (`@wasmagent/aep`) |
 | MCP traffic filtering, capability attestation | `wasmagent-js` (`@wasmagent/mcp-gateway`, `@wasmagent/mcp-attestation`) |
 | Audit report generation, regulatory control mapping (OWASP/EU AI Act/NIST/ISO) | `open-agent-audit` |
 | Trust Passport specification and product (issuance, renewal, revocation) | `open-agent-audit` (`@openagentaudit/passport`) |
