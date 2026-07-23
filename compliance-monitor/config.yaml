@@ -1,0 +1,69 @@
+# Continuous compliance monitor daemon configuration.
+# Issue #294, Milestone 10 — "Continuous Compliance Monitoring".
+#
+# This file is the default daemon config. It is accepted in YAML (here) or JSON
+# form. Override the path with --config, or run a single scan with --once.
+
+# Period between fleet compliance scans.
+scan_interval: 5m
+
+# Registry source — set ONE of registry_dir (local filesystem watch) or
+# registry_url (HTTP agent directory). When both are set, registry_dir wins.
+registry_dir: /var/lib/compliance-monitor/agents
+# registry_url: http://registry-service:3279/agents
+
+# HTTP server addresses for the liveness and metrics endpoints.
+health_addr: ":9091"
+metrics_addr: ":9090"
+
+# Optional webhook for violation alerts (PagerDuty, Slack, GitHub Security).
+# Leave empty to alert via structured logs only (v1 behavior).
+webhook_url: ""
+
+# Number of retries (exponential backoff) for transient registry read failures.
+max_retries: 3
+
+# Compliance rules. Each agent MUST satisfy every rule; failures raise a
+# violation at the rule's severity. Rules may also be loaded from a standalone
+# file via --rules.
+rules:
+  - id: require-identity
+    description: Agent must declare a stable identity for traceability.
+    check_type: security
+    field: identity
+    operator: exists
+    severity: high
+  - id: require-signing
+    description: Agent artifacts must be cryptographically signed.
+    check_type: trust_chain
+    field: signed
+    operator: eq
+    threshold: "true"
+    severity: critical
+  - id: max-severity-high
+    description: Unmitigated risk severity must not exceed high.
+    check_type: security
+    field: max_severity
+    operator: lte
+    threshold: high
+    severity: medium
+  - id: limit-permission-count
+    description: Agent must not exceed 10 declared permissions.
+    check_type: security
+    field: permissions.count
+    operator: lte
+    threshold: "10"
+    severity: medium
+  - id: forbid-admin-permissions
+    description: Agent must not hold admin-scoped permissions.
+    check_type: security
+    field: permissions
+    operator: not_contains
+    threshold: "admin:"
+    severity: critical
+  - id: require-version
+    description: Agent must publish a version for reproducibility.
+    check_type: artifact_verification
+    field: version
+    operator: exists
+    severity: low
