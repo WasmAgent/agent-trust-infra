@@ -1,13 +1,13 @@
 # Bot State
 
-_Last updated: 2026-07-24 00:12 UTC by patrol_
+_Last updated: 2026-07-24 00:40 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 0 |
-| Active (running/reviewing) | 0 |
+| Pending | 2 |
+| Active (running/reviewing) | 1 |
 | Blocked | 0 |
 | Completed/Merged (all time) | 1280 |
 
@@ -26,7 +26,6 @@ _Last updated: 2026-07-24 00:12 UTC by patrol_
 - #346: test(cli): add export-marketplace.test.ts unit tests
 - #345: feat(cli): add export-marketplace CLI command handler and wire into index.ts
 - #340: Fix WasmAgent/agent-trust-infra#328 ([milestone Milestone 11] `trust-cli compose-team <agent-boms...>` — generates com
-- #332: [milestone Milestone 11] Agent marketplace trust export — standardized trust artifact packaging for age...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
