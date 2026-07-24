@@ -183,7 +183,6 @@ export function buildMarketplacePackage(
   };
 }
 
-
 // ---- CLI command ----
 
 /**
@@ -242,7 +241,12 @@ export function exportMarketplaceCommand(args: string[]): number {
 
     mkdirSync(resolve(outputDir), { recursive: true });
     const outPath = resolve(outputDir, 'marketplace-package.json');
-    writeFileSync(outPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+    writeFileSync(
+      outPath,
+      `${JSON.stringify(pkg, null, 2)}
+`,
+      'utf-8',
+    );
     console.log(`Marketplace package written to ${outPath}`);
     return 0;
   } catch (err) {
