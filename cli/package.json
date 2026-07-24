@@ -8,11 +8,7 @@
     "agent-trust": "./dist/index.js",
     "trust-cli": "./dist/index.js"
   },
-  "files": [
-    "dist/",
-    "scripts/",
-    "README.md"
-  ],
+  "files": ["dist/", "scripts/", "README.md"],
   "keywords": [
     "agent-trust",
     "agentbom",

@@ -15,7 +15,9 @@ import { resolve } from 'node:path';
 import { validateTrustPassport } from '@openagentaudit/passport';
 
 // isRecord is a private utility not exported by @openagentaudit/passport
-function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null && !Array.isArray(v); }
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
 
 // ---------------------------------------------------------------------------
 // Bundle types

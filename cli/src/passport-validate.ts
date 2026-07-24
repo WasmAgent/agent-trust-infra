@@ -1,10 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-  inspectTrustPassport,
-  isExpired,
-  validateTrustPassport,
-} from '@openagentaudit/passport';
+import { inspectTrustPassport, isExpired, validateTrustPassport } from '@openagentaudit/passport';
 
 const WARN_EXPIRY_DAYS = 14;
 

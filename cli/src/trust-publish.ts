@@ -14,9 +14,9 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { validateTrustPassport } from '@openagentaudit/passport';
 import { type ValidationResult, validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 import { validateMCPPosture } from '../../packages/mcp-posture-core/src/index.js';
-import { validateTrustPassport } from '@openagentaudit/passport';
 
 // ---- Types ----
 
