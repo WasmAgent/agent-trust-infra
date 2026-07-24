@@ -4,7 +4,7 @@ import {
   inspectTrustPassport,
   isExpired,
   validateTrustPassport,
-} from '../../packages/trust-passport-core/src/index.js';
+} from '@openagentaudit/passport';
 
 const WARN_EXPIRY_DAYS = 14;
 

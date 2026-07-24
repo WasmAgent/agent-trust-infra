@@ -11,7 +11,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 import { validateMCPPosture } from '../../packages/mcp-posture-core/src/index.js';
-import { validateTrustPassport } from '../../packages/trust-passport-core/src/index.js';
+import { validateTrustPassport } from '@openagentaudit/passport';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

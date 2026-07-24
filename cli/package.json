@@ -1,14 +1,18 @@
 {
   "name": "@wasmagent/trust-cli",
   "version": "0.0.0-research",
-  "description": "CLI for Agent Trust Infrastructure — experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
+  "description": "CLI for Agent Trust Infrastructure \u2014 experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
     "agent-trust": "./dist/index.js",
     "trust-cli": "./dist/index.js"
   },
-  "files": ["dist/", "scripts/", "README.md"],
+  "files": [
+    "dist/",
+    "scripts/",
+    "README.md"
+  ],
   "keywords": [
     "agent-trust",
     "agentbom",
@@ -38,8 +42,8 @@
     "@wasmagent/aep": "^1.8.0",
     "@wasmagent/agentbom-core": "workspace:*",
     "@wasmagent/mcp-posture-core": "workspace:*",
-    "@wasmagent/trust-passport-core": "workspace:*",
-    "prom-client": "^15.1.0"
+    "prom-client": "^15.1.0",
+    "@openagentaudit/passport": "^0.5.2"
   },
   "scripts": {
     "build": "mkdir -p dist && bun build ./src/index.ts --target node --outfile dist/index.js && node scripts/fix-shebang.mjs dist/index.js",

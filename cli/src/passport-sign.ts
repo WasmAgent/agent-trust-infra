@@ -8,7 +8,9 @@ import { resolve } from 'node:path';
  * Previously used node:crypto with manual PKCS#8 DER construction.
  */
 import { LocalEd25519Signer } from '@wasmagent/aep';
-import { isRecord, validateTrustPassport } from '../../packages/trust-passport-core/src/index.js';
+import { validateTrustPassport } from '@openagentaudit/passport';
+
+function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null && !Array.isArray(v); }
 
 /** Base64url encode a Buffer or Uint8Array or string. */
 function base64url(input: Buffer | Uint8Array | string): string {

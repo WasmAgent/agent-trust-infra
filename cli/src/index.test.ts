@@ -163,13 +163,15 @@ describe('inspectPassportCommand', () => {
     };
     const path = writeTmpFile('inspect-risks.json', JSON.stringify(withRisks));
     const spy = spyOn(console, 'log');
+    spy.mockClear();
 
     const result = inspectPassportCommand(path);
     expect(result).toBe(0);
 
     const output = spy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(output).toContain('critical=2');
-    expect(output).toContain('high=5');
+    // @openagentaudit/passport uses C=/H= abbreviations for risk counts
+    expect(output).toContain('C=2');
+    expect(output).toContain('H=5');
   });
 
   it('returns 1 for a non-existent file', () => {

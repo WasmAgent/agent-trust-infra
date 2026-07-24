@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { resolve } from 'node:path';
 import { type ValidationResult, validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 import { validateMCPPosture } from '../../packages/mcp-posture-core/src/index.js';
-import { validateTrustPassport } from '../../packages/trust-passport-core/src/index.js';
+import { validateTrustPassport } from '@openagentaudit/passport';
 
 // ---- Types ----
 

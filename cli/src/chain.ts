@@ -34,7 +34,7 @@ import {
   inspectTrustPassport,
   isExpired,
   validateTrustPassport,
-} from '../../packages/trust-passport-core/src/index.js';
+} from '@openagentaudit/passport';
 
 /** Per-step outcome written to `chain-report.json` and streamed to stdout. */
 export interface ChainStepResult {

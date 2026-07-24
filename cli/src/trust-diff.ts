@@ -22,7 +22,7 @@ import {
   formatPostureDiff,
   validateMCPPosture,
 } from '../../packages/mcp-posture-core/src/index.js';
-import { validateTrustPassport } from '../../packages/trust-passport-core/src/index.js';
+import { validateTrustPassport } from '@openagentaudit/passport';
 import { type ArtifactType, detectArtifactType, readArtifactFile } from './trust-publish.js';
 
 // ---- Types ----

@@ -21,7 +21,7 @@
 import { resolve } from 'node:path';
 import { validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 import { validateMCPPosture } from '../../packages/mcp-posture-core/src/index.js';
-import { validateTrustPassport } from '../../packages/trust-passport-core/src/index.js';
+import { validateTrustPassport } from '@openagentaudit/passport';
 import { verifySignedPassport } from './passport-verify-signed.js';
 import type { ArtifactType } from './trust-publish.js';
 import { pullArtifact, resolveArtifactId } from './trust-pull.js';

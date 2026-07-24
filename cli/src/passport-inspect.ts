@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { inspectTrustPassport, isExpired } from '../../packages/trust-passport-core/src/index.js';
+import { inspectTrustPassport, isExpired } from '@openagentaudit/passport';
 
 export function inspectPassportCommand(filePath: string): number {
   const resolvedPath = resolve(filePath);
