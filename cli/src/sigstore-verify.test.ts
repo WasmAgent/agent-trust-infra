@@ -522,8 +522,9 @@ describe('verify-sigstore CLI command', () => {
   test('--help displays usage with all flags', () => {
     const spy = spyOn(console, 'log');
     try {
+      spy.mockClear();
       expect(verifySigstoreCommand(['--help'])).toBe(0);
-      const helpCall = spy.mock.calls.find((c) => (c[0] as string).includes('--offline'));
+      const helpCall = spy.mock.calls.find((c) => typeof c[0] === 'string' && c[0].includes('--offline'));
       expect(helpCall).toBeDefined();
       const output = helpCall?.[0] as string;
       expect(output).toContain('--offline');
@@ -550,8 +551,9 @@ describe('verify-sigstore CLI command', () => {
   test('no arguments prints error', () => {
     const spy = spyOn(console, 'error');
     try {
+      spy.mockClear();
       expect(verifySigstoreCommand([])).toBe(1);
-      const errCall = spy.mock.calls.find((c) => (c[0] as string).includes('requires'));
+      const errCall = spy.mock.calls.find((c) => typeof c[0] === 'string' && c[0].includes('requires'));
       expect(errCall).toBeDefined();
       expect(errCall?.[0]).toContain('requires a <bundle.json>');
     } finally {
