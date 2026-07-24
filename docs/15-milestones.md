@@ -1,3 +1,11 @@
+
+## Architecture Note (2026-07-24)
+
+Following the WasmAgent architecture consolidation:
+- **Trust Passport spec/schema** → [`wasmagent-protocol`](https://github.com/WasmAgent/wasmagent-protocol)
+- **Trust Passport product** (issue/sign/renew/revoke) → [`open-agent-audit`](https://github.com/WasmAgent/open-agent-audit)
+- **This repo** focuses on AgentBOM + MCP Posture validators and the `@wasmagent/trust-cli` developer tooling.
+
 # Milestones
 
 > Milestones 1–4 correspond to Weeks 0–12 deliverables — all shipped.

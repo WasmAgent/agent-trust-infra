@@ -6,7 +6,7 @@ and reference implementations:
 
 1. **AgentBOM** — bill of materials for AI agents (tool inventory, permissions, model deps)
 2. **MCP Posture** — attack surface and permission posture for MCP-connected agents
-3. **Trust Passport** — signed, expiring, verifiable trust-state artifact
+3. **Trust Passport** — spec/schema in `wasmagent-protocol`; product in `open-agent-audit`
 
 **Status**: experimental research preview — not production software.
 Weeks 0–12 deliverables are all shipped. The in-flight roadmap is in `docs/roadmap.md`.
@@ -14,7 +14,7 @@ Weeks 0–12 deliverables are all shipped. The in-flight roadmap is in `docs/roa
 ## Relationship to WasmAgent ecosystem
 
 **This repo is the specification layer. Runtime implementations live in `wasmagent-js`.
-Audit reporting and Trust Passport product live in `open-agent-audit`.**
+Trust Passport spec/schema → `wasmagent-protocol` | Trust Passport product → `open-agent-audit`.**
 
 ```
 wasmagent-js (runtime protection / MCP firewall / AEP emitter)
@@ -22,11 +22,12 @@ wasmagent-js (runtime protection / MCP firewall / AEP emitter)
   @wasmagent/mcp-attestation — capability attestation for MCP tools
   @wasmagent/aep             — AEP emitter, signing, evidence records
       ↓ consumes specs defined HERE
-Agent Trust Infrastructure (AgentBOM / MCP Posture / Trust Passport specs + validators)
+Agent Trust Infrastructure (AgentBOM / MCP Posture validators + developer CLI)
       ↓ specs feed into
 open-agent-audit / Trustavo
   @openagentaudit/core — maps runtime AEP evidence to OWASP/EU AI Act/NIST/ISO controls
-  Trust Passport product — issuance, renewal, revocation (planned home: Trustavo)
+  Trust Passport product — issuance, renewal, revocation → open-agent-audit / Trustavo
+  Trust Passport spec/schema → wasmagent-protocol
 ```
 
 **Do not duplicate logic already in `wasmagent-js`:**

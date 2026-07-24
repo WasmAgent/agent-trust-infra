@@ -8,14 +8,18 @@
 | **Not recommended for** | Production deployments; compliance certification claims |
 
 
-Public research preview for Agent Trust Infrastructure: shipped AgentBOM, MCP Posture, and Trust Passport specifications for auditable AI agents.
+Developer tooling for the WasmAgent trust evidence chain: AgentBOM and MCP Posture validators, CLI, and reference implementations.
 
-> **Status: experimental research preview — AgentBOM, MCP Posture, Trust Passport, and the end-to-end trust-chain demo are shipped.**
+> **Trust Passport** specification and schema: [wasmagent-protocol](https://github.com/WasmAgent/wasmagent-protocol)
+> **Trust Passport** product (issuance/signing/revocation): [open-agent-audit](https://github.com/WasmAgent/open-agent-audit)
+
+> **Status:** AgentBOM and MCP Posture validators, CLI tools, and end-to-end trust-chain demo are shipped.
+> Trust Passport spec → [wasmagent-protocol](https://github.com/WasmAgent/wasmagent-protocol) · Trust Passport product → [open-agent-audit](https://github.com/WasmAgent/open-agent-audit)
 > Not production software.
 > Not a compliance certification product.
 
 > **Source of truth for trust artifacts.** This repository is the canonical home
-> for the AgentBOM, MCP Posture, and Trust Passport specifications and reference
+> for the AgentBOM and MCP Posture specifications and reference
 > implementations consumed across the WasmAgent organization — including the
 > `wasmagent-js` runtime, which depends on the artifact schemas defined here. The
 > specifications and schemas are shipped and authoritative; the *implementation
@@ -38,7 +42,7 @@ This repository explores three connected trust artifacts:
 
 1. **AgentBOM** — a bill of materials for AI agents.
 2. **MCP Posture** — attack surface and permission posture for MCP-connected agents.
-3. **Trust Passport** — a signed, expiring, verifiable trust-state artifact.
+3. **Trust Passport** — spec in [wasmagent-protocol](https://github.com/WasmAgent/wasmagent-protocol); product implementation in [open-agent-audit](https://github.com/WasmAgent/open-agent-audit).
 
 ## Relationship to WasmAgent
 
@@ -47,7 +51,7 @@ wasmagent-js
  runtime protection / MCP firewall / AEP emitter / CapabilityManifest
         ↓
 Agent Trust Infrastructure
- AgentBOM / MCP Posture / Trust Passport specs and prototypes
+ AgentBOM / MCP Posture specs, validators, and CLI tools
         ↓
 open-agent-audit / Trustavo
  evidence validation / audit report / framework mapping
@@ -79,7 +83,7 @@ the full dependency map.
 ```
 agent-trust-infra/
 ├── docs/          — vision, architecture, boundaries, roadmap
-├── specs/         — AgentBOM, MCP Posture, Trust Passport specifications
+├── specs/         — AgentBOM, MCP Posture specifications (Trust Passport spec moved to wasmagent-protocol)
 ├── packages/      — TypeScript reference implementations (no CLI dependency)
 ├── cli/           — agent-trust unified CLI
 ├── examples/      — demo fixtures and end-to-end demos
