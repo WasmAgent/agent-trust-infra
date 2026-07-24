@@ -25,6 +25,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
+    "@openagentaudit/passport": "^0.5.2",
     "@wasmagent/aep": "^1.8.0"
   }
 }

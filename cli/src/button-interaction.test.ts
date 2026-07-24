@@ -227,16 +227,17 @@ describe('Button: passport inspect', () => {
   it('clicking inspect displays passport details', async () => {
     const path = writeTmpFile('inspect-passport.json', JSON.stringify(VALID_PASSPORT));
     const spy = spyOn(console, 'log');
+    spy.mockClear();
 
     const result = await runCommand(['passport', 'inspect', path]);
 
     expect(result).toBe(0);
     const output = spy.mock.calls.map((c) => c.join(' ')).join('\n');
-    expect(output).toContain('Trust Passport v0.1');
+    expect(output).toContain('Trust Passport');
     expect(output).toContain('passport-btn-001');
     expect(output).toContain('Button Test Agent');
     expect(output).toContain('btn-test-issuer');
-    expect(output).toContain('Active');
+    expect(output).toContain('VALID');
   });
 
   it('clicking inspect on expired passport shows EXPIRED status', async () => {
