@@ -24,6 +24,7 @@ import {
 } from './compliance-check.js';
 import { composeTeamCommand } from './compose-team.js';
 import { exportDashboardCommand } from './export-dashboard.js';
+import { exportMarketplaceCommand } from './export-marketplace.js';
 import { diffMCPPostureCommand } from './mcp-posture-diff.js';
 import { inspectMCPPostureCommand } from './mcp-posture-inspect.js';
 import { validateMCPPostureCommand } from './mcp-posture-validate.js';
@@ -66,6 +67,7 @@ const USAGE = [
   '  compliance-upgrade-profile <profile-id> [--schema-version <ver>] [--dry-run]  Auto-resolve breaking mapping changes in a compliance profile',
   '  export-dashboard <bom.json> --output <dir>  Generate static HTML dashboard',
   '  export-dashboard fleet <dir> --output <dir>  Generate fleet trust analytics dashboard (posture, dependency graphs, compliance heatmap, audit search)',
+  '  export-marketplace <bom.json> --output <dir>  Generate standardized marketplace trust package',
   '  enforce-policy <bom.json> --policy <policy.json> [--enforcement warn|block|quarantine] [--format json|text]  Validate agent artifacts against organization trust rules',
   '  subscribe <agent-id> --baseline <path> [--watch <dir>] [--callback <url>] [--interval <s>] [--once]  Monitor trust artifact drift for an agent',
   '  publish <artifact.json> [--registry <dir>] [--tag <tag>]  Publish trust artifact to registry with CAS identifier',
@@ -795,6 +797,10 @@ export function runCommand(args: string[]): number | Promise<number> {
 
   if (args[0] === 'report') {
     return reportCommand(args.slice(1));
+  }
+
+  if (args[0] === 'export-marketplace') {
+    return exportMarketplaceCommand(args.slice(1));
   }
 
   if (args[0] === 'compose-team') {
