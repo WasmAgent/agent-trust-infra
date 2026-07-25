@@ -202,3 +202,20 @@ When items complete, update the checkboxes in `docs/roadmap.md`.
 ## How patrol sweep drives progress
 Patrol reads this CLAUDE.md and `docs/roadmap.md`.
 Unchecked items → patrol opens issues with `claude` label → workers implement.
+
+## CLI Command Addition Checklist (MANDATORY — all in ONE PR)
+
+When adding a new CLI command `<cmd>`, CI fails if any step is missing or in a separate PR:
+
+**1.** Create `cli/src/<cmd>.ts` with the command function
+**2.** Import it in `cli/src/index.ts` AND add to the command dispatcher — **MUST be in the same PR as step 1**
+**3.** Create `cli/src/<cmd>.test.ts` in the same PR — CI fails if the test file lands before the command is wired
+
+### When adding a new export to any `packages/*/` package:
+**1.** Add the implementation in `packages/<name>/src/<file>.ts`
+**2.** Export it from `packages/<name>/src/index.ts` in the same PR
+**3.** Run `npm run build` to verify the export resolves — typecheck alone does not catch missing re-exports
+
+### Why one PR?
+The test suite imports from the compiled package. If the export is missing from `index.ts`,
+the test file that references it will fail to compile, causing "merge gate: test failed".
