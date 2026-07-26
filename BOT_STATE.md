@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-26 12:28 UTC by patrol_
+_Last updated: 2026-07-26 13:54 UTC by patrol_
 
 ## Queue
 
@@ -8,7 +8,7 @@ _Last updated: 2026-07-26 12:28 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
+| Blocked | 0 |
 | Completed/Merged (all time) | 1282 |
 
 ## Recent Activity (last 5)
@@ -23,7 +23,6 @@ _Last updated: 2026-07-26 12:28 UTC by patrol_
 
 ## Waiting for Human
 
-- #345: feat(cli): add export-marketplace CLI command handler and wire into index.ts
 - #340: Fix WasmAgent/agent-trust-infra#328 ([milestone Milestone 11] `trust-cli compose-team <agent-boms...>` — generates com
 
 ---
