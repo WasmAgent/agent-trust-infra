@@ -1,13 +1,13 @@
 # Bot State
 
-_Last updated: 2026-07-26 23:59 UTC by patrol_
+_Last updated: 2026-07-27 01:26 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
-| Active (running/reviewing) | 0 |
+| Pending | 0 |
+| Active (running/reviewing) | 1 |
 | Blocked | 0 |
 | Completed/Merged (all time) | 1282 |
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-26 23:59 UTC by patrol_
 
 ## Waiting for Human
 
+- #355: Consume agentbom & mcp-posture schemas from @wasmagent/protocol; stop maintaining specs/*/schema.json forks
 - #340: Fix WasmAgent/agent-trust-infra#328 ([milestone Milestone 11] `trust-cli compose-team <agent-boms...>` — generates com
 
 ---
