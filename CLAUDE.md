@@ -64,8 +64,8 @@ downstream.
 ## Repository Boundaries
 
 ### This repository owns
-- AgentBOM specification and JSON schema (`specs/agentbom/`)
-- MCP Posture specification and risk taxonomy (`specs/mcp-posture/`)
+- AgentBOM specification (`specs/agentbom/`) — design authority & domain steward; canonical JSON schema is migrating to `wasmagent-protocol` (issue #355)
+- MCP Posture specification and risk taxonomy (`specs/mcp-posture/`) — design authority & domain steward; canonical JSON schema is migrating to `wasmagent-protocol` (issue #355)
 - Trust Passport specification (`specs/trust-passport/`) — **frozen; ownership migrated to `open-agent-audit`**
 - Compliance profiles (`profiles/`)
 - Active reference implementations: `agentbom-core`, `mcp-posture-core`
@@ -76,6 +76,7 @@ downstream.
 | Capability | Owner |
 |---|---|
 | AEP schema definition | `wasmagent-protocol` (`@wasmagent/protocol`) |
+| AgentBOM / MCP Posture canonical JSON schemas | `wasmagent-protocol` (`@wasmagent/protocol`) — domain steward: this repo; migration tracked in #355 |
 | AEP emitter, runtime evidence signing | `wasmagent-js` (`@wasmagent/aep`) |
 | MCP traffic filtering, capability attestation | `wasmagent-js` (`@wasmagent/mcp-gateway`, `@wasmagent/mcp-attestation`) |
 | Audit report generation, regulatory control mapping (OWASP/EU AI Act/NIST/ISO) | `open-agent-audit` |
@@ -86,6 +87,7 @@ downstream.
 ### Allowed cross-repo patterns
 - Specs in `specs/` define canonical schemas; downstream packages implement and consume them.
 - Consume AEP records via `@wasmagent/aep` — never redefine the AEP schema here.
+- AgentBOM and MCP Posture JSON schemas are migrating to `wasmagent-protocol` as the canonical source, with this repo as domain steward. `agentbom-core` consumes the schema from `@wasmagent/protocol` when registered, falling back to the vendored `specs/<contract>/schema.json`. The drift gate (`bun run sync-schemas` / `scripts/sync-schemas.mjs`) fails CI if the vendored copy diverges from the package version once published.
 - Trust Passport specification has migrated to `open-agent-audit`; the `specs/trust-passport/` directory here is frozen. Consume via `@openagentaudit/passport`.
 - Conformance fixtures may be referenced by any repo for compliance testing.
 - New public specs require: external review, at least one independent consumer, and explicit versioning policy.

@@ -15,6 +15,7 @@
     "chain": "bun cli/src/index.ts chain",
     "lint": "biome check packages/ cli/",
     "lint:fix": "biome check --write packages/ cli/",
+    "sync-schemas": "node scripts/sync-schemas.mjs",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
@@ -26,6 +27,7 @@
   },
   "dependencies": {
     "@openagentaudit/passport": "^0.5.2",
-    "@wasmagent/aep": "^1.8.0"
+    "@wasmagent/aep": "^1.8.0",
+    "@wasmagent/protocol": "^0.1.5"
   }
 }

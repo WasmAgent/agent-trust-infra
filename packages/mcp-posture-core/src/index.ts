@@ -1,6 +1,83 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Ajv } from 'ajv';
+import type { AnySchema, ErrorObject, ValidateFunction } from 'ajv';
+
+export interface ValidationError {
+  /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
+  path: string;
+  /** Human-readable message describing the problem. */
+  message: string;
+}
+
+export interface SchemaValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: string[];
+}
+
+/**
+ * Canonical MCP Posture schema source (issue #355).
+ *
+ * `agent-trust-infra` is the domain steward for the MCP Posture schema; its canonical JSON
+ * lives in `wasmagent-protocol` and is published via the `@wasmagent/protocol` package
+ * (schema id `mcp-posture`, version `mcp-posture/v0.1`). We prefer the package copy and fall
+ * back to the locally vendored `specs/mcp-posture/schema.json` while the package has not
+ * yet registered the schema. The drift gate (`scripts/sync-schemas.mjs`) fails CI if the
+ * two diverge once the package publishes it.
+ */
+const CANONICAL_SCHEMA_ID = 'mcp-posture';
+const VENDORED_SCHEMA_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../specs/mcp-posture/schema.json',
+);
+
+/** Return the canonical schema registered in `@wasmagent/protocol`, or `undefined` when
+ *  the package is absent or has not registered the schema yet. */
+function readCanonicalSchema(): unknown | undefined {
+  try {
+    const indexPath = fileURLToPath(import.meta.resolve('@wasmagent/protocol/schemas/index.json'));
+    const index = JSON.parse(readFileSync(indexPath, 'utf-8')) as {
+      schemas?: Array<{ id: string; path: string }>;
+    };
+    const entry = index.schemas?.find((s) => s.id === CANONICAL_SCHEMA_ID);
+    if (!entry?.path) return undefined;
+    // entry.path is relative to the package root (the parent of schemas/).
+    const schemaPath = resolve(dirname(indexPath), '..', entry.path);
+    return JSON.parse(readFileSync(schemaPath, 'utf-8'));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Load the MCP Posture schema, preferring the canonical `@wasmagent/protocol` copy and
+ *  falling back to the locally vendored copy. */
+function loadMcpPostureSchema(): unknown {
+  return readCanonicalSchema() ?? JSON.parse(readFileSync(VENDORED_SCHEMA_PATH, 'utf-8'));
+}
+
+let schemaValidator: ValidateFunction | null = null;
+
+/** Validate an MCP Posture document against the canonical JSON schema (issue #355).
+ *  Prefers the `@wasmagent/protocol` copy; falls back to the vendored `specs/mcp-posture/schema.json`. */
+export function validateMCPPostureSchema(data: unknown): SchemaValidationResult {
+  if (!schemaValidator) {
+    const ajv = new Ajv({ allErrors: true, strict: false });
+    const schema = loadMcpPostureSchema();
+    schemaValidator = ajv.compile(schema as AnySchema);
+  }
+  const valid = schemaValidator(data);
+  if (valid) return { valid: true, errors: [] };
+  const errors: ValidationError[] = (schemaValidator.errors ?? []).map((e: ErrorObject) => ({
+    path: e.instancePath || '(root)',
+    message: e.message ?? 'validation error',
+  }));
+  return { valid: false, errors };
 }
 
 const POSTURE_REQUIRED = ['posture_version', 'identity', 'servers', 'attestation'] as const;

@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/agentbom-core",
   "version": "0.0.0-research",
-  "description": "AgentBOM reference implementation — experimental",
+  "description": "AgentBOM reference implementation \u2014 experimental",
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
@@ -10,6 +10,7 @@
     "typecheck": "echo 'typecheck: stub'"
   },
   "dependencies": {
-    "ajv": "^8.20.0"
+    "ajv": "^8.20.0",
+    "@wasmagent/protocol": "^0.1.5"
   }
 }

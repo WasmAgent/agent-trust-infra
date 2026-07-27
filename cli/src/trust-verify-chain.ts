@@ -19,9 +19,9 @@
  *   trust-cli verify-chain <passport.jwt> --depth N [--key <pubkey>] [--registry <dir>] [--help]
  */
 import { resolve } from 'node:path';
+import { validateTrustPassport } from '@openagentaudit/passport';
 import { validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 import { validateMCPPosture } from '../../packages/mcp-posture-core/src/index.js';
-import { validateTrustPassport } from '@openagentaudit/passport';
 import { verifySignedPassport } from './passport-verify-signed.js';
 import type { ArtifactType } from './trust-publish.js';
 import { pullArtifact, resolveArtifactId } from './trust-pull.js';

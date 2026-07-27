@@ -7,6 +7,7 @@
       "dependencies": {
         "@openagentaudit/passport": "^0.5.2",
         "@wasmagent/aep": "^1.8.0",
+        "@wasmagent/protocol": "^0.1.5",
       },
       "devDependencies": {
         "@biomejs/biome": "^1.9.0",
@@ -151,6 +152,8 @@
     "@wasmagent/llamaindex-agentbom": ["@wasmagent/llamaindex-agentbom@workspace:packages/llamaindex-agentbom"],
 
     "@wasmagent/mcp-posture-core": ["@wasmagent/mcp-posture-core@workspace:packages/mcp-posture-core"],
+
+    "@wasmagent/protocol": ["@wasmagent/protocol@0.1.5", "", {}, "sha512-weiWYbbcDdwkNNecRX5GN53CA6UekdK5Jaq2BGpLVaiQsp92N8YThDc6dnFH70Vb1YKGzKWPNg02XV0XVZBs5w=="],
 
     "acorn": ["acorn@8.17.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg=="],
 

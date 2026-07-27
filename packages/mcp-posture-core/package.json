@@ -1,12 +1,16 @@
 {
   "name": "@wasmagent/mcp-posture-core",
   "version": "0.0.0-research",
-  "description": "MCP Posture reference implementation — experimental",
+  "description": "MCP Posture reference implementation - experimental",
   "type": "module",
   "main": "./src/index.ts",
   "scripts": {
-    "build": "echo 'build: stub'",
+    "build": "echo build: stub",
     "test": "bun test src/",
-    "typecheck": "echo 'typecheck: stub'"
+    "typecheck": "echo typecheck: stub"
+  },
+  "dependencies": {
+    "@wasmagent/protocol": "^0.1.5",
+    "ajv": "^8.20.0"
   }
 }

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ajv } from 'ajv';
-import type { ErrorObject, ValidateFunction } from 'ajv';
+import type { AnySchema, ErrorObject, ValidateFunction } from 'ajv';
 
 export interface ValidationError {
   /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
@@ -21,20 +21,53 @@ export interface ValidationResult {
   errorDetails: ValidationError[];
 }
 
-// Schema lives at the repository root: <root>/specs/agentbom/schema.json
-// This file is <root>/packages/agentbom-core/src/index.ts.
-const SCHEMA_PATH = resolve(
+/**
+ * Canonical AgentBOM schema source (issue #355).
+ *
+ * `agent-trust-infra` is the domain steward for the AgentBOM schema; its canonical JSON
+ * lives in `wasmagent-protocol` and is published via the `@wasmagent/protocol` package
+ * (schema id `agentbom`, version `agentbom/v0.1`). We prefer the package copy and fall
+ * back to the locally vendored `specs/agentbom/schema.json` while the package has not
+ * yet registered the schema. The drift gate (`scripts/sync-schemas.mjs`) fails CI if the
+ * two diverge once the package publishes it.
+ */
+const CANONICAL_SCHEMA_ID = 'agentbom';
+const VENDORED_SCHEMA_PATH = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../specs/agentbom/schema.json',
 );
+
+/** Return the canonical schema registered in `@wasmagent/protocol`, or `undefined` when
+ *  the package is absent or has not registered the schema yet. */
+function readCanonicalSchema(): unknown | undefined {
+  try {
+    const indexPath = fileURLToPath(import.meta.resolve('@wasmagent/protocol/schemas/index.json'));
+    const index = JSON.parse(readFileSync(indexPath, 'utf-8')) as {
+      schemas?: Array<{ id: string; path: string }>;
+    };
+    const entry = index.schemas?.find((s) => s.id === CANONICAL_SCHEMA_ID);
+    if (!entry?.path) return undefined;
+    // entry.path is relative to the package root (the parent of schemas/).
+    const schemaPath = resolve(dirname(indexPath), '..', entry.path);
+    return JSON.parse(readFileSync(schemaPath, 'utf-8'));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Load the AgentBOM schema, preferring the canonical `@wasmagent/protocol` copy and
+ *  falling back to the locally vendored copy. */
+function loadAgentBomSchema(): unknown {
+  return readCanonicalSchema() ?? JSON.parse(readFileSync(VENDORED_SCHEMA_PATH, 'utf-8'));
+}
 
 let validateSchema: ValidateFunction | null = null;
 
 function getValidator(): ValidateFunction {
   if (validateSchema) return validateSchema;
   const ajv = new Ajv({ allErrors: true, strict: false });
-  const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
-  validateSchema = ajv.compile(schema);
+  const schema = loadAgentBomSchema();
+  validateSchema = ajv.compile(schema as AnySchema);
   if (!validateSchema) throw new Error('Failed to compile AgentBOM schema');
   return validateSchema;
 }
