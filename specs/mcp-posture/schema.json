@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://wasmagent.dev/schemas/mcp-posture/v0.1.schema.json",
   "title": "MCPPosture",
-  "description": "MCP Posture snapshot v0.1 — shipped specification schema",
+  "description": "MCP Posture snapshot v0.1 \u2014 shipped specification schema",
   "type": "object",
   "required": [
     "posture_version",
@@ -91,6 +91,25 @@
               "unset"
             ],
             "description": "Handle expiry policy under stateless-handle session model (MCP 2026-07-28+)."
+          },
+          "auth": {
+            "type": "object",
+            "description": "OAuth 2.0 / token validation state at capture time (MCP 2026-07-28+ security baseline).",
+            "additionalProperties": false,
+            "properties": {
+              "audience_bound_token_validated": {
+                "type": "boolean",
+                "description": "Whether the token used to capture this posture was validated as audience-bound (required by Microsoft MCP security guidance). Maps to OWASP ASI06 credential_access risk."
+              },
+              "pkce_used": {
+                "type": "boolean",
+                "description": "Whether PKCE was used in the authorization flow. Absence or false indicates OWASP ASI08 misconfiguration."
+              },
+              "per_client_consent_verified": {
+                "type": "boolean",
+                "description": "Whether per-client consent was verified before tool invocation (MCP 2026-07-28 access control primitive). Maps to OWASP ASI09 insufficient access controls."
+              }
+            }
           },
           "tools": {
             "type": "array",
