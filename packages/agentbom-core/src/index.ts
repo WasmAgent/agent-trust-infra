@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ErrorObject, ValidateFunction } from 'ajv';
-import { Ajv } from 'ajv';
+import Ajv2020 from 'ajv/dist/2020.js';
 
 export interface ValidationError {
   /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
@@ -32,7 +32,7 @@ let validateSchema: ValidateFunction | null = null;
 
 function getValidator(): ValidateFunction {
   if (validateSchema) return validateSchema;
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  const ajv = new Ajv2020({ allErrors: true, strict: false });
   const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
   validateSchema = ajv.compile(schema);
   if (!validateSchema) throw new Error('Failed to compile AgentBOM schema');

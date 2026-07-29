@@ -8,7 +8,7 @@ import { validateTrustPassport } from '@openagentaudit/passport';
  * with the signing implementation used across the WasmAgent ecosystem.
  * Previously used node:crypto with manual PKCS#8 DER construction.
  */
-import { LocalEd25519Signer } from '@wasmagent/aep';
+import { createLocalSignerFromSeed, LocalEd25519Signer } from '@wasmagent/aep';
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -110,7 +110,10 @@ export async function signPassport(options: SignOptions): Promise<string> {
   }
 
   const seed = readKeySeed(resolve(keyPath));
-  const signer = new LocalEd25519Signer('trust-passport-key', seed);
+  // Use createLocalSignerFromSeed for hex seeds (v1.21.1 convenience API),
+  // fall back to LocalEd25519Signer for raw Uint8Array seeds from PEM.
+  const hexSeed = Buffer.from(seed).toString('hex');
+  const signer = createLocalSignerFromSeed(hexSeed, 'trust-passport-key');
 
   const header = { alg: 'EdDSA', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
