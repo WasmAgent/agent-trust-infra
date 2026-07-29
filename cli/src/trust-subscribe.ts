@@ -10,11 +10,11 @@
  *   trust-cli subscribe <agent-identity> --baseline <path> [--watch <dir>] \
  *       [--callback <url>] [--interval <seconds>] [--once]
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
-  type DriftAlert,
   classifyDriftEvents,
+  type DriftAlert,
   diffAgentBOM,
   formatDriftAlert,
   validateAgentBOM,

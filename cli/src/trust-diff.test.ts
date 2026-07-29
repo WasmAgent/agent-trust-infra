@@ -4,9 +4,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { runCommand } from './index.js';
 import {
-  type FieldChange,
   diffTrustArtifacts,
   extractChangesFromFormatted,
+  type FieldChange,
   formatGenericDiff,
   parseDiffArgs,
   trustDiffCommand,

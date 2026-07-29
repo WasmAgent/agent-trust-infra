@@ -25,16 +25,12 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inspectTrustPassport, isExpired, validateTrustPassport } from '@openagentaudit/passport';
 import { inspectAgentBOM, validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 import {
   inspectMCPPosture,
   validateMCPPosture,
 } from '../../packages/mcp-posture-core/src/index.js';
-import {
-  inspectTrustPassport,
-  isExpired,
-  validateTrustPassport,
-} from '@openagentaudit/passport';
 
 /** Per-step outcome written to `chain-report.json` and streamed to stdout. */
 export interface ChainStepResult {

@@ -1,7 +1,7 @@
 {
   "name": "@wasmagent/trust-cli",
   "version": "0.0.0-research",
-  "description": "CLI for Agent Trust Infrastructure \u2014 experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
+  "description": "CLI for Agent Trust Infrastructure — experimental research preview. AgentBOM generation, MCP Posture analysis, Trust Passport operations, and compliance checking.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -39,7 +39,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@wasmagent/aep": "^1.8.0",
+    "@wasmagent/aep": "^1.21.1",
     "@wasmagent/agentbom-core": "workspace:*",
     "@wasmagent/mcp-posture-core": "workspace:*",
     "prom-client": "^15.1.0",
@@ -55,6 +55,6 @@
     "build:binaries": "bun run build:binary:linux-x64 && bun run build:binary:linux-arm64 && bun run build:binary:darwin-x64 && bun run build:binary:darwin-arm64 && bun run build:binary:win32-x64",
     "prepack": "bun run build",
     "test": "bun test src/",
-    "typecheck": "echo 'typecheck: stub'"
+    "typecheck": "echo typecheck: stub"
   }
 }

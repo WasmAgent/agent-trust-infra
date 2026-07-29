@@ -10,8 +10,8 @@ import { runCommand } from './index.js';
 import { publishArtifact } from './trust-publish.js';
 import { objectPathForCasId } from './trust-pull.js';
 import {
-  type VerifyChainConfig,
   parseVerifyChainArgs,
+  type VerifyChainConfig,
   verifyChain,
   verifyChainCommand,
 } from './trust-verify-chain.js';

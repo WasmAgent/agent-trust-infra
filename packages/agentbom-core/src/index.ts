@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Ajv } from 'ajv';
 import type { ErrorObject, ValidateFunction } from 'ajv';
+import { Ajv } from 'ajv';
 
 export interface ValidationError {
   /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */
