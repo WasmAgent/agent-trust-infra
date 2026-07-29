@@ -17,7 +17,7 @@ const SUPPORTED_FRAMEWORKS: FrameworkId[] = ['soc2', 'iso27001', 'ai-act'];
 const FRAMEWORK_TO_PROFILE: Record<FrameworkId, string> = {
   soc2: 'soc2-2024',
   iso27001: 'iso27001-2022',
-  'ai-act': 'ai-act',
+  'ai-act': 'eu-ai-act-annex-iv',
 };
 
 /** Framework display names */
@@ -1063,49 +1063,15 @@ export function reportCommand(args: string[]): number {
   // Load compliance profile
   const profileId = FRAMEWORK_TO_PROFILE[framework];
 
-  // For ai-act, no profile file exists — build a minimal inline profile
+  // Load compliance profile from file
   let profile: ComplianceProfile;
-  if (framework === 'ai-act') {
-    profile = {
-      profile_version: '0.1',
-      profile_id: 'ai-act',
-      framework: {
-        name: 'AI-ACT',
-        version: '2024',
-        description: 'EU AI Act compliance profile for high-risk AI systems',
-      },
-      rules: {
-        identity: {
-          required_fields: ['agent_id', 'agent_name'],
-          requires_version: true,
-        },
-        tool_layer: {
-          requires_tool_inventory: true,
-        },
-        risk_layer: {
-          requires_risk_assessment: true,
-          max_unmitigated_critical: 0,
-          requires_mitigation_for: ['critical'],
-        },
-        attestation: {
-          requires_signature: true,
-          requires_timestamp: true,
-        },
-      },
-      metadata: {
-        author: 'WasmAgent',
-        documentation_url: 'https://artificialintelligenceact.eu/',
-      },
-    };
-  } else {
-    const loaded = loadProfile(profileId);
-    if (!loaded) {
-      console.error(`Error: cannot load compliance profile "${profileId}"`);
-      console.error(`Expected file: profiles/${profileId}.json`);
-      return 1;
-    }
-    profile = loaded;
+  const loaded = loadProfile(profileId);
+  if (!loaded) {
+    console.error(`Error: cannot load compliance profile "${profileId}"`);
+    console.error(`Expected file: profiles/${profileId}.json`);
+    return 1;
   }
+  profile = loaded;
 
   // Build report
   const report = buildReport(

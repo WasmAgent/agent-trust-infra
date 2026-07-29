@@ -893,6 +893,13 @@ const SCHEMA_FIELDS_V0_1: SchemaFieldDescriptor[] = [
     description: 'Workflow definitions',
   },
   {
+    path: 'action_pathway',
+    type: 'object',
+    required: false,
+    since: '0.1',
+    description: 'Action pathway declarations: tool skills, prompt versions, policy references, and workflow configs',
+  },
+  {
     path: 'agent_collaboration',
     type: 'object',
     required: false,
@@ -1272,6 +1279,7 @@ export function checkProfileSchemaCompatibility(
     'evidence_layer',
     'audit_log',
     'workflow_layer',
+    'action_pathway',
     'agent_collaboration',
     'distribution',
   ];

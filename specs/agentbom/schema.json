@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://wasmagent.dev/schemas/agentbom/v0.1.schema.json",
   "title": "AgentBOM",
-  "description": "Agent Bill of Materials v0.1 — shipped specification schema",
+  "description": "Agent Bill of Materials v0.1 \u2014 shipped specification schema",
   "type": "object",
   "required": [
     "agentbom_version",
@@ -398,7 +398,7 @@
     },
     "workflow_layer": {
       "type": "array",
-      "description": "Action pathway definitions — workflows, pipelines, and decision sequences that define how the agent executes tasks",
+      "description": "Action pathway definitions \u2014 workflows, pipelines, and decision sequences that define how the agent executes tasks",
       "items": {
         "type": "object",
         "required": [
@@ -478,7 +478,7 @@
     "agent_collaboration": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Multi-agent collaboration topology — peer agents, delegation boundaries, and shared resource access patterns",
+      "description": "Multi-agent collaboration topology \u2014 peer agents, delegation boundaries, and shared resource access patterns",
       "properties": {
         "peer_agents": {
           "type": "array",
@@ -639,7 +639,7 @@
     "distribution": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Artifact lifecycle management — registry location, publication metadata, deprecation, and supersession",
+      "description": "Artifact lifecycle management \u2014 registry location, publication metadata, deprecation, and supersession",
       "properties": {
         "registry_uri": {
           "type": "string",
@@ -667,6 +667,137 @@
             "type": "string"
           },
           "description": "Artifact IDs that this distribution supersedes"
+        }
+      }
+    },
+    "action_pathway": {
+      "type": "object",
+      "description": "Action pathway declarations per Oxford/Cisco 2026-03 arXiv proposal \u2014 tool skills, prompt versions, policy definitions, and workflow configs as first-class BOM components, positioning AgentBOM ahead of CycloneDX ML-BOM standardization",
+      "additionalProperties": false,
+      "properties": {
+        "tools": {
+          "type": "array",
+          "description": "Tool skills with versioned capability declarations",
+          "items": {
+            "type": "object",
+            "required": [
+              "tool_id",
+              "skill_version"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "tool_id": {
+                "type": "string",
+                "description": "Reference to tool_layer[].tool_id"
+              },
+              "skill_version": {
+                "type": "string",
+                "description": "Semantic version of the tool skill set"
+              },
+              "source_hash": {
+                "type": "string",
+                "description": "SHA-256 of the tool skill definition"
+              },
+              "permissions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Permissions granted to this specific skill version"
+              }
+            }
+          }
+        },
+        "prompts": {
+          "type": "array",
+          "description": "Prompt versions used in this action pathway",
+          "items": {
+            "type": "object",
+            "required": [
+              "prompt_id",
+              "version",
+              "role"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "prompt_id": {
+                "type": "string",
+                "description": "Unique prompt identifier"
+              },
+              "version": {
+                "type": "string",
+                "description": "Prompt version"
+              },
+              "hash": {
+                "type": "string",
+                "description": "SHA-256 of the prompt content"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "system",
+                  "user",
+                  "tool"
+                ],
+                "description": "Prompt role in the conversation"
+              }
+            }
+          }
+        },
+        "policies": {
+          "type": "array",
+          "description": "Active policy references for this action pathway",
+          "items": {
+            "type": "object",
+            "required": [
+              "policy_id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "policy_id": {
+                "type": "string",
+                "description": "Reference to policy_definitions[].policy_id"
+              },
+              "policy_version": {
+                "type": "string",
+                "description": "Version of the policy applied"
+              },
+              "enforced_at": {
+                "type": "string",
+                "enum": [
+                  "admission",
+                  "execution",
+                  "output"
+                ],
+                "description": "Enforcement point in the action pathway"
+              }
+            }
+          }
+        },
+        "workflows": {
+          "type": "array",
+          "description": "Workflow definitions active in this action pathway",
+          "items": {
+            "type": "object",
+            "required": [
+              "workflow_id"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "workflow_id": {
+                "type": "string",
+                "description": "Reference to workflow_layer[].workflow_id"
+              },
+              "workflow_version": {
+                "type": "string",
+                "description": "Version of the workflow definition"
+              },
+              "config_hash": {
+                "type": "string",
+                "description": "SHA-256 of the workflow configuration"
+              }
+            }
+          }
         }
       }
     },
