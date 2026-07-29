@@ -1,6 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { getSchema } from '@wasmagent/protocol';
 import type { ErrorObject, ValidateFunction } from 'ajv';
 import Ajv2020 from 'ajv/dist/2020.js';
 
@@ -21,19 +19,13 @@ export interface ValidationResult {
   errorDetails: ValidationError[];
 }
 
-// Schema lives at the repository root: <root>/specs/agentbom/schema.json
-// This file is <root>/packages/agentbom-core/src/index.ts.
-const SCHEMA_PATH = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  '../../../specs/agentbom/schema.json',
-);
-
+// Load schema from @wasmagent/protocol — the canonical SSOT for AgentBOM.
 let validateSchema: ValidateFunction | null = null;
 
 function getValidator(): ValidateFunction {
   if (validateSchema) return validateSchema;
   const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf-8'));
+  const schema = getSchema('agentbom');
   validateSchema = ajv.compile(schema);
   if (!validateSchema) throw new Error('Failed to compile AgentBOM schema');
   return validateSchema;
