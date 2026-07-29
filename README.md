@@ -10,6 +10,21 @@
 
 Developer tooling for the WasmAgent trust evidence chain: AgentBOM and MCP Posture validators, CLI, and reference implementations.
 
+> **Package Locations (as of 2026-07-29)**
+> 
+> The packages in this incubation repository have graduated to their permanent homes:
+> 
+> | Package | New Location |
+> |---|---|
+> | AgentBOM core (`@wasmagent/agentbom-core`) | [WasmAgent/agentbom](https://github.com/WasmAgent/agentbom) |
+> | AgentBOM CLI (`@wasmagent/agentbom-cli`) | [WasmAgent/agentbom](https://github.com/WasmAgent/agentbom) as `packages/agentbom-cli/` |
+> | MCP Posture core (`@wasmagent/mcp-posture`) | [WasmAgent/wasmagent-js](https://github.com/WasmAgent/wasmagent-js) as `packages/mcp-posture/` |
+> | Specs and schemas | [WasmAgent/wasmagent-protocol](https://github.com/WasmAgent/wasmagent-protocol) |
+> | Trust Passport | [WasmAgent/open-agent-audit](https://github.com/WasmAgent/open-agent-audit) |
+> 
+> This incubation repository remains active for continued research and specification work.
+
+
 > **Trust Passport** specification and schema: [wasmagent-protocol](https://github.com/WasmAgent/wasmagent-protocol)
 > **Trust Passport** product (issuance/signing/revocation): [open-agent-audit](https://github.com/WasmAgent/open-agent-audit)
 
