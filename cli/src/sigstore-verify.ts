@@ -9,13 +9,15 @@
  *
  * Uses node:crypto for all cryptographic operations (no external deps).
  */
-import { X509Certificate, createHash, createVerify } from 'node:crypto';
+import { createHash, createVerify, X509Certificate } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { validateTrustPassport } from '@openagentaudit/passport';
 
 // isRecord is a private utility not exported by @openagentaudit/passport
-function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null && !Array.isArray(v); }
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
 
 // ---------------------------------------------------------------------------
 // Bundle types

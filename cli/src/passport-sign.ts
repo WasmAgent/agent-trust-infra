@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { validateTrustPassport } from '@openagentaudit/passport';
 /**
  * passport sign — Sign a Trust Passport JSON as a JWT using Ed25519 (EdDSA).
  *
@@ -7,10 +8,11 @@ import { resolve } from 'node:path';
  * with the signing implementation used across the WasmAgent ecosystem.
  * Previously used node:crypto with manual PKCS#8 DER construction.
  */
-import { LocalEd25519Signer } from '@wasmagent/aep';
-import { validateTrustPassport } from '@openagentaudit/passport';
+import { createLocalSignerFromSeed, LocalEd25519Signer } from '@wasmagent/aep';
 
-function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null && !Array.isArray(v); }
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
 
 /** Base64url encode a Buffer or Uint8Array or string. */
 function base64url(input: Buffer | Uint8Array | string): string {
@@ -108,7 +110,10 @@ export async function signPassport(options: SignOptions): Promise<string> {
   }
 
   const seed = readKeySeed(resolve(keyPath));
-  const signer = new LocalEd25519Signer('trust-passport-key', seed);
+  // Use createLocalSignerFromSeed for hex seeds (v1.21.1 convenience API),
+  // fall back to LocalEd25519Signer for raw Uint8Array seeds from PEM.
+  const hexSeed = Buffer.from(seed).toString('hex');
+  const signer = createLocalSignerFromSeed(hexSeed, 'trust-passport-key');
 
   const header = { alg: 'EdDSA', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);

@@ -3,11 +3,11 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  type SubscribeConfig,
   findAgentBOMFiles,
   notifyCallback,
   parseSubscribeArgs,
   runDriftCheck,
+  type SubscribeConfig,
 } from './trust-subscribe.js';
 
 // ---- Fixtures ----

@@ -4,13 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { publishArtifact } from './trust-publish.js';
 import {
-  type PullConfig,
-  type ResolvedDependency,
   extractDependencyIds,
   isCasId,
   objectPathForCasId,
+  type PullConfig,
   parsePullArgs,
   pullArtifact,
+  type ResolvedDependency,
   resolveArtifactId,
   resolveDependencies,
   resolveTagToCasId,

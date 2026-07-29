@@ -3,13 +3,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  RISK_CATEGORIES,
   classifyPostureDriftEvents,
   createPostureDriftAlert,
   diffMCPPosture,
   formatPostureDiff,
   formatPostureDriftAlert,
   inspectMCPPosture,
+  RISK_CATEGORIES,
   validateMCPPosture,
 } from './index.js';
 

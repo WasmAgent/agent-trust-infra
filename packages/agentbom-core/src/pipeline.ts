@@ -21,8 +21,8 @@ import { createReadStream, stat } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
-import { inspectAgentBOM, validateAgentBOM } from './index.js';
 import type { ValidationResult } from './index.js';
+import { inspectAgentBOM, validateAgentBOM } from './index.js';
 
 // ─── Types ──────────────────────────────────────────────────────
 

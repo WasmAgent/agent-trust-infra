@@ -12,7 +12,7 @@
  * package gained an illegal dependency on the CLI layer.
  */
 import { describe, expect, it } from 'bun:test';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

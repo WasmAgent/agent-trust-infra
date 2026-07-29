@@ -10,7 +10,9 @@ import { resolve } from 'node:path';
 import { isExpired, validateTrustPassport } from '@openagentaudit/passport';
 
 // isRecord is a private utility not exported by @openagentaudit/passport
-function isRecord(v: unknown): v is Record<string, unknown> { return typeof v === 'object' && v !== null && !Array.isArray(v); }
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
 
 /** Decode a base64url string to a Buffer. */
 function base64urlDecode(input: string): Buffer {

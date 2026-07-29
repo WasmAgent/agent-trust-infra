@@ -3,9 +3,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
-  type PublishConfig,
   computeCasId,
   detectArtifactType,
+  type PublishConfig,
   parsePublishArgs,
   publishArtifact,
   readArtifactFile,

@@ -18,7 +18,7 @@
  * reference (hyphen, underscore, space, or camelCase) appears.
  */
 import { describe, expect, it } from 'bun:test';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

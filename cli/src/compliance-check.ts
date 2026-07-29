@@ -6,8 +6,8 @@ import {
   checkProfileSchemaCompatibility,
   getLatestVersion,
   upgradeProfileMappings,
+  validateAgentBOM,
 } from '../../packages/agentbom-core/src/index.js';
-import { validateAgentBOM } from '../../packages/agentbom-core/src/index.js';
 
 interface ComplianceResult {
   compliant: boolean;
