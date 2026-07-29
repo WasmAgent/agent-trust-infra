@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spdx.org/schema/3.0/spdx-3.0-ai-profile.schema.json",
+  "title": "SPDX 3.0 AI and Dataset Profile",
+  "description": "SPDX 3.0 with AI and Dataset profile extensions. Covers software, AI model, and dataset packages with agent-specific metadata.",
+  "type": "object",
+  "required": ["spdxVersion", "dataLicense", "creationInfo", "name"],
+  "additionalProperties": true,
+  "properties": {
+    "spdxVersion": {
+      "type": "string",
+      "enum": ["SPDX-3.0", "SPDX-2.3"]
+    },
+    "dataLicense": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "documentNamespace": {
+      "type": "string"
+    },
+    "creationInfo": {
+      "type": "object",
+      "required": ["created"],
+      "additionalProperties": true,
+      "properties": {
+        "created": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+        },
+        "creators": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "SPDXID"],
+        "additionalProperties": true,
+        "properties": {
+          "SPDXID": {
+            "type": "string",
+            "pattern": "^SPDXRef-[A-Za-z0-9.-]+$"
+          },
+          "name": { "type": "string" },
+          "versionInfo": { "type": "string" },
+          "downloadLocation": { "type": "string" },
+          "primaryPackagePurpose": {
+            "type": "string",
+            "enum": ["APPLICATION", "FRAMEWORK", "LIBRARY", "CONTAINER", "OPERATING-SYSTEM", "DEVICE", "FIRMWARE", "SOURCE", "FILE", "INSTALL", "ARCHIVE", "AI-MODEL", "DATA-SET", "AI-AGENT"]
+          },
+          "description": { "type": "string" },
+          "externalRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "referenceCategory": {
+                  "type": "string",
+                  "enum": ["SECURITY", "PACKAGE-MANAGER", "PERSISTENT-ID", "OTHER", "AI-MODEL", "DATA-SET"]
+                },
+                "referenceType": { "type": "string" },
+                "referenceLocator": { "type": "string" }
+              }
+            }
+          },
+          "properties": {
+            "type": "array",
+            "description": "Key-value properties for agent identity, tool inventory, permissions, and risk assessment",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "value": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["spdxElementId", "relationshipType", "relatedSpdxElement"],
+        "properties": {
+          "spdxElementId": { "type": "string" },
+          "relationshipType": {
+            "type": "string",
+            "enum": ["DESCRIBES", "DESCRIBED_BY", "CONTAINS", "CONTAINED_BY", "DEPENDS_ON", "DEPENDENCY_OF", "GENERATES", "GENERATED_FROM"]
+          },
+          "relatedSpdxElement": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,8 @@
 import { getSchema } from '@wasmagent/protocol';
 import type { ErrorObject, ValidateFunction } from 'ajv';
+import Ajv from 'ajv';
 import Ajv2020 from 'ajv/dist/2020.js';
+export { Ajv };
 
 export interface ValidationError {
   /** Dot-notation path to the offending field, e.g. "identity.agent_id". "(root)" for the document itself. */

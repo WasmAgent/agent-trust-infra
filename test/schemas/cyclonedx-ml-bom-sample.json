@@ -1,0 +1,51 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "serialNumber": "urn:uuid:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+  "metadata": {
+    "timestamp": "2026-06-29T00:00:00Z",
+    "tools": [
+      { "vendor": "WasmAgent", "name": "agent-trust-cli", "version": "0.0.0-research" }
+    ],
+    "component": {
+      "type": "ai-agent",
+      "name": "test-agent",
+      "version": "0.1.0",
+      "bom-ref": "test-agent-001",
+      "properties": [
+        { "name": "agent_id", "value": "test-agent-001" },
+        { "name": "deployment_context", "value": "development" }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "Read",
+      "version": "1.0",
+      "bom-ref": "tool-file-read",
+      "properties": [
+        { "name": "tool_id", "value": "file-read" },
+        { "name": "source", "value": "builtin" },
+        { "name": "permissions", "value": "fs:read" }
+      ]
+    },
+    {
+      "type": "machine-learning-model",
+      "name": "test-model",
+      "version": "2026-01",
+      "bom-ref": "model-test",
+      "properties": [
+        { "name": "provider", "value": "anthropic" }
+      ]
+    }
+  ],
+  "dependencies": [
+    { "ref": "test-agent-001", "dependsOn": ["tool-file-read", "model-test"] }
+  ],
+  "properties": [
+    { "name": "granted_scopes", "value": "fs:read" },
+    { "name": "risk_summary", "value": "0 risks" }
+  ]
+}
