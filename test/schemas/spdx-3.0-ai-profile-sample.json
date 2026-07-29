@@ -1,0 +1,43 @@
+{
+  "spdxVersion": "SPDX-3.0",
+  "dataLicense": "CC0-1.0",
+  "name": "test-agent-bom",
+  "documentNamespace": "https://github.com/WasmAgent/agent-trust-infra/test-agent/spdx/3.0",
+  "creationInfo": {
+    "created": "2026-06-29T00:00:00Z",
+    "creators": ["Tool: agent-trust-cli-0.0.0-research"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Agent-test-agent-001",
+      "name": "test agent",
+      "versionInfo": "0.1.0",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "AI-AGENT",
+      "description": "WasmAgent test agent with tool use capabilities",
+      "properties": [
+        { "name": "agent_id", "value": "test-agent-001" },
+        { "name": "deployment_context", "value": "development" },
+        { "name": "granted_scopes", "value": "fs:read" }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Model-test-model",
+      "name": "test-model",
+      "versionInfo": "2026-01",
+      "downloadLocation": "NOASSERTION",
+      "primaryPackagePurpose": "AI-MODEL",
+      "description": "Test model used by the agent",
+      "externalRefs": [
+        { "referenceCategory": "AI-MODEL", "referenceType": "purl", "referenceLocator": "pkg:anthropic/test-model@2026-01" }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-Agent-test-agent-001",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Model-test-model"
+    }
+  ]
+}
