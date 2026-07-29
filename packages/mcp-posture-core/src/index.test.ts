@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { getSchema } from '@wasmagent/protocol';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -120,9 +121,7 @@ describe('validateMCPPosture', () => {
 
 describe('schema risk categories', () => {
   it('includes all 8 risk categories from the taxonomy (7 original + mcp_header_leakage)', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const raw = readFileSync(schemaPath, 'utf-8');
-    const schema = JSON.parse(raw);
+    const schema = getSchema('mcp-posture');
 
     const toolRiskCategories =
       (schema.properties?.servers?.items?.properties?.tools?.items?.properties?.risk_categories
@@ -134,9 +133,7 @@ describe('schema risk categories', () => {
   });
 
   it('risk_summary.category also has all 8 risk categories in the enum', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const raw = readFileSync(schemaPath, 'utf-8');
-    const schema = JSON.parse(raw);
+    const schema = getSchema('mcp-posture');
 
     const summaryCategoryEnum =
       (schema.properties?.risk_summary?.items?.properties?.category?.enum as string[]) ?? [];
@@ -153,29 +150,25 @@ describe('schema risk categories', () => {
 
 describe('schema covers MCP 2026-07-28 fields', () => {
   it('schema has protocol_version field', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    const schema = getSchema('mcp-posture');
     expect(schema.properties).toHaveProperty('protocol_version');
   });
 
   it('schema has session_model on servers items', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    const schema = getSchema('mcp-posture');
     const serverProps = schema.properties?.servers?.items?.properties;
     expect(serverProps).toHaveProperty('session_model');
     expect(serverProps.session_model.enum).toContain('stateless-handle');
   });
 
   it('schema has handle_expiry_policy on servers items', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    const schema = getSchema('mcp-posture');
     const serverProps = schema.properties?.servers?.items?.properties;
     expect(serverProps).toHaveProperty('handle_expiry_policy');
   });
 
   it('schema has attestation.auth with OAuth fields', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    const schema = getSchema('mcp-posture');
     const authProps = schema.properties?.attestation?.properties?.auth?.properties;
     expect(authProps).toHaveProperty('audience_bound_token_validated');
     expect(authProps).toHaveProperty('pkce_used');
@@ -183,8 +176,7 @@ describe('schema covers MCP 2026-07-28 fields', () => {
   });
 
   it('schema has owasp_agentic_ref on risk_summary items', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    const schema = getSchema('mcp-posture');
     const riskProps = schema.properties?.risk_summary?.items?.properties;
     expect(riskProps).toHaveProperty('owasp_agentic_ref');
   });
@@ -266,8 +258,7 @@ describe('verification_endpoint field', () => {
 
 describe('schema has verification_endpoint field', () => {
   it('schema includes verification_endpoint as an optional string property', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const schema = JSON.parse(readFileSync(schemaPath, 'utf-8'));
+    const schema = getSchema('mcp-posture');
     expect(schema.properties).toHaveProperty('verification_endpoint');
     const prop = schema.properties.verification_endpoint;
     expect(prop.type).toBe('string');
@@ -279,9 +270,7 @@ describe('schema has verification_endpoint field', () => {
 
 describe('schema covers all fields from posture-model-v0.1.md', () => {
   it('has top-level fields: identity, servers, permission_graph, risk_summary, drift, attestation', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const raw = readFileSync(schemaPath, 'utf-8');
-    const schema = JSON.parse(raw);
+    const schema = getSchema('mcp-posture');
 
     const props = schema.properties;
     expect(props).toHaveProperty('identity');
@@ -293,9 +282,7 @@ describe('schema covers all fields from posture-model-v0.1.md', () => {
   });
 
   it('requires posture_version, identity, servers, and attestation', () => {
-    const schemaPath = join(__dirname, '../../../specs/mcp-posture/schema.json');
-    const raw = readFileSync(schemaPath, 'utf-8');
-    const schema = JSON.parse(raw);
+    const schema = getSchema('mcp-posture');
 
     const required = schema.required as string[];
     expect(required).toContain('posture_version');
