@@ -1,20 +1,30 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/WasmAgent/agent-trust-infra/specs/agentbom/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wasmagent.dev/schemas/agentbom/v0.1.schema.json",
   "title": "AgentBOM",
   "description": "Agent Bill of Materials v0.1 — shipped specification schema",
   "type": "object",
-  "required": ["agentbom_version", "identity", "attestation"],
+  "required": [
+    "agentbom_version",
+    "identity",
+    "attestation"
+  ],
   "additionalProperties": false,
   "properties": {
     "agentbom_version": {
       "type": "string",
-      "enum": ["0.1"],
+      "enum": [
+        "0.1"
+      ],
       "description": "Always \"0.1\""
     },
     "identity": {
       "type": "object",
-      "required": ["agent_id", "agent_name", "generated_at"],
+      "required": [
+        "agent_id",
+        "agent_name",
+        "generated_at"
+      ],
       "additionalProperties": false,
       "description": "Agent ID, name, version, deployment context",
       "properties": {
@@ -32,7 +42,11 @@
         },
         "deployment_context": {
           "type": "string",
-          "enum": ["development", "staging", "production"],
+          "enum": [
+            "development",
+            "staging",
+            "production"
+          ],
           "description": "Deployment environment"
         },
         "generated_at": {
@@ -44,7 +58,10 @@
     },
     "model_layer": {
       "type": "object",
-      "required": ["provider", "model_id"],
+      "required": [
+        "provider",
+        "model_id"
+      ],
       "additionalProperties": false,
       "description": "Model provider, model ID, version, capabilities",
       "properties": {
@@ -62,7 +79,9 @@
         },
         "capabilities": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Declared capabilities"
         }
       }
@@ -72,7 +91,11 @@
       "description": "Registered tools, MCP servers, tool permissions, skills",
       "items": {
         "type": "object",
-        "required": ["tool_id", "tool_name", "source"],
+        "required": [
+          "tool_id",
+          "tool_name",
+          "source"
+        ],
         "additionalProperties": false,
         "properties": {
           "tool_id": {
@@ -85,7 +108,11 @@
           },
           "source": {
             "type": "string",
-            "enum": ["mcp", "builtin", "plugin"],
+            "enum": [
+              "mcp",
+              "builtin",
+              "plugin"
+            ],
             "description": "Tool source type"
           },
           "mcp_server_id": {
@@ -94,17 +121,23 @@
           },
           "skills": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Skills or capabilities this tool contributes to the agent"
           },
           "permissions": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Permission scopes this tool requires"
           },
           "risk_signals": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Known risk signals for this tool"
           }
         }
@@ -125,7 +158,9 @@
         },
         "template_ids": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Referenced prompt template IDs"
         },
         "templates": {
@@ -133,7 +168,9 @@
           "description": "Versioned prompt template references",
           "items": {
             "type": "object",
-            "required": ["template_id"],
+            "required": [
+              "template_id"
+            ],
             "additionalProperties": false,
             "properties": {
               "template_id": {
@@ -160,17 +197,23 @@
       "properties": {
         "granted_scopes": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "All granted permission scopes"
         },
         "data_access": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Data sources the agent can access"
         },
         "credential_references": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Credential type references (no secrets)"
         }
       }
@@ -180,7 +223,11 @@
       "description": "Governance policies, constraints, and compliance rules that govern agent behavior",
       "items": {
         "type": "object",
-        "required": ["policy_id", "policy_name", "policy_type"],
+        "required": [
+          "policy_id",
+          "policy_name",
+          "policy_type"
+        ],
         "additionalProperties": false,
         "properties": {
           "policy_id": {
@@ -205,7 +252,9 @@
           },
           "rules": {
             "type": "array",
-            "items": { "type": "string" },
+            "items": {
+              "type": "string"
+            },
             "description": "Declarative policy rules or constraint expressions"
           }
         }
@@ -218,7 +267,9 @@
       "properties": {
         "aep_references": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "AEP event IDs or hashes"
         },
         "evidence_hashes": {
@@ -226,7 +277,10 @@
           "description": "Evidence entries with type, hash, and timestamp",
           "items": {
             "type": "object",
-            "required": ["type", "hash"],
+            "required": [
+              "type",
+              "hash"
+            ],
             "additionalProperties": false,
             "properties": {
               "type": {
@@ -252,7 +306,11 @@
       "description": "Structured audit trail entries",
       "items": {
         "type": "object",
-        "required": ["timestamp", "event_type", "actor"],
+        "required": [
+          "timestamp",
+          "event_type",
+          "actor"
+        ],
         "additionalProperties": false,
         "properties": {
           "timestamp": {
@@ -274,7 +332,11 @@
           },
           "outcome": {
             "type": "string",
-            "enum": ["success", "failure", "partial"],
+            "enum": [
+              "success",
+              "failure",
+              "partial"
+            ],
             "description": "Event outcome status"
           },
           "details": {
@@ -290,7 +352,13 @@
       "description": "Known risk signals, open findings",
       "items": {
         "type": "object",
-        "required": ["risk_id", "severity", "category", "description", "status"],
+        "required": [
+          "risk_id",
+          "severity",
+          "category",
+          "description",
+          "status"
+        ],
         "additionalProperties": false,
         "properties": {
           "risk_id": {
@@ -299,7 +367,13 @@
           },
           "severity": {
             "type": "string",
-            "enum": ["critical", "high", "medium", "low", "info"],
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low",
+              "info"
+            ],
             "description": "Risk severity level"
           },
           "category": {
@@ -312,7 +386,11 @@
           },
           "status": {
             "type": "string",
-            "enum": ["open", "mitigated", "accepted"],
+            "enum": [
+              "open",
+              "mitigated",
+              "accepted"
+            ],
             "description": "Risk status"
           }
         }
@@ -323,7 +401,11 @@
       "description": "Action pathway definitions — workflows, pipelines, and decision sequences that define how the agent executes tasks",
       "items": {
         "type": "object",
-        "required": ["workflow_id", "workflow_name", "steps"],
+        "required": [
+          "workflow_id",
+          "workflow_name",
+          "steps"
+        ],
         "additionalProperties": false,
         "properties": {
           "workflow_id": {
@@ -347,7 +429,10 @@
             "description": "Ordered list of steps in this workflow",
             "items": {
               "type": "object",
-              "required": ["step_id", "action"],
+              "required": [
+                "step_id",
+                "action"
+              ],
               "additionalProperties": false,
               "properties": {
                 "step_id": {
@@ -372,12 +457,16 @@
                 },
                 "depends_on": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Step IDs this step depends on"
                 },
                 "allowed_tools": {
                   "type": "array",
-                  "items": { "type": "string" },
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Tool IDs allowed at this step"
                 }
               }
@@ -396,7 +485,10 @@
           "description": "Known peer agents this agent collaborates with",
           "items": {
             "type": "object",
-            "required": ["agent_id", "role"],
+            "required": [
+              "agent_id",
+              "role"
+            ],
             "additionalProperties": false,
             "properties": {
               "agent_id": {
@@ -409,12 +501,22 @@
               },
               "role": {
                 "type": "string",
-                "enum": ["supervisor", "delegate", "peer", "subordinate"],
+                "enum": [
+                  "supervisor",
+                  "delegate",
+                  "peer",
+                  "subordinate"
+                ],
                 "description": "Collaboration role relative to this agent"
               },
               "trust_level": {
                 "type": "string",
-                "enum": ["full", "restricted", "minimal", "none"],
+                "enum": [
+                  "full",
+                  "restricted",
+                  "minimal",
+                  "none"
+                ],
                 "description": "Trust level assigned to this peer agent"
               },
               "agentbom_ref": {
@@ -429,7 +531,11 @@
           "description": "Rules governing what this agent can delegate to peers and what it accepts from them",
           "items": {
             "type": "object",
-            "required": ["boundary_id", "direction", "constraint_type"],
+            "required": [
+              "boundary_id",
+              "direction",
+              "constraint_type"
+            ],
             "additionalProperties": false,
             "properties": {
               "boundary_id": {
@@ -438,7 +544,11 @@
               },
               "direction": {
                 "type": "string",
-                "enum": ["outbound", "inbound", "bidirectional"],
+                "enum": [
+                  "outbound",
+                  "inbound",
+                  "bidirectional"
+                ],
                 "description": "Direction of the delegation boundary"
               },
               "constraint_type": {
@@ -451,12 +561,16 @@
               },
               "target_agents": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "Agent IDs this boundary applies to (empty means all peers)"
               },
               "allowed_actions": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "Actions permitted within this boundary"
               },
               "max_delegation_depth": {
@@ -472,7 +586,11 @@
           "description": "Resources shared across agent collaboration boundaries",
           "items": {
             "type": "object",
-            "required": ["resource_id", "resource_type", "access_pattern"],
+            "required": [
+              "resource_id",
+              "resource_type",
+              "access_pattern"
+            ],
             "additionalProperties": false,
             "properties": {
               "resource_id": {
@@ -485,7 +603,12 @@
               },
               "access_pattern": {
                 "type": "string",
-                "enum": ["read_only", "write_only", "read_write", "exclusive"],
+                "enum": [
+                  "read_only",
+                  "write_only",
+                  "read_write",
+                  "exclusive"
+                ],
                 "description": "Access pattern for the shared resource"
               },
               "description": {
@@ -494,12 +617,18 @@
               },
               "accessing_agents": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "Agent IDs that access this resource"
               },
               "isolation_level": {
                 "type": "string",
-                "enum": ["shared", "partitioned", "isolated"],
+                "enum": [
+                  "shared",
+                  "partitioned",
+                  "isolated"
+                ],
                 "description": "Resource isolation level between agents"
               }
             }
@@ -524,19 +653,28 @@
         },
         "deprecation_status": {
           "type": "string",
-          "enum": ["active", "deprecated", "superseded", "withdrawn"],
+          "enum": [
+            "active",
+            "deprecated",
+            "superseded",
+            "withdrawn"
+          ],
           "description": "Current deprecation status of the artifact in the registry"
         },
         "supersedes": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Artifact IDs that this distribution supersedes"
         }
       }
     },
     "attestation": {
       "type": "object",
-      "required": ["generator"],
+      "required": [
+        "generator"
+      ],
       "additionalProperties": false,
       "description": "Generator, timestamp, hash, signature",
       "properties": {
